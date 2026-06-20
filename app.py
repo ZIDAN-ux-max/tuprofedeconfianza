@@ -3,14 +3,41 @@ import streamlit as st
 from groq import Groq
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
 st.set_page_config(
     page_title="Tu Profe de Confianza",
     page_icon=":mortar_board:",
     layout="centered"
 )
 
-st.title("Tu Profe de Confianza")
-st.caption("Aprende Matematicas e Ingles a tu ritmo, 24/7 y gratis")
+st.markdown("""
+<style>
+    .stApp { background-color: #EEF4FF; }
+    .stChatMessage { border-radius: 15px; }
+    .header-container {
+        text-align: center;
+        padding: 10px 0 20px 0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.image("imagen5.png", use_container_width=True)
+
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    st.image("imagen2.png", use_container_width=True)
+
+st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>Tu Profe de Confianza</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#3B82F6; font-size:18px;'>Aprende Matematicas e Ingles a tu ritmo, 24/7 y gratis</p>", unsafe_allow_html=True)
+
+st.divider()
+
+col1, col2 = st.columns(2)
+with col1:
+    st.image("imagen1.png", use_container_width=True)
+with col2:
+    st.image("imagen3.png", use_container_width=True)
+
 st.divider()
 
 modo = st.selectbox("Que quieres estudiar hoy?",

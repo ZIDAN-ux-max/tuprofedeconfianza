@@ -3,8 +3,9 @@ import streamlit as st
 from groq import Groq
 from supabase import create_client
 import hashlib
+import PyPDF2
+import io
 
-# Conexiones
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
@@ -18,6 +19,10 @@ st.markdown("""
 <style>
     .stApp { background-color: #EEF4FF; }
     .stChatMessage { border-radius: 15px; }
+    [data-testid="stImage"] img {
+        background-color: transparent !important;
+        mix-blend-mode: multiply;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -57,7 +62,16 @@ def cargar_conversaciones(usuario_id, materia):
         historial.append({"role": "assistant", "content": conv["respuesta"]})
     return historial
 
-# Login / Registro
+def extraer_texto_pdf(archivo):
+    try:
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(archivo.read()))
+        texto = ""
+        for page in pdf_reader.pages:
+            texto += page.extract_text()
+        return texto[:3000]
+    except:
+        return None
+
 if "usuario" not in st.session_state:
     st.session_state.usuario = None
 
@@ -106,13 +120,21 @@ else:
         st.divider()
         modo = st.radio("Que quieres estudiar?", ["Matematicas", "Ingles"])
         st.divider()
+        st.markdown("### Sube un archivo")
+        archivo = st.file_uploader("PDF o imagen", type=["pdf", "png", "jpg", "jpeg"])
+        if archivo:
+            st.success(f"Archivo cargado: {archivo.name}")
+            st.session_state.archivo = archivo
+        else:
+            st.session_state.archivo = None
+        st.divider()
         if st.button("Cerrar sesion", use_container_width=True):
             st.session_state.usuario = None
             st.session_state.historial = []
             st.rerun()
 
     st.image("imagen5.png", use_container_width=True)
-    st.markdown(f"<h1 style='text-align:center; color:#1E3A8A;'>Tu Profe de Confianza</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>Tu Profe de Confianza</h1>", unsafe_allow_html=True)
     st.divider()
 
     col1, col2 = st.columns(2)
@@ -127,6 +149,13 @@ else:
         st.session_state.historial = cargar_conversaciones(usuario["id"], modo)
         st.session_state.modo_actual = modo
 
+    texto_pdf = ""
+    if st.session_state.get("archivo"):
+        if st.session_state.archivo.type == "application/pdf":
+            texto_pdf = extraer_texto_pdf(st.session_state.archivo)
+            if texto_pdf:
+                st.info("PDF cargado - puedes preguntarme sobre el contenido")
+
     if modo == "Matematicas":
         system_prompt = """Eres Tu Profe de Confianza, un tutor de matematicas 
         para universitarios peruanos. Eres cercano, paciente y explicas paso a paso 
@@ -138,6 +167,9 @@ else:
         Siempre muestras las frases en ingles con su traduccion.
         Corriges errores con amabilidad.
         Mezclas espanol e ingles gradualmente."""
+
+    if texto_pdf:
+        system_prompt += f"\n\nEl estudiante ha subido este documento, usalo para responder sus preguntas:\n{texto_pdf}"
 
     if not st.session_state.historial:
         with st.chat_message("assistant"):

@@ -1,6 +1,4 @@
-No pasa nada — lo anterior ya estaba aplicado desde antes. Cada vez que corres SQL en Supabase los cambios se guardan permanentemente, no se borran al correr algo nuevo 🤙
-Ahora ve a GitHub → app.py → lápiz ✏️ y reemplaza TODO con este código que incluye el sistema de logros:
-python# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import streamlit as st
 from groq import Groq
 from supabase import create_client

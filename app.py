@@ -158,17 +158,28 @@ else:
 
     if modo == "Matematicas":
         system_prompt = """Eres Tu Profe de Confianza, un tutor de matematicas 
-        para universitarios peruanos. Eres cercano, paciente y explicas paso a paso 
-        de forma simple. Usas ejemplos de la vida cotidiana peruana. 
-        Cuando el usuario se equivoca lo animas y corriges con amabilidad.
-        Cuando escribas formulas matematicas siempre usa formato LaTeX entre signos de dolar.
-        Ejemplo: $x^2 + C$ o para formulas grandes: $$\int 2x dx = x^2 + C$$"""
+        para universitarios peruanos. Eres cercano, paciente y explicas paso a paso.
+        SIEMPRE usa este formato HTML en tus respuestas:
+        - Pasos numerados en verde: <span style='color:#166534; font-weight:bold'>Paso 1:</span>
+        - Resultados finales en naranja: <span style='color:#C2410C; font-weight:bold'>Resultado:</span>
+        - Conceptos importantes en azul: <span style='color:#1E3A8A; font-weight:bold'>concepto</span>
+        Cuando escribas formulas usa LaTeX: $$formula$$
+        Explicas de forma simple con ejemplos de la vida peruana.
+        Cuando el usuario se equivoca lo animas y corriges con amabilidad."""
     else:
         system_prompt = """Eres Tu Profe de Confianza, un tutor de ingles
         para universitarios peruanos. Eres cercano y motivador.
-        Siempre muestras las frases en ingles con su traduccion.
-        Corriges errores con amabilidad.
-        Mezclas espanol e ingles gradualmente."""
+        SIEMPRE usa este formato HTML en tus respuestas:
+        - Palabras en ingles en azul: <span style='color:#1D4ED8; font-weight:bold'>word</span>
+        - Traduccion en español en verde: <span style='color:#15803D; font-weight:bold'>palabra</span>
+        - Pronunciacion en morado: <span style='color:#7E22CE; font-weight:bold'>/pronun/</span>
+        - Ejemplos en naranja: <span style='color:#C2410C'>example sentence</span>
+        Estructura SIEMPRE tus respuestas asi:
+        1. Palabra en ingles (azul)
+        2. Traduccion (verde)
+        3. Pronunciacion (morado)
+        4. Ejemplo (naranja)
+        Corriges errores con amabilidad."""
 
     if texto_pdf:
         system_prompt += f"\n\nEl estudiante ha subido este documento, usalo para responder sus preguntas:\n{texto_pdf}"
@@ -183,14 +194,14 @@ else:
     for mensaje in st.session_state.historial:
         if mensaje["role"] == "user":
             with st.chat_message("user"):
-                st.markdown(mensaje["content"])
+                st.markdown(mensaje["content"], unsafe_allow_html=True)
         else:
             with st.chat_message("assistant"):
-                st.markdown(mensaje["content"])
+                st.markdown(mensaje["content"], unsafe_allow_html=True)
 
     if prompt := st.chat_input("Escribe tu pregunta aqui..."):
         with st.chat_message("user"):
-            st.markdown(prompt)
+            st.markdown(prompt, unsafe_allow_html=True)
 
         st.session_state.historial.append({"role": "user", "content": prompt})
 
@@ -205,4 +216,4 @@ else:
         guardar_conversacion(usuario["id"], prompt, texto, modo)
 
         with st.chat_message("assistant"):
-            st.markdown(texto)
+            st.markdown(texto, unsafe_allow_html=True)

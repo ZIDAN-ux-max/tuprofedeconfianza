@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+Tranquilo, te mando el código completo y correcto para que solo copies y pegues todo de una vez:
+python# -*- coding: utf-8 -*-
 import streamlit as st
 from groq import Groq
 from supabase import create_client
@@ -160,7 +161,9 @@ else:
         system_prompt = """Eres Tu Profe de Confianza, un tutor de matematicas 
         para universitarios peruanos. Eres cercano, paciente y explicas paso a paso 
         de forma simple. Usas ejemplos de la vida cotidiana peruana. 
-        Cuando el usuario se equivoca lo animas y corriges con amabilidad."""
+        Cuando el usuario se equivoca lo animas y corriges con amabilidad.
+        Cuando escribas formulas matematicas siempre usa formato LaTeX entre signos de dolar.
+        Ejemplo: $x^2 + C$ o para formulas grandes: $$\int 2x dx = x^2 + C$$"""
     else:
         system_prompt = """Eres Tu Profe de Confianza, un tutor de ingles
         para universitarios peruanos. Eres cercano y motivador.
@@ -181,14 +184,14 @@ else:
     for mensaje in st.session_state.historial:
         if mensaje["role"] == "user":
             with st.chat_message("user"):
-                st.write(mensaje["content"])
+                st.markdown(mensaje["content"])
         else:
             with st.chat_message("assistant"):
-                st.write(mensaje["content"])
+                st.markdown(mensaje["content"])
 
     if prompt := st.chat_input("Escribe tu pregunta aqui..."):
         with st.chat_message("user"):
-            st.write(prompt)
+            st.markdown(prompt)
 
         st.session_state.historial.append({"role": "user", "content": prompt})
 
@@ -200,8 +203,7 @@ else:
 
         texto = respuesta.choices[0].message.content
         st.session_state.historial.append({"role": "assistant", "content": texto})
-
         guardar_conversacion(usuario["id"], prompt, texto, modo)
 
         with st.chat_message("assistant"):
-            st.write(texto)
+            st.markdown(texto)

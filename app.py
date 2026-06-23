@@ -1,4 +1,6 @@
-# -*- coding: utf-8 -*-
+No pasa nada — lo anterior ya estaba aplicado desde antes. Cada vez que corres SQL en Supabase los cambios se guardan permanentemente, no se borran al correr algo nuevo 🤙
+Ahora ve a GitHub → app.py → lápiz ✏️ y reemplaza TODO con este código que incluye el sistema de logros:
+python# -*- coding: utf-8 -*-
 import streamlit as st
 from groq import Groq
 from supabase import create_client
@@ -40,8 +42,41 @@ st.markdown("""
         color: #6B7280;
         font-size: 0.9em;
     }
+    .logro-card {
+        background: linear-gradient(135deg, #1E3A8A, #3B82F6);
+        border-radius: 12px;
+        padding: 15px;
+        text-align: center;
+        color: white;
+        margin: 5px;
+    }
+    .logro-emoji {
+        font-size: 2.5em;
+    }
+    .logro-nombre {
+        font-weight: bold;
+        font-size: 1em;
+        margin-top: 5px;
+    }
+    .logro-desc {
+        font-size: 0.8em;
+        opacity: 0.9;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+LOGROS_DISPONIBLES = [
+    {"nombre": "Primera Pregunta", "descripcion": "Hiciste tu primera pregunta", "emoji": "🌟", "condicion": "total", "valor": 1},
+    {"nombre": "Estudiante Activo", "descripcion": "10 preguntas en total", "emoji": "📚", "condicion": "total", "valor": 10},
+    {"nombre": "Crack del Saber", "descripcion": "50 preguntas en total", "emoji": "🏆", "condicion": "total", "valor": 50},
+    {"nombre": "Centenario", "descripcion": "100 preguntas en total", "emoji": "💯", "condicion": "total", "valor": 100},
+    {"nombre": "Matematico", "descripcion": "10 preguntas de matematicas", "emoji": "📐", "condicion": "matematicas", "valor": 10},
+    {"nombre": "Crack de Mates", "descripcion": "50 preguntas de matematicas", "emoji": "🔢", "condicion": "matematicas", "valor": 50},
+    {"nombre": "Ingles Basic", "descripcion": "10 preguntas de ingles", "emoji": "🇺🇸", "condicion": "ingles", "valor": 10},
+    {"nombre": "English Master", "descripcion": "50 preguntas de ingles", "emoji": "🌍", "condicion": "ingles", "valor": 50},
+    {"nombre": "Estudiantazo", "descripcion": "10 preguntas en un dia", "emoji": "⚡", "condicion": "hoy", "valor": 10},
+    {"nombre": "Imparable", "descripcion": "20 preguntas en un dia", "emoji": "🔥", "condicion": "hoy", "valor": 20},
+]
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -107,6 +142,29 @@ def obtener_estadisticas(usuario_id):
         "semana": semana_count
     }
 
+def obtener_logros_usuario(usuario_id):
+    result = supabase.table("logros").select("nombre").eq("usuario_id", usuario_id).execute()
+    return [l["nombre"] for l in result.data]
+
+def otorgar_logro(usuario_id, logro):
+    supabase.table("logros").insert({
+        "usuario_id": usuario_id,
+        "nombre": logro["nombre"],
+        "descripcion": logro["descripcion"],
+        "emoji": logro["emoji"],
+        "fecha": datetime.now().isoformat()
+    }).execute()
+
+def verificar_logros(usuario_id, stats):
+    logros_actuales = obtener_logros_usuario(usuario_id)
+    nuevos_logros = []
+    for logro in LOGROS_DISPONIBLES:
+        if logro["nombre"] not in logros_actuales:
+            if stats[logro["condicion"]] >= logro["valor"]:
+                otorgar_logro(usuario_id, logro)
+                nuevos_logros.append(logro)
+    return nuevos_logros
+
 def extraer_texto_pdf(archivo):
     try:
         pdf_reader = PyPDF2.PdfReader(io.BytesIO(archivo.read()))
@@ -163,7 +221,7 @@ else:
         st.image("imagen2.png", use_container_width=True)
         st.markdown(f"### Hola, {usuario['nombre']} 👋")
         st.divider()
-        seccion = st.radio("Menu", ["Chat", "Mis Estadisticas"])
+        seccion = st.radio("Menu", ["Chat", "Mis Estadisticas", "Mis Logros"])
         st.divider()
         if seccion == "Chat":
             modo = st.radio("Que quieres estudiar?", ["Matematicas", "Ingles"])
@@ -181,7 +239,38 @@ else:
             st.session_state.historial = []
             st.rerun()
 
-    if seccion == "Mis Estadisticas":
+    if seccion == "Mis Logros":
+        st.image("imagen5.png", use_container_width=True)
+        st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>Mis Logros</h1>", unsafe_allow_html=True)
+        st.divider()
+
+        stats = obtener_estadisticas(usuario["id"])
+        logros_ganados = obtener_logros_usuario(usuario["id"])
+
+        st.markdown(f"### Tienes {len(logros_ganados)} de {len(LOGROS_DISPONIBLES)} logros 🏆")
+        st.divider()
+
+        cols = st.columns(3)
+        for i, logro in enumerate(LOGROS_DISPONIBLES):
+            with cols[i % 3]:
+                if logro["nombre"] in logros_ganados:
+                    st.markdown(f"""
+                    <div class='logro-card'>
+                        <div class='logro-emoji'>{logro['emoji']}</div>
+                        <div class='logro-nombre'>{logro['nombre']}</div>
+                        <div class='logro-desc'>{logro['descripcion']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div class='logro-card' style='background: #D1D5DB; color: #6B7280;'>
+                        <div class='logro-emoji'>🔒</div>
+                        <div class='logro-nombre'>{logro['nombre']}</div>
+                        <div class='logro-desc'>{logro['descripcion']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    elif seccion == "Mis Estadisticas":
         st.image("imagen5.png", use_container_width=True)
         st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>Mis Estadisticas</h1>", unsafe_allow_html=True)
         st.divider()
@@ -244,6 +333,10 @@ else:
             st.info("Aun no tienes estadisticas. Ve al chat y empieza a estudiar!")
 
     else:
+        if "modo" not in st.session_state:
+            st.session_state.modo = "Matematicas"
+        modo = st.session_state.get("modo", "Matematicas")
+
         st.image("imagen5.png", use_container_width=True)
         st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>Tu Profe de Confianza</h1>", unsafe_allow_html=True)
         st.divider()
@@ -325,6 +418,12 @@ else:
             texto = respuesta.choices[0].message.content
             st.session_state.historial.append({"role": "assistant", "content": texto})
             guardar_conversacion(usuario["id"], prompt, texto, modo)
+
+            stats = obtener_estadisticas(usuario["id"])
+            nuevos_logros = verificar_logros(usuario["id"], stats)
+            for logro in nuevos_logros:
+                st.balloons()
+                st.success(f"🏆 Nuevo logro desbloqueado: {logro['emoji']} {logro['nombre']} - {logro['descripcion']}")
 
             with st.chat_message("assistant"):
                 st.markdown(texto, unsafe_allow_html=True)

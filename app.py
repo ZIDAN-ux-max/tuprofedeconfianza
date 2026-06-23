@@ -1,5 +1,4 @@
-Tranquilo, te mando el código completo y correcto para que solo copies y pegues todo de una vez:
-python# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import streamlit as st
 from groq import Groq
 from supabase import create_client

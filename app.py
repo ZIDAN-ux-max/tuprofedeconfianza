@@ -87,8 +87,18 @@ def obtener_estadisticas(usuario_id):
     ingles = len([c for c in result.data if c["materia"] == "Ingles"])
     hoy = datetime.now().date()
     semana = datetime.now() - timedelta(days=7)
-    hoy_count = len([c for c in result.data if c.get("fecha") and datetime.fromisoformat(c["fecha"]).date() == hoy])
-    semana_count = len([c for c in result.data if c.get("fecha") and datetime.fromisoformat(c["fecha"]) >= semana])
+    hoy_count = 0
+    semana_count = 0
+    for c in result.data:
+        try:
+            if c.get("fecha"):
+                fecha = datetime.fromisoformat(str(c["fecha"]).replace("Z", "+00:00").split("+")[0])
+                if fecha.date() == hoy:
+                    hoy_count += 1
+                if fecha >= semana.replace(tzinfo=None):
+                    semana_count += 1
+        except:
+            pass
     return {
         "total": total,
         "matematicas": mate,

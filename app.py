@@ -335,7 +335,7 @@ else:
             st.session_state.modo = "Matematicas"
         modo = st.session_state.get("modo", "Matematicas")
 
-    col1, col2, col3 = st.columns([1,3,1])
+col1, col2, col3 = st.columns([1,3,1])
     with col2:
         st.image("imagen2.png", use_container_width=True)
     
@@ -381,7 +381,7 @@ else:
                     stats = obtener_estadisticas(usuario["id"])
                     verificar_logros(usuario["id"], stats)
                     st.rerun()
-         st.divider()
+    st.divider()
 
         if "historial" not in st.session_state or st.session_state.get("modo_actual") != modo:
             st.session_state.historial = cargar_conversaciones(usuario["id"], modo)

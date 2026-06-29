@@ -53,15 +53,6 @@ st.markdown("""
     .logro-emoji { font-size: 2em; }
     .logro-nombre { font-weight: bold; font-size: 0.9em; margin-top: 5px; }
     .logro-desc { font-size: 0.75em; opacity: 0.9; }
-    .ranking-card {
-        background: white;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 8px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-        display: flex;
-        align-items: center;
-    }
     .racha-card {
         background: linear-gradient(135deg, #F59E0B, #EF4444);
         border-radius: 12px;
@@ -181,9 +172,11 @@ def obtener_estadisticas(usuario_id):
                     semana_count += 1
         except:
             pass
-    pdfs = supabase.table("asistencia").select("*").eq("usuario_id", usuario_id).execute()
-    racha = supabase.table("usuarios").select("racha").eq("id", usuario_id).execute()
-    racha_val = racha.data[0].get("racha", 0) if racha.data else 0
+    try:
+        racha_result = supabase.table("usuarios").select("racha").eq("id", usuario_id).execute()
+        racha_val = racha_result.data[0].get("racha", 0) if racha_result.data else 0
+    except:
+        racha_val = 0
     hora_actual = datetime.now().hour
     return {
         "total": total,
@@ -193,7 +186,7 @@ def obtener_estadisticas(usuario_id):
         "semana": semana_count,
         "racha": racha_val,
         "hora": hora_actual,
-        "pdfs": len(pdfs.data) if pdfs.data else 0
+        "pdfs": 0
     }
 
 def obtener_ranking():
@@ -357,13 +350,13 @@ else:
             color = "#EEF4FF" if es_yo else "white"
             borde = "2px solid #3B82F6" if es_yo else "none"
             st.markdown(f"""
-            <div style='background:{color}; border:{borde}; border-radius:12px; 
+            <div style='background:{color}; border:{borde}; border-radius:12px;
                         padding:15px; margin-bottom:8px; box-shadow:0 2px 6px rgba(0,0,0,0.08)'>
                 <span style='font-size:1.5em'>{medalla}</span>
                 <strong style='color:#1E3A8A; margin-left:10px'>{est['nombre']}</strong>
                 {'<span style="color:#3B82F6; font-size:0.8em"> (Tu)</span>' if es_yo else ''}
                 <span style='float:right; color:#6B7280'>
-                    💬 {est['total']} preguntas &nbsp; 
+                    💬 {est['total']} preguntas &nbsp;
                     🔥 {est['racha']} dias &nbsp;
                     🏅 {est['logros']} logros
                 </span>
@@ -376,7 +369,7 @@ else:
         st.markdown("""
         <div style='background:white; border-radius:12px; padding:25px; box-shadow:0 2px 8px rgba(0,0,0,0.1)'>
             <h3 style='color:#1E3A8A'>Nuestra Mision</h3>
-            <p>Hacer la educacion accesible para todos los estudiantes peruanos, 
+            <p>Hacer la educacion accesible para todos los estudiantes peruanos,
             con un tutor de IA disponible 24/7 que explica de forma simple y cercana.</p>
             <h3 style='color:#1E3A8A'>Que ofrecemos</h3>
             <p>✅ Tutor de Matematicas con explicaciones paso a paso</p>
@@ -387,7 +380,7 @@ else:
             <p>✅ Registro de asistencia y racha diaria</p>
             <p>✅ Historial de conversaciones guardado</p>
             <h3 style='color:#1E3A8A'>Contacto</h3>
-            <p>¿Tienes sugerencias? Escribenos y mejoramos juntos.</p>
+            <p>Tienes sugerencias? Escribenos y mejoramos juntos.</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -396,7 +389,6 @@ else:
         st.divider()
         logros_ganados = obtener_logros_usuario(usuario["id"])
         st.markdown(f"### Tienes {len(logros_ganados)} de {len(LOGROS_DISPONIBLES)} logros 🏆")
-
         if racha > 0:
             st.markdown(f"""
             <div class='racha-card'>
@@ -405,7 +397,6 @@ else:
                 <div style='font-size:0.9em; opacity:0.9'>Sigue estudiando cada dia para no perderla!</div>
             </div>
             """, unsafe_allow_html=True)
-
         st.divider()
         cols = st.columns(3)
         for i, logro in enumerate(LOGROS_DISPONIBLES):
@@ -488,7 +479,7 @@ else:
                     st.info("PDF cargado - puedes preguntarme sobre el contenido")
 
         if modo == "Matematicas":
-            system_prompt = """Eres Tu Profe de Confianza, un tutor de matematicas 
+            system_prompt = """Eres Tu Profe de Confianza, un tutor de matematicas
             para universitarios peruanos. Eres cercano, paciente y explicas paso a paso.
             SIEMPRE usa este formato HTML en tus respuestas:
             - Pasos numerados en verde: <span style='color:#166534; font-weight:bold'>Paso 1:</span>

@@ -335,17 +335,53 @@ else:
             st.session_state.modo = "Matematicas"
         modo = st.session_state.get("modo", "Matematicas")
 
-        st.image("imagen5.png", use_container_width=True)
-        st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>Tu Profe de Confianza</h1>", unsafe_allow_html=True)
-        st.divider()
+    col1, col2, col3 = st.columns([1,3,1])
+    with col2:
+        st.image("imagen2.png", use_container_width=True)
+    
+    st.markdown(f"""
+    <div style='text-align:center; padding:10px 0'>
+        <span style='font-size:1.1em; color:#6B7280'>
+        Estudiando: <strong style='color:#1E3A8A'>{"📐 Matematicas" if modo == "Matematicas" else "🇺🇸 Ingles"}</strong>
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    st.divider()
 
+    if modo == "Matematicas":
+        sugerencias = [
+            "¿Qué es una integral?",
+            "Explícame las derivadas",
+            "¿Cómo resuelvo una ecuación cuadrática?",
+            "¿Qué es el límite de una función?"
+        ]
+    else:
+        sugerencias = [
+            "¿Cómo me presento en inglés?",
+            "Enséñame los verbos más usados",
+            "¿Cómo pido la hora en inglés?",
+            "Corrige mi pronunciación"
+        ]
+
+    if not st.session_state.historial:
+        st.markdown("<p style='text-align:center; color:#6B7280; font-size:0.9em'>Preguntas frecuentes:</p>", unsafe_allow_html=True)
         col1, col2 = st.columns(2)
-        with col1:
-            st.image("icono_mate.png", use_container_width=True)
-        with col2:
-            st.image("icono_ingles.png", use_container_width=True)
-
-        st.divider()
+        for i, sugerencia in enumerate(sugerencias):
+            with col1 if i % 2 == 0 else col2:
+                if st.button(sugerencia, use_container_width=True, key=f"sug_{i}"):
+                    st.session_state.historial.append({"role": "user", "content": sugerencia})
+                    with st.spinner("Tu profe esta pensando..."):
+                        respuesta = client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            messages=[{"role": "system", "content": system_prompt}] + st.session_state.historial
+                        )
+                    texto = respuesta.choices[0].message.content
+                    st.session_state.historial.append({"role": "assistant", "content": texto})
+                    guardar_conversacion(usuario["id"], sugerencia, texto, modo)
+                    stats = obtener_estadisticas(usuario["id"])
+                    verificar_logros(usuario["id"], stats)
+                    st.rerun()
+         st.divider()
 
         if "historial" not in st.session_state or st.session_state.get("modo_actual") != modo:
             st.session_state.historial = cargar_conversaciones(usuario["id"], modo)

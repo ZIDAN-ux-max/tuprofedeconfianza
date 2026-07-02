@@ -5,6 +5,8 @@ from supabase import create_client
 import hashlib
 import PyPDF2
 import io
+import json
+import random
 from datetime import datetime, timedelta, date
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
@@ -115,13 +117,6 @@ st.markdown("""
         box-shadow: 0 8px 25px rgba(0,201,255,0.5) !important;
     }
     .stTextInput > div > div > input {
-        background: rgba(255,255,255,0.05) !important;
-        border: 1px solid rgba(0,201,255,0.3) !important;
-        border-radius: 12px !important;
-        color: white !important;
-        font-family: 'Poppins', sans-serif !important;
-    }
-    .stTextInput > div > div > input {
         background: rgba(255,255,255,0.15) !important;
         border: 1px solid rgba(0,201,255,0.5) !important;
         border-radius: 12px !important;
@@ -129,13 +124,11 @@ st.markdown("""
         font-family: 'Poppins', sans-serif !important;
         caret-color: white !important;
     }
-
     .stTextInput > div > div > input::placeholder {
         color: rgba(255,255,255,0.5) !important;
     }
-
     .stTextInput label {
-    color: rgba(255,255,255,0.8) !important;
+        color: rgba(255,255,255,0.8) !important;
     }
     .stChatMessage {
         background: rgba(255,255,255,0.05) !important;
@@ -416,7 +409,7 @@ else:
         st.markdown(f"<span style='background:{nivel_color}; color:white; padding:3px 10px; border-radius:20px; font-size:0.85em'>{nivel}</span>", unsafe_allow_html=True)
         st.markdown(f"<p style='color:#F59E0B; font-weight:bold; margin-top:8px'>🔥 Racha: {racha} dias</p>", unsafe_allow_html=True)
         st.divider()
-        seccion = st.radio("Menu", ["Chat", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
+        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
         st.divider()
         if seccion == "Chat":
             modo = st.radio("Que quieres estudiar?", ["Matematicas", "Ingles"])
@@ -434,7 +427,367 @@ else:
             st.session_state.historial = []
             st.rerun()
 
-    if seccion == "Ranking":
+    # ===================== MODO EXAMEN =====================
+    if seccion == "Modo Examen":
+        st.markdown("<h1 style='text-align:center;'>📝 Modo Examen</h1>", unsafe_allow_html=True)
+        st.divider()
+
+        materia_examen = st.selectbox("Elige la materia del examen", ["Matematicas", "Ingles"])
+
+        if "examen_activo" not in st.session_state:
+            st.session_state.examen_activo = False
+        if "preguntas_examen" not in st.session_state:
+            st.session_state.preguntas_examen = []
+        if "respuestas_examen" not in st.session_state:
+            st.session_state.respuestas_examen = {}
+        if "examen_terminado" not in st.session_state:
+            st.session_state.examen_terminado = False
+        if "resultado_examen" not in st.session_state:
+            st.session_state.resultado_examen = None
+
+        if not st.session_state.examen_activo and not st.session_state.examen_terminado:
+            st.markdown("""
+            <div style='background:rgba(255,255,255,0.05); border:1px solid rgba(0,201,255,0.2); border-radius:16px; padding:25px; text-align:center;'>
+                <div style='font-size:3em'>📝</div>
+                <h3 style='color:#00C9FF'>Pon a prueba tus conocimientos</h3>
+                <p style='color:rgba(255,255,255,0.7)'>El examen tiene 9 preguntas mixtas:</p>
+                <p style='color:rgba(255,255,255,0.7)'>✅ 3 preguntas de opcion multiple</p>
+                <p style='color:rgba(255,255,255,0.7)'>✍️ 3 preguntas de respuesta abierta</p>
+                <p style='color:rgba(255,255,255,0.7)'>🔗 3 preguntas de relacionar conceptos</p>
+            </div>
+            """, unsafe_allow_html=True)
+            st.divider()
+
+            if st.button("🚀 Iniciar Examen", use_container_width=True):
+                with st.spinner("Generando tu examen personalizado..."):
+                    prompt_examen = f"""Crea un examen de {materia_examen} para universitarios peruanos con EXACTAMENTE este formato JSON y nada mas:
+{{
+  "preguntas": [
+    {{
+      "tipo": "multiple",
+      "pregunta": "texto de la pregunta",
+      "opciones": ["A) opcion1", "B) opcion2", "C) opcion3", "D) opcion4"],
+      "correcta": "A"
+    }},
+    {{
+      "tipo": "multiple",
+      "pregunta": "texto de la pregunta",
+      "opciones": ["A) opcion1", "B) opcion2", "C) opcion3", "D) opcion4"],
+      "correcta": "B"
+    }},
+    {{
+      "tipo": "multiple",
+      "pregunta": "texto de la pregunta",
+      "opciones": ["A) opcion1", "B) opcion2", "C) opcion3", "D) opcion4"],
+      "correcta": "C"
+    }},
+    {{
+      "tipo": "abierta",
+      "pregunta": "texto de la pregunta abierta",
+      "correcta": "respuesta esperada"
+    }},
+    {{
+      "tipo": "abierta",
+      "pregunta": "texto de la pregunta abierta",
+      "correcta": "respuesta esperada"
+    }},
+    {{
+      "tipo": "abierta",
+      "pregunta": "texto de la pregunta abierta",
+      "correcta": "respuesta esperada"
+    }},
+    {{
+      "tipo": "relacionar",
+      "pregunta": "Relaciona cada concepto con su definicion",
+      "columna_a": ["concepto1", "concepto2", "concepto3"],
+      "columna_b": ["definicion1", "definicion2", "definicion3"],
+      "correcta": {{"concepto1": "definicion1", "concepto2": "definicion2", "concepto3": "definicion3"}}
+    }},
+    {{
+      "tipo": "relacionar",
+      "pregunta": "Relaciona cada termino con su significado",
+      "columna_a": ["termino1", "termino2", "termino3"],
+      "columna_b": ["significado1", "significado2", "significado3"],
+      "correcta": {{"termino1": "significado1", "termino2": "significado2", "termino3": "significado3"}}
+    }},
+    {{
+      "tipo": "relacionar",
+      "pregunta": "Relaciona correctamente",
+      "columna_a": ["item1", "item2", "item3"],
+      "columna_b": ["match1", "match2", "match3"],
+      "correcta": {{"item1": "match1", "item2": "match2", "item3": "match3"}}
+    }}
+  ]
+}}
+Responde SOLO con el JSON, sin explicaciones ni texto adicional."""
+
+                    respuesta_examen = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "user", "content": prompt_examen}],
+                        max_tokens=2000
+                    )
+
+                    try:
+                        texto_json = respuesta_examen.choices[0].message.content
+                        texto_json = texto_json.replace("```json", "").replace("```", "").strip()
+                        datos_examen = json.loads(texto_json)
+                        st.session_state.preguntas_examen = datos_examen["preguntas"]
+                        st.session_state.examen_activo = True
+                        st.session_state.respuestas_examen = {}
+                        st.session_state.examen_terminado = False
+                        st.rerun()
+                    except:
+                        st.error("Error generando el examen. Intenta de nuevo.")
+
+        elif st.session_state.examen_activo and not st.session_state.examen_terminado:
+            preguntas = st.session_state.preguntas_examen
+            total = len(preguntas)
+
+            respondidas = len(st.session_state.respuestas_examen)
+            st.markdown(f"<p style='color:rgba(255,255,255,0.6)'>Progreso: {respondidas}/{total} preguntas respondidas</p>", unsafe_allow_html=True)
+            st.progress(respondidas / total if total > 0 else 0)
+            st.divider()
+
+            for i, pregunta in enumerate(preguntas):
+                tipo = pregunta.get("tipo")
+                st.markdown(f"<p style='color:#00C9FF; font-weight:bold'>Pregunta {i+1} de {total}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:white; font-size:1.1em'>{pregunta['pregunta']}</p>", unsafe_allow_html=True)
+
+                if tipo == "multiple":
+                    opciones = pregunta.get("opciones", [])
+                    resp = st.radio(
+                        "Selecciona tu respuesta:",
+                        opciones,
+                        key=f"preg_{i}",
+                        index=None
+                    )
+                    if resp:
+                        letra = resp.split(")")[0].strip()
+                        st.session_state.respuestas_examen[i] = letra
+
+                elif tipo == "abierta":
+                    resp = st.text_area(
+                        "Escribe tu respuesta:",
+                        key=f"preg_{i}",
+                        height=100,
+                        placeholder="Escribe aqui tu respuesta..."
+                    )
+                    if resp and resp.strip():
+                        st.session_state.respuestas_examen[i] = resp.strip()
+
+                elif tipo == "relacionar":
+                    columna_a = pregunta.get("columna_a", [])
+                    columna_b = pregunta.get("columna_b", [])
+                    if f"columna_b_mezclada_{i}" not in st.session_state:
+                        mezclada = columna_b.copy()
+                        random.shuffle(mezclada)
+                        st.session_state[f"columna_b_mezclada_{i}"] = mezclada
+                    columna_b_mezclada = st.session_state[f"columna_b_mezclada_{i}"]
+
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown("<p style='color:#92FE9D; font-weight:bold'>Columna A</p>", unsafe_allow_html=True)
+                        for item in columna_a:
+                            st.markdown(f"<p style='color:white; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px; margin:4px 0'>📌 {item}</p>", unsafe_allow_html=True)
+                    with col2:
+                        st.markdown("<p style='color:#F59E0B; font-weight:bold'>Columna B</p>", unsafe_allow_html=True)
+                        relaciones = {}
+                        for j, item_a in enumerate(columna_a):
+                            seleccion = st.selectbox(
+                                f"'{item_a}' corresponde a:",
+                                ["-- Selecciona --"] + columna_b_mezclada,
+                                key=f"rel_{i}_{j}"
+                            )
+                            if seleccion != "-- Selecciona --":
+                                relaciones[item_a] = seleccion
+                        if len(relaciones) == len(columna_a):
+                            st.session_state.respuestas_examen[i] = relaciones
+
+                st.divider()
+
+            respondidas_actual = len(st.session_state.respuestas_examen)
+            if respondidas_actual == total:
+                if st.button("✅ Entregar Examen", use_container_width=True):
+                    with st.spinner("Calificando tu examen..."):
+                        puntaje = 0
+                        resultados = []
+
+                        for i, pregunta in enumerate(preguntas):
+                            tipo = pregunta.get("tipo")
+                            resp_usuario = st.session_state.respuestas_examen.get(i)
+                            correcta = pregunta.get("correcta")
+
+                            if tipo == "multiple":
+                                es_correcta = str(resp_usuario).strip().upper() == str(correcta).strip().upper()
+                                if es_correcta:
+                                    puntaje += 1
+                                resultados.append({
+                                    "pregunta": pregunta["pregunta"],
+                                    "tipo": tipo,
+                                    "tu_respuesta": resp_usuario,
+                                    "correcta": correcta,
+                                    "es_correcta": es_correcta
+                                })
+
+                            elif tipo == "abierta":
+                                eval_prompt = f"""Evalua si esta respuesta es correcta o parcialmente correcta.
+Pregunta: {pregunta['pregunta']}
+Respuesta correcta esperada: {correcta}
+Respuesta del estudiante: {resp_usuario}
+Responde SOLO con este JSON: {{"correcta": true/false, "parcial": true/false, "feedback": "explicacion breve"}}"""
+                                eval_resp = client.chat.completions.create(
+                                    model="llama-3.3-70b-versatile",
+                                    messages=[{"role": "user", "content": eval_prompt}],
+                                    max_tokens=200
+                                )
+                                try:
+                                    eval_json = eval_resp.choices[0].message.content.replace("```json","").replace("```","").strip()
+                                    eval_data = json.loads(eval_json)
+                                    if eval_data.get("correcta"):
+                                        puntaje += 1
+                                        es_correcta = True
+                                    elif eval_data.get("parcial"):
+                                        puntaje += 0.5
+                                        es_correcta = None
+                                    else:
+                                        es_correcta = False
+                                    resultados.append({
+                                        "pregunta": pregunta["pregunta"],
+                                        "tipo": tipo,
+                                        "tu_respuesta": resp_usuario,
+                                        "correcta": correcta,
+                                        "es_correcta": es_correcta,
+                                        "feedback": eval_data.get("feedback", "")
+                                    })
+                                except:
+                                    resultados.append({
+                                        "pregunta": pregunta["pregunta"],
+                                        "tipo": tipo,
+                                        "tu_respuesta": resp_usuario,
+                                        "correcta": correcta,
+                                        "es_correcta": False,
+                                        "feedback": ""
+                                    })
+
+                            elif tipo == "relacionar":
+                                correctas_rel = correcta if isinstance(correcta, dict) else {}
+                                resp_rel = resp_usuario if isinstance(resp_usuario, dict) else {}
+                                aciertos = sum(1 for k, v in resp_rel.items() if correctas_rel.get(k) == v)
+                                total_rel = len(correctas_rel)
+                                if total_rel > 0:
+                                    puntaje_rel = aciertos / total_rel
+                                    puntaje += puntaje_rel
+                                    es_correcta = aciertos == total_rel
+                                else:
+                                    es_correcta = False
+                                resultados.append({
+                                    "pregunta": pregunta["pregunta"],
+                                    "tipo": tipo,
+                                    "tu_respuesta": resp_rel,
+                                    "correcta": correctas_rel,
+                                    "es_correcta": es_correcta,
+                                    "aciertos": aciertos,
+                                    "total_rel": total_rel
+                                })
+
+                        nota = round((puntaje / total) * 20, 1)
+                        st.session_state.resultado_examen = {
+                            "nota": nota,
+                            "puntaje": puntaje,
+                            "total": total,
+                            "resultados": resultados,
+                            "materia": materia_examen
+                        }
+                        st.session_state.examen_activo = False
+                        st.session_state.examen_terminado = True
+
+                        try:
+                            supabase.table("examenes").insert({
+                                "usuario_id": usuario["id"],
+                                "materia": materia_examen,
+                                "pregunta": f"Examen completo - {total} preguntas",
+                                "opciones": json.dumps(resultados),
+                                "respuesta_correcta": str(nota),
+                                "respuesta_usuario": str(puntaje),
+                                "correcta": nota >= 11,
+                                "fecha": datetime.now().isoformat()
+                            }).execute()
+                        except:
+                            pass
+                        st.rerun()
+            else:
+                st.warning(f"Faltan {total - respondidas_actual} preguntas por responder")
+
+        elif st.session_state.examen_terminado and st.session_state.resultado_examen:
+            resultado = st.session_state.resultado_examen
+            nota = resultado["nota"]
+
+            if nota >= 18:
+                emoji_nota = "🏆"
+                color_nota = "#92FE9D"
+                mensaje = "Excelente! Eres un crack!"
+            elif nota >= 14:
+                emoji_nota = "⭐"
+                color_nota = "#00C9FF"
+                mensaje = "Muy bien! Sigue asi!"
+            elif nota >= 11:
+                emoji_nota = "✅"
+                color_nota = "#F59E0B"
+                mensaje = "Aprobaste! Puedes mejorar!"
+            else:
+                emoji_nota = "📚"
+                color_nota = "#EF4444"
+                mensaje = "Reprobaste. Sigue estudiando!"
+
+            st.markdown(f"""
+            <div style='background:rgba(255,255,255,0.05); border:1px solid {color_nota}; border-radius:16px; padding:30px; text-align:center;'>
+                <div style='font-size:4em'>{emoji_nota}</div>
+                <div style='font-size:3em; font-weight:900; color:{color_nota}'>{nota}/20</div>
+                <div style='font-size:1.2em; color:white; margin-top:10px'>{mensaje}</div>
+                <div style='color:rgba(255,255,255,0.6); margin-top:5px'>{resultado['materia']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.divider()
+            st.markdown("<h3 style='color:white'>Revision del examen:</h3>", unsafe_allow_html=True)
+
+            for i, res in enumerate(resultado["resultados"]):
+                if res["es_correcta"] == True:
+                    icono = "✅"
+                    color = "rgba(146,254,157,0.1)"
+                    borde = "rgba(146,254,157,0.3)"
+                elif res["es_correcta"] is None:
+                    icono = "⚡"
+                    color = "rgba(245,158,11,0.1)"
+                    borde = "rgba(245,158,11,0.3)"
+                else:
+                    icono = "❌"
+                    color = "rgba(239,68,68,0.1)"
+                    borde = "rgba(239,68,68,0.3)"
+
+                st.markdown(f"""
+                <div style='background:{color}; border:1px solid {borde}; border-radius:12px; padding:15px; margin-bottom:10px;'>
+                    <p style='color:white; font-weight:bold'>{icono} Pregunta {i+1}: {res['pregunta']}</p>
+                    <p style='color:rgba(255,255,255,0.7); font-size:0.9em'>Tu respuesta: {res['tu_respuesta']}</p>
+                    <p style='color:rgba(255,255,255,0.7); font-size:0.9em'>Respuesta correcta: {res['correcta']}</p>
+                    {f"<p style='color:#F59E0B; font-size:0.85em'>{res.get('feedback','')}</p>" if res.get('feedback') else ''}
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.divider()
+            if st.button("🔄 Nuevo Examen", use_container_width=True):
+                st.session_state.examen_activo = False
+                st.session_state.examen_terminado = False
+                st.session_state.preguntas_examen = []
+                st.session_state.respuestas_examen = {}
+                st.session_state.resultado_examen = None
+                for key in list(st.session_state.keys()):
+                    if key.startswith("columna_b_mezclada_") or key.startswith("rel_") or key.startswith("preg_"):
+                        del st.session_state[key]
+                st.rerun()
+
+    # ===================== RANKING =====================
+    elif seccion == "Ranking":
         st.markdown("<h1 style='text-align:center;'>🏆 Ranking de Estudiantes</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.6)'>Compite con tus companeros y llega al top!</p>", unsafe_allow_html=True)
         st.divider()

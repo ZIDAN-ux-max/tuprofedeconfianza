@@ -18,48 +18,128 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    .stApp { background-color: #EEF4FF; }
-    .stChatMessage { border-radius: 15px; }
-    [data-testid="stImage"] img {
-        background-color: transparent !important;
-        mix-blend-mode: multiply;
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap');
+    * { font-family: 'Poppins', sans-serif; }
+    .stApp {
+        background: linear-gradient(135deg, #0F0C29, #302B63, #24243e);
+        min-height: 100vh;
+    }
+    .titulo-principal {
+        text-align: center;
+        font-size: 3em;
+        font-weight: 900;
+        background: linear-gradient(90deg, #00C9FF, #92FE9D, #00C9FF);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: shine 3s linear infinite;
+        margin-bottom: 0;
+    }
+    @keyframes shine {
+        to { background-position: 200% center; }
+    }
+    .subtitulo {
+        text-align: center;
+        color: rgba(255,255,255,0.7);
+        font-size: 1.1em;
+        margin-top: 5px;
     }
     .stat-card {
-        background: white;
-        border-radius: 12px;
+        background: rgba(255,255,255,0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 16px;
         padding: 20px;
         text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
         margin-bottom: 10px;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,201,255,0.3);
     }
     .stat-number {
         font-size: 2.5em;
-        font-weight: bold;
-        color: #1E3A8A;
+        font-weight: 700;
+        background: linear-gradient(90deg, #00C9FF, #92FE9D);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
     .stat-label {
-        color: #6B7280;
+        color: rgba(255,255,255,0.6);
         font-size: 0.9em;
     }
     .logro-card {
-        background: linear-gradient(135deg, #1E3A8A, #3B82F6);
-        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(0,201,255,0.2), rgba(146,254,157,0.2));
+        border: 1px solid rgba(0,201,255,0.3);
+        border-radius: 16px;
         padding: 15px;
         text-align: center;
         color: white;
         margin: 5px;
         min-height: 120px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .logro-card:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(0,201,255,0.4);
     }
     .logro-emoji { font-size: 2em; }
-    .logro-nombre { font-weight: bold; font-size: 0.9em; margin-top: 5px; }
-    .logro-desc { font-size: 0.75em; opacity: 0.9; }
+    .logro-nombre { font-weight: bold; font-size: 0.9em; margin-top: 5px; color: #00C9FF; }
+    .logro-desc { font-size: 0.75em; opacity: 0.8; color: rgba(255,255,255,0.7); }
     .racha-card {
         background: linear-gradient(135deg, #F59E0B, #EF4444);
-        border-radius: 12px;
-        padding: 15px;
+        border-radius: 16px;
+        padding: 20px;
         text-align: center;
         color: white;
         margin-bottom: 10px;
+        box-shadow: 0 0 30px rgba(239,68,68,0.4);
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 30px rgba(239,68,68,0.4); }
+        50% { box-shadow: 0 0 50px rgba(239,68,68,0.7); }
+    }
+    .stButton > button {
+        background: linear-gradient(135deg, #00C9FF, #92FE9D) !important;
+        color: #0F0C29 !important;
+        font-weight: 700 !important;
+        border: none !important;
+        border-radius: 12px !important;
+        transition: all 0.3s ease !important;
+        font-family: 'Poppins', sans-serif !important;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(0,201,255,0.5) !important;
+    }
+    .stTextInput > div > div > input {
+        background: rgba(255,255,255,0.05) !important;
+        border: 1px solid rgba(0,201,255,0.3) !important;
+        border-radius: 12px !important;
+        color: white !important;
+        font-family: 'Poppins', sans-serif !important;
+    }
+    .stChatMessage {
+        background: rgba(255,255,255,0.05) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 16px !important;
+        backdrop-filter: blur(10px) !important;
+    }
+    [data-testid="stSidebar"] {
+        background: rgba(15,12,41,0.95) !important;
+        border-right: 1px solid rgba(0,201,255,0.2) !important;
+    }
+    h1, h2, h3 { color: white !important; }
+    p { color: rgba(255,255,255,0.8); }
+    [data-testid="stImage"] img {
+        border-radius: 16px;
+        box-shadow: 0 0 30px rgba(0,201,255,0.3);
+    }
+    @keyframes flotar {
+        0%, 100% { transform: translateY(0px) scale(1); opacity: 0.3; }
+        50% { transform: translateY(-20px) scale(1.5); opacity: 0.8; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -268,12 +348,12 @@ if "usuario" not in st.session_state:
 
 if st.session_state.usuario is None:
     st.image("imagen5.png", use_container_width=True)
-    st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>Tu Profe de Confianza</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#3B82F6;'>Aprende Matematicas e Ingles a tu ritmo, 24/7 y gratis</p>", unsafe_allow_html=True)
+    st.markdown("<p class='titulo-principal'>Tu Profe de Confianza</p>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitulo'>Aprende Matematicas e Ingles a tu ritmo, 24/7 y gratis</p>", unsafe_allow_html=True)
     st.divider()
     try:
         total_usuarios = supabase.table("usuarios").select("id", count="exact").execute()
-        st.markdown(f"<p style='text-align:center; color:#6B7280'>🎓 {total_usuarios.count} estudiantes ya aprenden con nosotros</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align:center; color:rgba(255,255,255,0.6)'>🎓 {total_usuarios.count} estudiantes ya aprenden con nosotros</p>", unsafe_allow_html=True)
     except:
         pass
     st.divider()
@@ -339,56 +419,54 @@ else:
             st.rerun()
 
     if seccion == "Ranking":
-        st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>🏆 Ranking de Estudiantes</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align:center; color:#6B7280'>Compite con tus compañeros y llega al top!</p>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center;'>🏆 Ranking de Estudiantes</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.6)'>Compite con tus companeros y llega al top!</p>", unsafe_allow_html=True)
         st.divider()
         ranking = obtener_ranking()
         medallas = ["🥇", "🥈", "🥉"]
         for i, est in enumerate(ranking):
             medalla = medallas[i] if i < 3 else f"#{i+1}"
             es_yo = est["nombre"] == usuario["nombre"]
-            color = "#EEF4FF" if es_yo else "white"
-            borde = "2px solid #3B82F6" if es_yo else "none"
+            color = "rgba(0,201,255,0.1)" if es_yo else "rgba(255,255,255,0.05)"
+            borde = "1px solid rgba(0,201,255,0.5)" if es_yo else "1px solid rgba(255,255,255,0.1)"
             st.markdown(f"""
-            <div style='background:{color}; border:{borde}; border-radius:12px;
-                        padding:15px; margin-bottom:8px; box-shadow:0 2px 6px rgba(0,0,0,0.08)'>
+            <div style='background:{color}; border:{borde}; border-radius:16px;
+                        padding:15px; margin-bottom:8px;'>
                 <span style='font-size:1.5em'>{medalla}</span>
-                <strong style='color:#1E3A8A; margin-left:10px'>{est['nombre']}</strong>
-                {'<span style="color:#3B82F6; font-size:0.8em"> (Tu)</span>' if es_yo else ''}
-                <span style='float:right; color:#6B7280'>
-                    💬 {est['total']} preguntas &nbsp;
-                    🔥 {est['racha']} dias &nbsp;
-                    🏅 {est['logros']} logros
+                <strong style='color:white; margin-left:10px'>{est['nombre']}</strong>
+                {'<span style="color:#00C9FF; font-size:0.8em"> (Tu)</span>' if es_yo else ''}
+                <span style='float:right; color:rgba(255,255,255,0.6)'>
+                    💬 {est['total']} &nbsp; 🔥 {est['racha']} &nbsp; 🏅 {est['logros']}
                 </span>
             </div>
             """, unsafe_allow_html=True)
 
     elif seccion == "Acerca de":
-        st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>Acerca de Tu Profe de Confianza</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center;'>Acerca de Tu Profe de Confianza</h1>", unsafe_allow_html=True)
         st.divider()
         st.markdown("""
-        <div style='background:white; border-radius:12px; padding:25px; box-shadow:0 2px 8px rgba(0,0,0,0.1)'>
-            <h3 style='color:#1E3A8A'>Nuestra Mision</h3>
-            <p>Hacer la educacion accesible para todos los estudiantes peruanos,
+        <div style='background:rgba(255,255,255,0.05); border:1px solid rgba(0,201,255,0.2); border-radius:16px; padding:25px;'>
+            <h3 style='color:#00C9FF'>Nuestra Mision</h3>
+            <p style='color:rgba(255,255,255,0.8)'>Hacer la educacion accesible para todos los estudiantes peruanos,
             con un tutor de IA disponible 24/7 que explica de forma simple y cercana.</p>
-            <h3 style='color:#1E3A8A'>Que ofrecemos</h3>
-            <p>✅ Tutor de Matematicas con explicaciones paso a paso</p>
-            <p>✅ Tutor de Ingles con pronunciacion y traduccion</p>
-            <p>✅ Analisis de tus documentos y libros</p>
-            <p>✅ Sistema de logros para motivarte</p>
-            <p>✅ Ranking de competencia entre estudiantes</p>
-            <p>✅ Registro de asistencia y racha diaria</p>
-            <p>✅ Historial de conversaciones guardado</p>
-            <h3 style='color:#1E3A8A'>Contacto</h3>
-            <p>Tienes sugerencias? Escribenos y mejoramos juntos.</p>
+            <h3 style='color:#00C9FF'>Que ofrecemos</h3>
+            <p style='color:rgba(255,255,255,0.8)'>✅ Tutor de Matematicas con explicaciones paso a paso</p>
+            <p style='color:rgba(255,255,255,0.8)'>✅ Tutor de Ingles con pronunciacion y traduccion</p>
+            <p style='color:rgba(255,255,255,0.8)'>✅ Analisis de tus documentos y libros</p>
+            <p style='color:rgba(255,255,255,0.8)'>✅ Sistema de logros para motivarte</p>
+            <p style='color:rgba(255,255,255,0.8)'>✅ Ranking de competencia entre estudiantes</p>
+            <p style='color:rgba(255,255,255,0.8)'>✅ Registro de asistencia y racha diaria</p>
+            <p style='color:rgba(255,255,255,0.8)'>✅ Historial de conversaciones guardado</p>
+            <h3 style='color:#00C9FF'>Contacto</h3>
+            <p style='color:rgba(255,255,255,0.8)'>Tienes sugerencias? Escribenos y mejoramos juntos.</p>
         </div>
         """, unsafe_allow_html=True)
 
     elif seccion == "Mis Logros":
-        st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>Mis Logros</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center;'>Mis Logros</h1>", unsafe_allow_html=True)
         st.divider()
         logros_ganados = obtener_logros_usuario(usuario["id"])
-        st.markdown(f"### Tienes {len(logros_ganados)} de {len(LOGROS_DISPONIBLES)} logros 🏆")
+        st.markdown(f"<h3 style='color:white'>Tienes {len(logros_ganados)} de {len(LOGROS_DISPONIBLES)} logros 🏆</h3>", unsafe_allow_html=True)
         if racha > 0:
             st.markdown(f"""
             <div class='racha-card'>
@@ -411,15 +489,15 @@ else:
                     """, unsafe_allow_html=True)
                 else:
                     st.markdown(f"""
-                    <div class='logro-card' style='background:#D1D5DB; color:#6B7280'>
+                    <div class='logro-card' style='background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.3)'>
                         <div class='logro-emoji'>🔒</div>
-                        <div class='logro-nombre'>{logro['nombre']}</div>
-                        <div class='logro-desc'>{logro['descripcion']}</div>
+                        <div style='font-weight:bold; font-size:0.9em; margin-top:5px'>{logro['nombre']}</div>
+                        <div style='font-size:0.75em; opacity:0.6'>{logro['descripcion']}</div>
                     </div>
                     """, unsafe_allow_html=True)
 
     elif seccion == "Mis Estadisticas":
-        st.markdown("<h1 style='text-align:center; color:#1E3A8A;'>Mis Estadisticas</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center;'>Mis Estadisticas</h1>", unsafe_allow_html=True)
         st.divider()
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -431,11 +509,11 @@ else:
         st.divider()
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.markdown(f"<div class='stat-card'><div class='stat-number' style='color:#166534'>📐 {stats['matematicas']}</div><div class='stat-label'>Matematicas</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='stat-card'><div class='stat-number'>📐 {stats['matematicas']}</div><div class='stat-label'>Matematicas</div></div>", unsafe_allow_html=True)
         with col2:
-            st.markdown(f"<div class='stat-card'><div class='stat-number' style='color:#1D4ED8'>🇺🇸 {stats['ingles']}</div><div class='stat-label'>Ingles</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='stat-card'><div class='stat-number'>🇺🇸 {stats['ingles']}</div><div class='stat-label'>Ingles</div></div>", unsafe_allow_html=True)
         with col3:
-            st.markdown(f"<div class='stat-card'><div class='stat-number' style='color:#F59E0B'>🔥 {stats['racha']}</div><div class='stat-label'>Dias de racha</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='stat-card'><div class='stat-number'>🔥 {stats['racha']}</div><div class='stat-label'>Dias de racha</div></div>", unsafe_allow_html=True)
         st.divider()
         if stats['total'] > 0:
             materia_favorita = "Matematicas" if stats['matematicas'] >= stats['ingles'] else "Ingles"
@@ -460,8 +538,8 @@ else:
 
         st.markdown(f"""
         <div style='text-align:center; padding:10px 0'>
-            <span style='font-size:1.1em; color:#6B7280'>
-            Estudiando: <strong style='color:#1E3A8A'>{"📐 Matematicas" if modo == "Matematicas" else "🇺🇸 Ingles"}</strong>
+            <span style='font-size:1.1em; color:rgba(255,255,255,0.7)'>
+            Estudiando: <strong style='color:#00C9FF'>{"📐 Matematicas" if modo == "Matematicas" else "🇺🇸 Ingles"}</strong>
             </span>
         </div>
         """, unsafe_allow_html=True)
@@ -482,9 +560,9 @@ else:
             system_prompt = """Eres Tu Profe de Confianza, un tutor de matematicas
             para universitarios peruanos. Eres cercano, paciente y explicas paso a paso.
             SIEMPRE usa este formato HTML en tus respuestas:
-            - Pasos numerados en verde: <span style='color:#166534; font-weight:bold'>Paso 1:</span>
-            - Resultados finales en naranja: <span style='color:#C2410C; font-weight:bold'>Resultado:</span>
-            - Conceptos importantes en azul: <span style='color:#1E3A8A; font-weight:bold'>concepto</span>
+            - Pasos numerados en verde: <span style='color:#92FE9D; font-weight:bold'>Paso 1:</span>
+            - Resultados finales en naranja: <span style='color:#F59E0B; font-weight:bold'>Resultado:</span>
+            - Conceptos importantes en azul: <span style='color:#00C9FF; font-weight:bold'>concepto</span>
             Cuando escribas formulas usa LaTeX: $$formula$$
             Explicas de forma simple con ejemplos de la vida peruana.
             Cuando el usuario se equivoca lo animas y corriges con amabilidad."""
@@ -498,10 +576,10 @@ else:
             system_prompt = """Eres Tu Profe de Confianza, un tutor de ingles
             para universitarios peruanos. Eres cercano y motivador.
             SIEMPRE usa este formato HTML en tus respuestas:
-            - Palabras en ingles en azul: <span style='color:#1D4ED8; font-weight:bold'>word</span>
-            - Traduccion en español en verde: <span style='color:#15803D; font-weight:bold'>palabra</span>
-            - Pronunciacion en morado: <span style='color:#7E22CE; font-weight:bold'>/pronun/</span>
-            - Ejemplos en naranja: <span style='color:#C2410C'>example sentence</span>
+            - Palabras en ingles en azul: <span style='color:#00C9FF; font-weight:bold'>word</span>
+            - Traduccion en espanol en verde: <span style='color:#92FE9D; font-weight:bold'>palabra</span>
+            - Pronunciacion en morado: <span style='color:#C084FC; font-weight:bold'>/pronun/</span>
+            - Ejemplos en naranja: <span style='color:#F59E0B'>example sentence</span>
             Estructura SIEMPRE tus respuestas asi:
             1. Palabra en ingles (azul)
             2. Traduccion (verde)
@@ -525,7 +603,7 @@ else:
                 else:
                     st.write("Hola! Soy tu profe de confianza. En que nivel de ingles estas?")
 
-            st.markdown("<p style='text-align:center; color:#6B7280; font-size:0.9em; margin-top:10px'>Preguntas frecuentes:</p>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.5); font-size:0.9em; margin-top:10px'>Preguntas frecuentes:</p>", unsafe_allow_html=True)
             col1, col2 = st.columns(2)
             for i, sugerencia in enumerate(sugerencias):
                 with col1 if i % 2 == 0 else col2:

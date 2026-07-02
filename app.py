@@ -121,6 +121,22 @@ st.markdown("""
         color: white !important;
         font-family: 'Poppins', sans-serif !important;
     }
+    .stTextInput > div > div > input {
+        background: rgba(255,255,255,0.15) !important;
+        border: 1px solid rgba(0,201,255,0.5) !important;
+        border-radius: 12px !important;
+        color: white !important;
+        font-family: 'Poppins', sans-serif !important;
+        caret-color: white !important;
+    }
+
+    .stTextInput > div > div > input::placeholder {
+        color: rgba(255,255,255,0.5) !important;
+    }
+
+    .stTextInput label {
+    color: rgba(255,255,255,0.8) !important;
+    }
     .stChatMessage {
         background: rgba(255,255,255,0.05) !important;
         border: 1px solid rgba(255,255,255,0.1) !important;

@@ -981,7 +981,7 @@ Responde SOLO con este JSON: {{"correcta": true/false, "parcial": true/false, "f
                         with st.spinner("Tu profe esta pensando..."):
                             respuesta = client.chat.completions.create(
                                 model="llama-3.3-70b-versatile",
-                                messages=[{"role": "system", "content": system_prompt}] + st.session_state.historial
+                                messages=[{"role": "system", "content": system_prompt}] + st.session_state.historial[-10:]
                             )
                         texto = respuesta.choices[0].message.content
                         st.session_state.historial.append({"role": "assistant", "content": texto})
@@ -1007,7 +1007,7 @@ Responde SOLO con este JSON: {{"correcta": true/false, "parcial": true/false, "f
             with st.spinner("Tu profe esta pensando..."):
                 respuesta = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
-                    messages=[{"role": "system", "content": system_prompt}] + st.session_state.historial
+                    messages=[{"role": "system", "content": system_prompt}] + st.session_state.historial[-10:]
                 )
 
             texto = respuesta.choices[0].message.content

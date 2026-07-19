@@ -1,58 +1,152 @@
-# Tu Profe de Confianza
+# -*- coding: utf-8 -*-
+"""Todo lo relacionado a la IA del tutor: prompts base, personalizacion segun
+el alumno (edad/grado/ciclo + perfil de progreso), y la actualizacion del
+perfil despues de cada intercambio."""
+import json
+import streamlit as st
+from groq import Groq
 
-Tutor educativo con IA para estudiantes peruanos (colegio, instituto y universidad),
-enfocado en Matematicas e Ingles, con gamificacion (rachas, logros, ranking) y
-un tutor que se **personaliza** segun la edad/grado/ciclo del alumno y su
-progreso real en cada materia.
+from database import obtener_perfil_alumno, guardar_perfil_alumno
 
-## Estructura del proyecto
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-```
-tuprofedeconfianza/
-├── app.py            # Punto de entrada: login/registro, sidebar, enrutamiento
-├── database.py        # Todo lo que habla con Supabase (usuarios, conversaciones,
-│                       #   asistencia, logros, ranking, perfil del alumno)
-├── tutor_ai.py         # Prompts del tutor + personalizacion + actualizacion
-│                       #   automatica del perfil del alumno tras cada respuesta
-├── chat.py             # Pagina de Chat
-├── examen.py           # Pagina de Modo Examen (genera, recibe y califica)
-├── paginas.py          # Ranking, Mis Logros, Mis Estadisticas, Acerca de
-├── logros_data.py       # Catalogo de logros disponibles
-├── estilos.py           # CSS de la app
-├── utils.py             # hash de contrasena, lectura de PDF, nivel del alumno
-├── migracion.sql        # SQL para actualizar la base de datos en Supabase
-├── requirements.txt
-└── imagen*.png / icono*.png
-```
+MODELO_TUTOR = "llama-3.3-70b-versatile"
+MODELO_RESUMEN = "llama-3.1-8b-instant"  # modelo pequeno y barato solo para resumir progreso
 
-## Configuracion (Supabase / Streamlit secrets)
 
-En `.streamlit/secrets.toml` (o en la configuracion de secrets de Streamlit Cloud):
+PROMPT_BASE_MATEMATICAS = """Eres Tu Profe de Confianza, un tutor de matematicas
+para universitarios peruanos. Eres cercano, paciente y explicas paso a paso.
+SIEMPRE usa este formato HTML en tus respuestas:
+- Pasos numerados en verde: <span style='color:#92FE9D; font-weight:bold'>Paso 1:</span>
+- Resultados finales en naranja: <span style='color:#F59E0B; font-weight:bold'>Resultado:</span>
+- Conceptos importantes en azul: <span style='color:#00C9FF; font-weight:bold'>concepto</span>
+Cuando escribas formulas usa LaTeX: $$formula$$
+Explicas de forma simple con ejemplos de la vida peruana.
+Cuando el usuario se equivoca lo animas y corriges con amabilidad."""
 
-```toml
-GROQ_API_KEY = "..."
-SUPABASE_URL = "..."
-SUPABASE_SERVICE_KEY = "..."
-```
+PROMPT_BASE_INGLES = """Eres Tu Profe de Confianza, un tutor de ingles
+para universitarios peruanos. Eres cercano y motivador.
+SIEMPRE usa este formato HTML en tus respuestas:
+- Palabras en ingles en azul: <span style='color:#00C9FF; font-weight:bold'>word</span>
+- Traduccion en espanol en verde: <span style='color:#92FE9D; font-weight:bold'>palabra</span>
+- Pronunciacion en morado: <span style='color:#C084FC; font-weight:bold'>/pronun/</span>
+- Ejemplos en naranja: <span style='color:#F59E0B'>example sentence</span>
+Estructura SIEMPRE tus respuestas asi:
+1. Palabra en ingles (azul)
+2. Traduccion (verde)
+3. Pronunciacion (morado)
+4. Ejemplo (naranja)
+Corriges errores con amabilidad."""
 
-## Antes de correr la app por primera vez con estos cambios
+SUGERENCIAS_MATEMATICAS = [
+    "Que es una integral?",
+    "Explicame las derivadas",
+    "Como resuelvo una ecuacion cuadratica?",
+    "Que es el limite de una funcion?"
+]
 
-Ejecuta `migracion.sql` en el SQL Editor de Supabase. Agrega las columnas
-`edad`, `grado`, `ciclo` a `usuarios` y crea la tabla `perfil_alumno`
-(necesaria para que el tutor "recuerde" el progreso de cada alumno).
+SUGERENCIAS_INGLES = [
+    "Como me presento en ingles?",
+    "Ensename los verbos mas usados",
+    "Como pido la hora en ingles?",
+    "Corrige mi pronunciacion"
+]
 
-## Que hace el sistema de personalizacion
 
-1. Al registrarse, el alumno indica su **edad**, **nivel educativo** y
-   **grado/ciclo**. Esto se inyecta en el prompt del tutor para adaptar el
-   vocabulario y la complejidad de los ejemplos.
-2. Despues de cada respuesta del tutor, un modelo pequeno (barato) analiza
-   el intercambio y actualiza el **perfil de progreso** del alumno: temas
-   que domina, temas donde tiene dificultad, y su nivel estimado.
-3. En la siguiente pregunta, ese perfil se vuelve a inyectar al prompt, asi
-   el tutor evita repetir explicaciones basicas de temas ya dominados y
-   refuerza los temas dificiles.
+def _contexto_alumno(usuario, perfil):
+    """Arma el bloque de texto que se inyecta al system prompt con todo lo
+    que sabemos del alumno: datos basicos + progreso."""
+    partes = []
 
-Si algo falla en este proceso (limite de uso de la API, respuesta invalida,
-etc.) el chat sigue funcionando normal - simplemente el perfil no se
-actualiza en ese turno.
+    edad = usuario.get("edad")
+    grado = usuario.get("grado")
+    ciclo = usuario.get("ciclo")
+    datos_basicos = []
+    if edad:
+        datos_basicos.append(f"tiene {edad} anios")
+    if grado:
+        datos_basicos.append(f"esta en {grado}")
+    if ciclo:
+        datos_basicos.append(f"ciclo {ciclo}")
+    if datos_basicos:
+        partes.append("El estudiante " + ", ".join(datos_basicos) + ". Adapta el nivel de vocabulario y la complejidad de los ejemplos a esto.")
+
+    dominados = perfil.get("temas_dominados") or []
+    dificiles = perfil.get("temas_dificiles") or []
+    if dominados:
+        partes.append("Temas que el alumno ya domina (no los expliques desde cero, puedes referenciarlos): " + ", ".join(dominados) + ".")
+    if dificiles:
+        partes.append("Temas donde el alumno ha mostrado dificultad (ve con mas calma y refuerza con ejemplos extra): " + ", ".join(dificiles) + ".")
+    if perfil.get("ultimo_resumen"):
+        partes.append("Nota de la ultima sesion: " + perfil["ultimo_resumen"])
+
+    if not partes:
+        return ""
+    return "\n\nCONTEXTO DEL ALUMNO (usalo para personalizar, no lo repitas literalmente):\n" + "\n".join(partes)
+
+
+def construir_system_prompt(modo, usuario, texto_pdf=""):
+    """Arma el system prompt final: base de la materia + contexto del alumno
+    (edad/grado/ciclo + perfil de progreso) + PDF si hay uno."""
+    base = PROMPT_BASE_MATEMATICAS if modo == "Matematicas" else PROMPT_BASE_INGLES
+
+    perfil = obtener_perfil_alumno(usuario["id"], modo)
+    prompt = base + _contexto_alumno(usuario, perfil)
+
+    if texto_pdf:
+        prompt += f"\n\nEl estudiante ha subido este documento:\n{texto_pdf}"
+
+    return prompt
+
+
+def obtener_sugerencias(modo):
+    return SUGERENCIAS_MATEMATICAS if modo == "Matematicas" else SUGERENCIAS_INGLES
+
+
+def responder_tutor(system_prompt, historial):
+    """Llama al modelo principal del tutor con el historial reciente."""
+    respuesta = client.chat.completions.create(
+        model=MODELO_TUTOR,
+        messages=[{"role": "system", "content": system_prompt}] + historial[-10:]
+    )
+    return respuesta.choices[0].message.content
+
+
+def actualizar_perfil_alumno(usuario_id, modo, pregunta, respuesta):
+    """Despues de cada intercambio, usa un modelo pequeno para extraer que
+    tema se toco y si el alumno mostro dificultad, y actualiza su perfil.
+    Esto es lo que le da 'memoria' al tutor entre sesiones. Si algo falla
+    (limite de uso, respuesta invalida, etc.) simplemente no actualiza nada
+    y el chat sigue funcionando normal."""
+    try:
+        perfil_actual = obtener_perfil_alumno(usuario_id, modo)
+
+        prompt_resumen = f"""Analiza este intercambio entre un tutor y un alumno de {modo}.
+Pregunta del alumno: {pregunta}
+Respuesta del tutor: {respuesta}
+
+Perfil actual del alumno (JSON):
+{json.dumps(perfil_actual, ensure_ascii=False)}
+
+Devuelve SOLO un JSON (sin texto extra, sin markdown) con el perfil actualizado,
+con este formato exacto:
+{{
+  "temas_dominados": ["lista de temas cortos que el alumno parece manejar bien"],
+  "temas_dificiles": ["lista de temas cortos donde el alumno mostro confusion o error"],
+  "nivel_estimado": "principiante" o "intermedio" o "avanzado",
+  "ultimo_resumen": "una frase corta (max 15 palabras) sobre como le fue en este intercambio"
+}}
+Combina la informacion nueva con la que ya tenia el alumno, sin perder temas anteriores.
+Manten cada lista con maximo 8 elementos (si se pasa, elimina los mas antiguos/menos relevantes)."""
+
+        resultado = client.chat.completions.create(
+            model=MODELO_RESUMEN,
+            messages=[{"role": "user", "content": prompt_resumen}],
+            response_format={"type": "json_object"}
+        )
+        nuevo_perfil = json.loads(resultado.choices[0].message.content)
+        guardar_perfil_alumno(usuario_id, modo, nuevo_perfil)
+    except Exception:
+        # La app nunca debe romperse por esto: si falla, el chat sigue normal
+        # y el perfil simplemente no se actualiza en este turno.
+        pass

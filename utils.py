@@ -25,11 +25,10 @@ def extraer_texto_pdf(archivo):
 def obtener_nivel(total):
     """Devuelve el nivel (texto + color) segun el total de preguntas hechas."""
     if total < 10:
-        return "Principiante ðŸŒ±", "#6B7280"
+        return "Principiante 🌱", "#6B7280"
     elif total < 50:
-        return "Intermedio â­", "#D97706"
+        return "Intermedio ⭐", "#D97706"
     elif total < 100:
-        return "Avanzado ðŸ”¥", "#2563EB"
+        return "Avanzado 🔥", "#2563EB"
     else:
-        return "Experto ðŸ‘‘", "#7C3AED"
-
+        return "Experto 👑", "#7C3AED"

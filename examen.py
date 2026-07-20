@@ -4,6 +4,7 @@ y las califica (automatico para opcion multiple/relacionar, con IA para
 preguntas abiertas)."""
 import json
 import random
+import textwrap
 from datetime import datetime
 import streamlit as st
 
@@ -263,14 +264,14 @@ def _pantalla_resultado():
     else:
         emoji_nota, color_nota, mensaje = "📚", "#EF4444", "Reprobaste. Sigue estudiando!"
 
-    st.markdown(f"""
+    st.markdown(textwrap.dedent(f"""
     <div style='background:rgba(255,255,255,0.05); border:1px solid {color_nota}; border-radius:16px; padding:30px; text-align:center;'>
         <div style='font-size:4em'>{emoji_nota}</div>
         <div style='font-size:3em; font-weight:900; color:{color_nota}'>{nota}/20</div>
         <div style='font-size:1.2em; color:white; margin-top:10px'>{mensaje}</div>
         <div style='color:rgba(255,255,255,0.6); margin-top:5px'>{resultado['materia']}</div>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     st.divider()
     st.markdown("<h3 style='color:white'>Revision del examen:</h3>", unsafe_allow_html=True)
@@ -283,14 +284,14 @@ def _pantalla_resultado():
         else:
             icono, color, borde = "❌", "rgba(239,68,68,0.1)", "rgba(239,68,68,0.3)"
 
-        st.markdown(f"""
+        st.markdown(textwrap.dedent(f"""
         <div style='background:{color}; border:1px solid {borde}; border-radius:12px; padding:15px; margin-bottom:10px;'>
             <p style='color:white; font-weight:bold'>{icono} Pregunta {i+1}: {res['pregunta']}</p>
             <p style='color:rgba(255,255,255,0.7); font-size:0.9em'>Tu respuesta: {res['tu_respuesta']}</p>
             <p style='color:rgba(255,255,255,0.7); font-size:0.9em'>Respuesta correcta: {res['correcta']}</p>
             {f"<p style='color:#F59E0B; font-size:0.85em'>{res.get('feedback','')}</p>" if res.get('feedback') else ''}
         </div>
-        """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
 
     st.divider()
     if st.button("🔄 Nuevo Examen", use_container_width=True):
@@ -322,4 +323,3 @@ def mostrar_modo_examen(usuario):
         _pantalla_preguntas()
     elif st.session_state.examen_terminado and st.session_state.resultado_examen:
         _pantalla_resultado()
-

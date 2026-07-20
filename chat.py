@@ -3,6 +3,7 @@
 tutor_ai para construir un prompt personalizado (edad/grado/ciclo + progreso)
 y actualiza el perfil del alumno despues de cada respuesta."""
 import streamlit as st
+import textwrap
 
 from database import guardar_conversacion, cargar_conversaciones, obtener_estadisticas, verificar_logros
 from tutor_ai import construir_system_prompt, obtener_sugerencias, responder_tutor, actualizar_perfil_alumno
@@ -14,13 +15,13 @@ def mostrar_chat(usuario, modo):
     with col2:
         st.image("imagen2.png", use_container_width=True)
 
-    st.markdown(f"""
+    st.markdown(textwrap.dedent(f"""
     <div style='text-align:center; padding:10px 0'>
         <span style='font-size:1.1em; color:rgba(255,255,255,0.7)'>
         Estudiando: <strong style='color:#00C9FF'>{"📐 Matematicas" if modo == "Matematicas" else "🇺🇸 Ingles"}</strong>
         </span>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
     st.divider()
 
     if "historial" not in st.session_state or st.session_state.get("modo_actual") != modo:
@@ -81,4 +82,3 @@ def mostrar_chat(usuario, modo):
 
         with st.chat_message("assistant"):
             st.markdown(texto, unsafe_allow_html=True)
-

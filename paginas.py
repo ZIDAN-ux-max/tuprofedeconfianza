@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """Paginas simples de la app: Ranking, Mis Logros, Mis Estadisticas y Acerca de."""
 import streamlit as st
-
-from database import obtener_ranking, obtener_logros_usuario
+import textwrap
 from logros_data import LOGROS_DISPONIBLES
 
 
@@ -17,17 +16,18 @@ def mostrar_ranking(usuario):
         es_yo = est["nombre"] == usuario["nombre"]
         color = "rgba(0,201,255,0.1)" if es_yo else "rgba(255,255,255,0.05)"
         borde = "1px solid rgba(0,201,255,0.5)" if es_yo else "1px solid rgba(255,255,255,0.1)"
-        st.markdown(f"""
-        <div style='background:{color}; border:{borde}; border-radius:16px;
-                    padding:15px; margin-bottom:8px;'>
-            <span style='font-size:1.5em'>{medalla}</span>
-            <strong style='color:white; margin-left:10px'>{est['nombre']}</strong>
-            {'<span style="color:#00C9FF; font-size:0.8em"> (Tu)</span>' if es_yo else ''}
-            <span style='float:right; color:rgba(255,255,255,0.6)'>
-                💬 {est['total']} &nbsp; 🔥 {est['racha']} &nbsp; 🏅 {est['logros']}
-            </span>
-        </div>
-        """, unsafe_allow_html=True)
+        etiqueta_tu = '<span style="color:#00C9FF; font-size:0.8em"> (Tu)</span>' if es_yo else ''
+        html_fila = (
+            f"<div style='background:{color}; border:{borde}; border-radius:16px; padding:15px; margin-bottom:8px;'>"
+            f"<span style='font-size:1.5em'>{medalla}</span>"
+            f"<strong style='color:white; margin-left:10px'>{est['nombre']}</strong>"
+            f"{etiqueta_tu}"
+            f"<span style='float:right; color:rgba(255,255,255,0.6)'>"
+            f"💬 {est['total']} &nbsp; 🔥 {est['racha']} &nbsp; 🏅 {est['logros']}"
+            f"</span>"
+            f"</div>"
+        )
+        st.markdown(html_fila, unsafe_allow_html=True)
 
 
 def mostrar_acerca_de():
@@ -59,33 +59,33 @@ def mostrar_logros(usuario, racha):
     logros_ganados = obtener_logros_usuario(usuario["id"])
     st.markdown(f"<h3 style='color:white'>Tienes {len(logros_ganados)} de {len(LOGROS_DISPONIBLES)} logros 🏆</h3>", unsafe_allow_html=True)
     if racha > 0:
-        st.markdown(f"""
+        st.markdown(textwrap.dedent(f"""
         <div class='racha-card'>
             <div style='font-size:2em'>🔥</div>
             <div style='font-size:1.5em; font-weight:bold'>{racha} dias de racha</div>
             <div style='font-size:0.9em; opacity:0.9'>Sigue estudiando cada dia para no perderla!</div>
         </div>
-        """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
     st.divider()
     cols = st.columns(3)
     for i, logro in enumerate(LOGROS_DISPONIBLES):
         with cols[i % 3]:
             if logro["nombre"] in logros_ganados:
-                st.markdown(f"""
+                st.markdown(textwrap.dedent(f"""
                 <div class='logro-card'>
                     <div class='logro-emoji'>{logro['emoji']}</div>
                     <div class='logro-nombre'>{logro['nombre']}</div>
                     <div class='logro-desc'>{logro['descripcion']}</div>
                 </div>
-                """, unsafe_allow_html=True)
+                """), unsafe_allow_html=True)
             else:
-                st.markdown(f"""
+                st.markdown(textwrap.dedent(f"""
                 <div class='logro-card' style='background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.3)'>
                     <div class='logro-emoji'>🔒</div>
                     <div style='font-weight:bold; font-size:0.9em; margin-top:5px'>{logro['nombre']}</div>
                     <div style='font-size:0.75em; opacity:0.6'>{logro['descripcion']}</div>
                 </div>
-                """, unsafe_allow_html=True)
+                """), unsafe_allow_html=True)
 
 
 def mostrar_estadisticas(stats):
@@ -118,4 +118,3 @@ def mostrar_estadisticas(stats):
             st.success(f"Excelente! Llevas {stats['hoy']} preguntas hoy. Eres un crack!")
     else:
         st.info("Aun no tienes estadisticas. Ve al chat y empieza!")
-

@@ -154,7 +154,12 @@ def obtener_ranking():
                     "logros": len(logros.data)
                 })
         return ranking
-    except Exception:
+    except Exception as e:
+        # TEMPORAL: mostramos el error real en vez de esconderlo, para poder
+        # diagnosticar por que el ranking sale vacio. Quitar el st.error
+        # despues de encontrar y arreglar la causa.
+        import streamlit as st
+        st.error(f"Error en obtener_ranking: {e}")
         return []
 
 
@@ -236,4 +241,3 @@ def guardar_perfil_alumno(usuario_id, materia, perfil):
             supabase.table("perfil_alumno").insert(payload).execute()
     except Exception:
         pass
-

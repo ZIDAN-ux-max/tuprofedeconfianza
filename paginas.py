@@ -2,6 +2,8 @@
 """Paginas simples de la app: Ranking, Mis Logros, Mis Estadisticas y Acerca de."""
 import streamlit as st
 import textwrap
+
+from database import obtener_ranking, obtener_logros_usuario
 from logros_data import LOGROS_DISPONIBLES
 
 

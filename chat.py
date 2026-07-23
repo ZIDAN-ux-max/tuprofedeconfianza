@@ -5,7 +5,7 @@ y actualiza el perfil del alumno despues de cada respuesta."""
 import streamlit as st
 import textwrap
 
-from database import guardar_conversacion, cargar_conversaciones, obtener_estadisticas, verificar_logros
+from database import guardar_conversacion, cargar_conversaciones, obtener_estadisticas, verificar_logros, listar_cursos
 from tutor_ai import construir_system_prompt, obtener_sugerencias, responder_tutor, actualizar_perfil_alumno
 from utils import extraer_texto_pdf
 
@@ -22,6 +22,18 @@ def mostrar_chat(usuario, modo):
         </span>
     </div>
     """), unsafe_allow_html=True)
+
+    cursos_disponibles = listar_cursos(modo)
+    curso_elegido = None
+    if cursos_disponibles:
+        curso_elegido = st.selectbox(
+            "📚 Curso especifico (opcional, usa tus documentos subidos como contexto)",
+            ["Sin curso especifico"] + cursos_disponibles,
+            key=f"curso_chat_{modo}"
+        )
+        if curso_elegido == "Sin curso especifico":
+            curso_elegido = None
+
     st.divider()
 
     if "historial" not in st.session_state or st.session_state.get("modo_actual") != modo:
@@ -35,10 +47,10 @@ def mostrar_chat(usuario, modo):
             if texto_pdf:
                 st.info("PDF cargado - puedes preguntarme sobre el contenido")
 
-    system_prompt = construir_system_prompt(modo, usuario, texto_pdf)
     sugerencias = obtener_sugerencias(modo)
 
     def _procesar_turno(pregunta):
+        system_prompt = construir_system_prompt(modo, usuario, texto_pdf, curso_biblioteca=curso_elegido, pregunta=pregunta)
         with st.spinner("Tu profe esta pensando..."):
             texto = responder_tutor(system_prompt, st.session_state.historial)
         st.session_state.historial.append({"role": "assistant", "content": texto})

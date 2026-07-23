@@ -6,7 +6,7 @@ import json
 import streamlit as st
 from groq import Groq
 
-from database import obtener_perfil_alumno, guardar_perfil_alumno
+from database import obtener_perfil_alumno, guardar_perfil_alumno, buscar_fragmentos_relevantes
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
@@ -85,16 +85,23 @@ def _contexto_alumno(usuario, perfil):
     return "\n\nCONTEXTO DEL ALUMNO (usalo para personalizar, no lo repitas literalmente):\n" + "\n".join(partes)
 
 
-def construir_system_prompt(modo, usuario, texto_pdf=""):
+def construir_system_prompt(modo, usuario, texto_pdf="", curso_biblioteca=None, pregunta=""):
     """Arma el system prompt final: base de la materia + contexto del alumno
-    (edad/grado/ciclo + perfil de progreso) + PDF si hay uno."""
+    (edad/grado/ciclo + perfil de progreso) + fragmentos relevantes de la
+    biblioteca del curso elegido segun la pregunta actual (si hay) + PDF
+    subido en el momento (si hay)."""
     base = PROMPT_BASE_MATEMATICAS if modo == "Matematicas" else PROMPT_BASE_INGLES
 
     perfil = obtener_perfil_alumno(usuario["id"], modo)
     prompt = base + _contexto_alumno(usuario, perfil)
 
+    if curso_biblioteca and pregunta:
+        fragmentos = buscar_fragmentos_relevantes(modo, curso_biblioteca, pregunta)
+        if fragmentos:
+            prompt += f"\n\nFragmentos relevantes del material del curso '{curso_biblioteca}' (usalos como fuente principal si aplican a la pregunta del alumno):\n{fragmentos}"
+
     if texto_pdf:
-        prompt += f"\n\nEl estudiante ha subido este documento:\n{texto_pdf}"
+        prompt += f"\n\nEl estudiante ha subido este documento en esta conversacion:\n{texto_pdf}"
 
     return prompt
 

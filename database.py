@@ -4,7 +4,7 @@ import streamlit as st
 from datetime import datetime, timedelta, date
 from supabase import create_client
 
-from utils import hash_password
+from utils import hash_password, dividir_en_fragmentos
 from logros_data import LOGROS_DISPONIBLES
 
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_SERVICE_KEY"])
@@ -241,3 +241,104 @@ def guardar_perfil_alumno(usuario_id, materia, perfil):
             supabase.table("perfil_alumno").insert(payload).execute()
     except Exception:
         pass
+
+
+# ===================== BIBLIOTECA DE DOCUMENTOS (NUEVO) =====================
+# Documentos (PDFs) compartidos entre todos los alumnos, organizados por
+# materia general (Matematicas/Ingles) y curso especifico (ej: "Mate 3").
+# El texto extraido se usa como contexto extra para el tutor cuando el
+# alumno elige ese curso en el Chat.
+
+def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por):
+    """Guarda el documento y ademas lo parte en fragmentos pequenos
+    (documento_chunks) para poder buscar despues solo lo relevante a cada
+    pregunta, en vez de mandar el PDF completo cada vez."""
+    try:
+        curso = curso.strip()
+        result = supabase.table("documentos").insert({
+            "materia_general": materia_general,
+            "curso": curso,
+            "nombre_archivo": nombre_archivo,
+            "contenido_texto": contenido_texto,
+            "subido_por": subido_por
+        }).execute()
+        documento_id = result.data[0]["id"]
+
+        fragmentos = dividir_en_fragmentos(contenido_texto)
+        filas_chunks = [
+            {
+                "documento_id": documento_id,
+                "materia_general": materia_general,
+                "curso": curso,
+                "chunk_index": i,
+                "chunk_texto": frag
+            }
+            for i, frag in enumerate(fragmentos)
+        ]
+        if filas_chunks:
+            supabase.table("documento_chunks").insert(filas_chunks).execute()
+        return True
+    except Exception:
+        return False
+
+
+def listar_cursos(materia_general):
+    """Devuelve la lista de cursos unicos ya creados para una materia,
+    para poder mostrarlos como sugerencia al subir o elegir curso."""
+    try:
+        result = supabase.table("documentos").select("curso").eq("materia_general", materia_general).execute()
+        cursos = sorted(set(d["curso"] for d in result.data))
+        return cursos
+    except Exception:
+        return []
+
+
+def listar_documentos(materia_general=None):
+    """Lista todos los documentos, opcionalmente filtrados por materia,
+    agrupables luego por curso en la UI."""
+    try:
+        query = supabase.table("documentos").select("id, materia_general, curso, nombre_archivo, subido_por, fecha_subida")
+        if materia_general:
+            query = query.eq("materia_general", materia_general)
+        result = query.order("curso").execute()
+        return result.data
+    except Exception:
+        return []
+
+
+def buscar_fragmentos_relevantes(materia_general, curso, pregunta, top_n=6):
+    """Busca, entre TODOS los fragmentos de los documentos de ese curso,
+    solo los mas relacionados con la pregunta del alumno (usando similitud
+    de texto TF-IDF). Esto es lo que permite tener 10 PDFs de 10 paginas
+    cada uno sin mandarle todo eso al tutor en cada mensaje."""
+    try:
+        result = supabase.table("documento_chunks").select("chunk_texto").eq("materia_general", materia_general).eq("curso", curso).execute()
+        chunks = [c["chunk_texto"] for c in result.data]
+        if not chunks:
+            return ""
+
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+
+        vectorizer = TfidfVectorizer(max_features=5000)
+        matriz = vectorizer.fit_transform(chunks + [pregunta])
+        similitudes = cosine_similarity(matriz[-1], matriz[:-1])[0]
+
+        indices_top = similitudes.argsort()[::-1][:top_n]
+        seleccionados = [chunks[i] for i in indices_top if similitudes[i] > 0]
+
+        if not seleccionados:
+            return ""
+        return "\n\n---\n\n".join(seleccionados)
+    except Exception:
+        return ""
+
+
+def eliminar_documento(documento_id):
+    """Borra el documento. Los fragmentos asociados se borran solos
+    (ON DELETE CASCADE en documento_chunks)."""
+    try:
+        supabase.table("documentos").delete().eq("id", documento_id).execute()
+        return True
+    except Exception:
+        return False

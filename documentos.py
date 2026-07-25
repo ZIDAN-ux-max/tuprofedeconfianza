@@ -6,6 +6,7 @@ import streamlit as st
 
 from database import guardar_documento, listar_cursos, listar_documentos, eliminar_documento
 from utils import extraer_texto_pdf
+from materias_data import MATERIAS_DISPONIBLES
 
 LIMITE_CARACTERES_DOCUMENTO = 60000  # ~20 paginas por archivo. Ya no se manda todo al tutor de una:
 # se parte en fragmentos y se busca solo lo relevante a cada pregunta (ver database.buscar_fragmentos_relevantes)
@@ -15,7 +16,7 @@ def _seccion_subir(usuario):
     st.markdown("### 📤 Subir documentos")
     st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:0.9em'>Puedes subir varios PDFs a la vez, todos del mismo curso.</p>", unsafe_allow_html=True)
 
-    materia = st.selectbox("Materia", ["Matematicas", "Ingles"], key="doc_materia")
+    materia = st.selectbox("Materia", MATERIAS_DISPONIBLES, key="doc_materia")
 
     cursos_existentes = listar_cursos(materia)
     opciones_curso = cursos_existentes + ["+ Nuevo curso..."]
@@ -53,7 +54,7 @@ def _seccion_subir(usuario):
 
 def _seccion_explorar():
     st.markdown("### 📚 Biblioteca")
-    materia_filtro = st.radio("Filtrar por materia", ["Todas", "Matematicas", "Ingles"], horizontal=True, key="doc_filtro")
+    materia_filtro = st.radio("Filtrar por materia", ["Todas"] + MATERIAS_DISPONIBLES, horizontal=True, key="doc_filtro")
     materia_query = None if materia_filtro == "Todas" else materia_filtro
 
     documentos = listar_documentos(materia_query)

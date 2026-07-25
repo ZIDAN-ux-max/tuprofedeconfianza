@@ -11,7 +11,9 @@ from database import login, registrar, registrar_asistencia, obtener_estadistica
 from utils import obtener_nivel
 from chat import mostrar_chat
 from examen import mostrar_modo_examen
+from documentos import mostrar_documentos
 from paginas import mostrar_ranking, mostrar_acerca_de, mostrar_logros, mostrar_estadisticas
+from materias_data import CARRERAS_DISPONIBLES, materias_de_carrera
 
 st.set_page_config(
     page_title="Tu Profe de Confianza",
@@ -72,13 +74,15 @@ if st.session_state.usuario is None:
                 key="reg_grado_colegio"
             )
             ciclo_reg = None
+            carrera_reg = None
         else:
             grado_reg = nivel_reg
             ciclo_reg = st.selectbox("Ciclo", [str(n) for n in range(1, 11)], key="reg_ciclo")
+            carrera_reg = st.selectbox("Carrera (para mostrarte las materias correctas)", CARRERAS_DISPONIBLES, key="reg_carrera")
 
         if st.button("Registrarse", use_container_width=True):
             if nombre and email_reg and password_reg:
-                usuario = registrar(nombre, email_reg, password_reg, edad=edad_reg, grado=grado_reg, ciclo=ciclo_reg)
+                usuario = registrar(nombre, email_reg, password_reg, edad=edad_reg, grado=grado_reg, ciclo=ciclo_reg, carrera=carrera_reg)
                 if usuario:
                     st.session_state.usuario = usuario
                     st.rerun()
@@ -102,10 +106,11 @@ else:
         st.markdown(f"<span style='background:{nivel_color}; color:white; padding:3px 10px; border-radius:20px; font-size:0.85em'>{nivel}</span>", unsafe_allow_html=True)
         st.markdown(f"<p style='color:#F59E0B; font-weight:bold; margin-top:8px'>🔥 Racha: {racha} dias</p>", unsafe_allow_html=True)
         st.divider()
-        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
+        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Documentos", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
         st.divider()
         if seccion == "Chat":
-            modo = st.radio("Que quieres estudiar?", ["Matematicas", "Ingles"])
+            materias_alumno = materias_de_carrera(usuario.get("carrera"))
+            modo = st.radio("Que quieres estudiar?", materias_alumno)
             st.divider()
             st.markdown("### Sube un archivo")
             archivo = st.file_uploader("PDF o imagen", type=["pdf", "png", "jpg", "jpeg"])
@@ -122,6 +127,8 @@ else:
 
     if seccion == "Modo Examen":
         mostrar_modo_examen(usuario)
+    elif seccion == "Documentos":
+        mostrar_documentos(usuario)
     elif seccion == "Ranking":
         mostrar_ranking(usuario)
     elif seccion == "Acerca de":

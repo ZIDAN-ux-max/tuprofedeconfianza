@@ -14,7 +14,8 @@ MODELO_TUTOR = "llama-3.3-70b-versatile"
 MODELO_RESUMEN = "llama-3.1-8b-instant"  # modelo pequeno y barato solo para resumir progreso
 
 
-PROMPT_BASE_MATEMATICAS = """Eres Tu Profe de Confianza, un tutor de matematicas
+PROMPTS_BASE = {
+    "Matematicas": """Eres Tu Profe de Confianza, un tutor de matematicas
 para universitarios peruanos. Eres cercano, paciente y explicas paso a paso.
 SIEMPRE usa este formato HTML en tus respuestas:
 - Pasos numerados en verde: <span style='color:#92FE9D; font-weight:bold'>Paso 1:</span>
@@ -22,9 +23,9 @@ SIEMPRE usa este formato HTML en tus respuestas:
 - Conceptos importantes en azul: <span style='color:#00C9FF; font-weight:bold'>concepto</span>
 Cuando escribas formulas usa LaTeX: $$formula$$
 Explicas de forma simple con ejemplos de la vida peruana.
-Cuando el usuario se equivoca lo animas y corriges con amabilidad."""
+Cuando el usuario se equivoca lo animas y corriges con amabilidad.""",
 
-PROMPT_BASE_INGLES = """Eres Tu Profe de Confianza, un tutor de ingles
+    "Ingles": """Eres Tu Profe de Confianza, un tutor de ingles
 para universitarios peruanos. Eres cercano y motivador.
 SIEMPRE usa este formato HTML en tus respuestas:
 - Palabras en ingles en azul: <span style='color:#00C9FF; font-weight:bold'>word</span>
@@ -36,21 +37,73 @@ Estructura SIEMPRE tus respuestas asi:
 2. Traduccion (verde)
 3. Pronunciacion (morado)
 4. Ejemplo (naranja)
-Corriges errores con amabilidad."""
+Corriges errores con amabilidad.""",
 
-SUGERENCIAS_MATEMATICAS = [
-    "Que es una integral?",
-    "Explicame las derivadas",
-    "Como resuelvo una ecuacion cuadratica?",
-    "Que es el limite de una funcion?"
-]
+    "Fisica": """Eres Tu Profe de Confianza, un tutor de fisica
+para universitarios peruanos. Eres cercano, paciente y explicas paso a paso.
+SIEMPRE usa este formato HTML en tus respuestas:
+- Pasos numerados en verde: <span style='color:#92FE9D; font-weight:bold'>Paso 1:</span>
+- Resultados finales (con unidades) en naranja: <span style='color:#F59E0B; font-weight:bold'>Resultado:</span>
+- Conceptos y leyes fisicas en azul: <span style='color:#00C9FF; font-weight:bold'>concepto</span>
+Cuando escribas formulas usa LaTeX: $$formula$$
+SIEMPRE indica las unidades de cada resultado (N, m/s, J, etc.) y menciona que ley o principio fisico aplica.
+Usa ejemplos cotidianos para explicar conceptos abstractos.
+Cuando el usuario se equivoca lo animas y corriges con amabilidad.""",
 
-SUGERENCIAS_INGLES = [
-    "Como me presento en ingles?",
-    "Ensename los verbos mas usados",
-    "Como pido la hora en ingles?",
-    "Corrige mi pronunciacion"
-]
+    "Quimica General": """Eres Tu Profe de Confianza, un tutor de quimica general
+para universitarios peruanos (enfocado en estudiantes de carreras de salud e ingenieria).
+Eres cercano, paciente y explicas paso a paso.
+SIEMPRE usa este formato HTML en tus respuestas:
+- Pasos numerados en verde: <span style='color:#92FE9D; font-weight:bold'>Paso 1:</span>
+- Resultados finales en naranja: <span style='color:#F59E0B; font-weight:bold'>Resultado:</span>
+- Conceptos y nombres de compuestos en azul: <span style='color:#00C9FF; font-weight:bold'>concepto</span>
+Cuando escribas formulas quimicas o ecuaciones usa LaTeX o notacion clara: $$formula$$
+Balancea ecuaciones quimicas mostrando cada paso, y explica estequiometria con cuidado.
+Cuando el usuario se equivoca lo animas y corriges con amabilidad.""",
+
+    "Quimica Organica": """Eres Tu Profe de Confianza, un tutor de quimica organica
+para universitarios peruanos (enfocado en estudiantes de medicina y ciencias de la salud).
+Eres cercano, paciente y explicas paso a paso.
+SIEMPRE usa este formato HTML en tus respuestas:
+- Pasos numerados en verde: <span style='color:#92FE9D; font-weight:bold'>Paso 1:</span>
+- Resultados/productos de reaccion en naranja: <span style='color:#F59E0B; font-weight:bold'>Resultado:</span>
+- Grupos funcionales y nombres IUPAC en azul: <span style='color:#00C9FF; font-weight:bold'>concepto</span>
+Explica mecanismos de reaccion paso a paso, y cuando sea relevante menciona nombres IUPAC y grupos funcionales involucrados.
+Cuando el usuario se equivoca lo animas y corriges con amabilidad.""",
+}
+
+SUGERENCIAS = {
+    "Matematicas": [
+        "Que es una integral?",
+        "Explicame las derivadas",
+        "Como resuelvo una ecuacion cuadratica?",
+        "Que es el limite de una funcion?"
+    ],
+    "Ingles": [
+        "Como me presento en ingles?",
+        "Ensename los verbos mas usados",
+        "Como pido la hora en ingles?",
+        "Corrige mi pronunciacion"
+    ],
+    "Fisica": [
+        "Explicame las leyes de Newton",
+        "Como calculo la velocidad y aceleracion?",
+        "Que es la energia cinetica y potencial?",
+        "Ayudame con un problema de cinematica"
+    ],
+    "Quimica General": [
+        "Como balanceo una ecuacion quimica?",
+        "Explicame la tabla periodica",
+        "Que es la estequiometria?",
+        "Como calculo la molaridad de una solucion?"
+    ],
+    "Quimica Organica": [
+        "Que son los grupos funcionales?",
+        "Explicame la nomenclatura IUPAC",
+        "Como identifico un mecanismo de reaccion?",
+        "Diferencia entre alcanos, alquenos y alquinos"
+    ],
+}
 
 
 def _contexto_alumno(usuario, perfil):
@@ -90,7 +143,7 @@ def construir_system_prompt(modo, usuario, texto_pdf="", curso_biblioteca=None, 
     (edad/grado/ciclo + perfil de progreso) + fragmentos relevantes de la
     biblioteca del curso elegido segun la pregunta actual (si hay) + PDF
     subido en el momento (si hay)."""
-    base = PROMPT_BASE_MATEMATICAS if modo == "Matematicas" else PROMPT_BASE_INGLES
+    base = PROMPTS_BASE.get(modo, PROMPTS_BASE["Matematicas"])
 
     perfil = obtener_perfil_alumno(usuario["id"], modo)
     prompt = base + _contexto_alumno(usuario, perfil)
@@ -107,7 +160,7 @@ def construir_system_prompt(modo, usuario, texto_pdf="", curso_biblioteca=None, 
 
 
 def obtener_sugerencias(modo):
-    return SUGERENCIAS_MATEMATICAS if modo == "Matematicas" else SUGERENCIAS_INGLES
+    return SUGERENCIAS.get(modo, SUGERENCIAS["Matematicas"])
 
 
 def responder_tutor(system_prompt, historial):

@@ -9,6 +9,7 @@ from datetime import datetime
 import streamlit as st
 
 from tutor_ai import client, MODELO_TUTOR
+from materias_data import MATERIAS_DISPONIBLES
 from database import supabase
 
 PROMPT_EXAMEN_TEMPLATE = """Crea un examen de {materia} para universitarios peruanos con EXACTAMENTE este formato JSON y nada mas:
@@ -311,7 +312,7 @@ def mostrar_modo_examen(usuario):
     st.markdown("<h1 style='text-align:center;'>📝 Modo Examen</h1>", unsafe_allow_html=True)
     st.divider()
 
-    materia_examen = st.selectbox("Elige la materia del examen", ["Matematicas", "Ingles"])
+    materia_examen = st.selectbox("Elige la materia del examen", MATERIAS_DISPONIBLES)
     st.session_state.materia_examen_actual = materia_examen
     st.session_state.usuario = usuario  # usado por _calificar_examen para guardar el resultado
 

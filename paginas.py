@@ -5,6 +5,7 @@ import textwrap
 
 from database import obtener_ranking, obtener_logros_usuario
 from logros_data import LOGROS_DISPONIBLES
+from materias_data import EMOJI_MATERIA
 
 
 def mostrar_ranking(usuario):
@@ -101,17 +102,25 @@ def mostrar_estadisticas(stats):
     with col3:
         st.markdown(f"<div class='stat-card'><div class='stat-number'>{stats['semana']}</div><div class='stat-label'>Esta semana</div></div>", unsafe_allow_html=True)
     st.divider()
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(f"<div class='stat-card'><div class='stat-number'>📐 {stats['matematicas']}</div><div class='stat-label'>Matematicas</div></div>", unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"<div class='stat-card'><div class='stat-number'>🇺🇸 {stats['ingles']}</div><div class='stat-label'>Ingles</div></div>", unsafe_allow_html=True)
-    with col3:
+
+    por_materia = stats.get("por_materia", {})
+    materias_con_datos = [(m, c) for m, c in por_materia.items() if c > 0]
+    if materias_con_datos:
+        cols = st.columns(min(3, len(materias_con_datos) + 1))
+        for i, (materia, cantidad) in enumerate(materias_con_datos):
+            with cols[i % len(cols)]:
+                emoji = EMOJI_MATERIA.get(materia, "📘")
+                st.markdown(f"<div class='stat-card'><div class='stat-number'>{emoji} {cantidad}</div><div class='stat-label'>{materia}</div></div>", unsafe_allow_html=True)
+        with cols[len(materias_con_datos) % len(cols)]:
+            st.markdown(f"<div class='stat-card'><div class='stat-number'>🔥 {stats['racha']}</div><div class='stat-label'>Dias de racha</div></div>", unsafe_allow_html=True)
+    else:
         st.markdown(f"<div class='stat-card'><div class='stat-number'>🔥 {stats['racha']}</div><div class='stat-label'>Dias de racha</div></div>", unsafe_allow_html=True)
+
     st.divider()
     if stats['total'] > 0:
-        materia_favorita = "Matematicas" if stats['matematicas'] >= stats['ingles'] else "Ingles"
-        st.success(f"Tu materia favorita es: **{materia_favorita}** 🎯")
+        if materias_con_datos:
+            materia_favorita = max(materias_con_datos, key=lambda x: x[1])[0]
+            st.success(f"Tu materia favorita es: **{materia_favorita}** 🎯")
         if stats['hoy'] == 0:
             st.warning("No has estudiado hoy. Abre el chat!")
         elif stats['hoy'] < 5:

@@ -19,9 +19,10 @@ def login(email, password):
     return None
 
 
-def registrar(nombre, email, password, edad=None, grado=None, ciclo=None):
-    """Crea un usuario nuevo. edad/grado/ciclo son opcionales pero recomendados
-    para que el tutor pueda personalizar mejor sus explicaciones."""
+def registrar(nombre, email, password, edad=None, grado=None, ciclo=None, carrera=None):
+    """Crea un usuario nuevo. edad/grado/ciclo/carrera son opcionales pero
+    recomendados para que el tutor pueda personalizar mejor sus explicaciones
+    y filtrar las materias relevantes."""
     try:
         payload = {
             "nombre": nombre,
@@ -34,6 +35,8 @@ def registrar(nombre, email, password, edad=None, grado=None, ciclo=None):
             payload["grado"] = grado
         if ciclo:
             payload["ciclo"] = ciclo
+        if carrera:
+            payload["carrera"] = carrera
         result = supabase.table("usuarios").insert(payload).execute()
         return result.data[0]
     except Exception:
@@ -101,8 +104,12 @@ def registrar_asistencia(usuario_id):
 def obtener_estadisticas(usuario_id):
     result = supabase.table("conversaciones").select("*").eq("usuario_id", usuario_id).execute()
     total = len(result.data)
-    mate = len([c for c in result.data if c["materia"] == "Matematicas"])
-    ingles = len([c for c in result.data if c["materia"] == "Ingles"])
+
+    conteo_por_materia = {}
+    for c in result.data:
+        m = c.get("materia", "Otro")
+        conteo_por_materia[m] = conteo_por_materia.get(m, 0) + 1
+
     hoy = datetime.now().date()
     semana = datetime.now() - timedelta(days=7)
     hoy_count = 0
@@ -125,8 +132,10 @@ def obtener_estadisticas(usuario_id):
     hora_actual = datetime.now().hour
     return {
         "total": total,
-        "matematicas": mate,
-        "ingles": ingles,
+        "por_materia": conteo_por_materia,
+        # se mantienen por compatibilidad con partes del codigo que ya usaban estas claves
+        "matematicas": conteo_por_materia.get("Matematicas", 0),
+        "ingles": conteo_por_materia.get("Ingles", 0),
         "hoy": hoy_count,
         "semana": semana_count,
         "racha": racha_val,

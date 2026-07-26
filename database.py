@@ -258,18 +258,35 @@ def guardar_perfil_alumno(usuario_id, materia, perfil):
 # El texto extraido se usa como contexto extra para el tutor cuando el
 # alumno elige ese curso en el Chat.
 
-def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por):
-    """Guarda el documento y ademas lo parte en fragmentos pequenos
-    (documento_chunks) para poder buscar despues solo lo relevante a cada
-    pregunta, en vez de mandar el PDF completo cada vez."""
+BUCKET_DOCUMENTOS = "documentos-pdf"
+
+
+def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None):
+    """Guarda el documento (metadata + texto), lo parte en fragmentos pequenos
+    (documento_chunks) para busqueda por relevancia, y si se paso el PDF
+    original en bytes, lo sube a Supabase Storage para poder descargarlo
+    despues desde la biblioteca."""
     try:
         curso = curso.strip()
+        storage_path = None
+
+        if archivo_bytes:
+            import uuid
+            storage_path = f"{materia_general}/{curso}/{uuid.uuid4().hex}_{nombre_archivo}"
+            try:
+                supabase.storage.from_(BUCKET_DOCUMENTOS).upload(
+                    storage_path, archivo_bytes, {"content-type": "application/pdf"}
+                )
+            except Exception:
+                storage_path = None  # si falla la subida del archivo, seguimos igual guardando el texto
+
         result = supabase.table("documentos").insert({
             "materia_general": materia_general,
             "curso": curso,
             "nombre_archivo": nombre_archivo,
             "contenido_texto": contenido_texto,
-            "subido_por": subido_por
+            "subido_por": subido_por,
+            "storage_path": storage_path
         }).execute()
         documento_id = result.data[0]["id"]
 
@@ -291,6 +308,18 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
         return False
 
 
+def obtener_url_documento(storage_path):
+    """Devuelve la URL publica para descargar el PDF original desde Storage,
+    o None si ese documento no tiene archivo guardado (documentos subidos
+    antes de esta funcion)."""
+    if not storage_path:
+        return None
+    try:
+        return supabase.storage.from_(BUCKET_DOCUMENTOS).get_public_url(storage_path)
+    except Exception:
+        return None
+
+
 def listar_cursos(materia_general):
     """Devuelve la lista de cursos unicos ya creados para una materia,
     para poder mostrarlos como sugerencia al subir o elegir curso."""
@@ -306,13 +335,25 @@ def listar_documentos(materia_general=None):
     """Lista todos los documentos, opcionalmente filtrados por materia,
     agrupables luego por curso en la UI."""
     try:
-        query = supabase.table("documentos").select("id, materia_general, curso, nombre_archivo, subido_por, fecha_subida")
+        query = supabase.table("documentos").select("id, materia_general, curso, nombre_archivo, subido_por, fecha_subida, storage_path")
         if materia_general:
             query = query.eq("materia_general", materia_general)
         result = query.order("curso").execute()
         return result.data
     except Exception:
         return []
+
+
+def obtener_texto_documento(documento_id):
+    """Trae el texto extraido de un documento especifico bajo demanda
+    (no se trae en listar_documentos para no cargar todo de una)."""
+    try:
+        result = supabase.table("documentos").select("contenido_texto").eq("id", documento_id).execute()
+        if result.data:
+            return result.data[0]["contenido_texto"]
+    except Exception:
+        pass
+    return ""
 
 
 def buscar_fragmentos_relevantes(materia_general, curso, pregunta, top_n=6):

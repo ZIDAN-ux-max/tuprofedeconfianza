@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """Biblioteca de documentos compartida: los alumnos suben PDFs (en lote),
-organizados por materia y curso, y todos pueden verlos y usarlos como
-contexto extra para el tutor en el Chat."""
+organizados por materia y curso, y todos pueden verlos, descargarlos y
+usarlos como contexto extra para el tutor en el Chat."""
+import io
 import streamlit as st
 
-from database import guardar_documento, listar_cursos, listar_documentos, eliminar_documento
+from database import guardar_documento, listar_cursos, listar_documentos, eliminar_documento, obtener_texto_documento, obtener_url_documento
 from utils import extraer_texto_pdf
 from materias_data import MATERIAS_DISPONIBLES
 
@@ -38,9 +39,10 @@ def _seccion_subir(usuario):
             progreso = st.progress(0)
             subidos = 0
             for i, archivo in enumerate(archivos):
-                texto = extraer_texto_pdf(archivo, max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
+                bytes_pdf = archivo.getvalue()
+                texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
                 if texto:
-                    ok = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"])
+                    ok = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf)
                     if ok:
                         subidos += 1
                 progreso.progress((i + 1) / len(archivos))
@@ -70,15 +72,29 @@ def _seccion_explorar():
     for carpeta, docs in sorted(por_curso.items()):
         with st.expander(f"📁 {carpeta} ({len(docs)} documento{'s' if len(docs) != 1 else ''})"):
             for doc in docs:
-                col1, col2 = st.columns([5, 1])
+                col1, col2, col3, col4 = st.columns([4, 1.3, 1.3, 0.7])
                 with col1:
                     fecha = str(doc.get("fecha_subida", ""))[:10]
                     subio = doc.get("subido_por") or "Alguien"
                     st.markdown(f"📄 **{doc['nombre_archivo']}** — subido por {subio} el {fecha}")
                 with col2:
+                    if st.button("👁️ Ver texto", key=f"ver_doc_{doc['id']}"):
+                        st.session_state[f"mostrar_texto_{doc['id']}"] = not st.session_state.get(f"mostrar_texto_{doc['id']}", False)
+                with col3:
+                    url_pdf = obtener_url_documento(doc.get("storage_path"))
+                    if url_pdf:
+                        st.markdown(f"[⬇️ Descargar PDF]({url_pdf})")
+                    else:
+                        st.markdown("<span style='color:rgba(255,255,255,0.4); font-size:0.85em'>Sin PDF guardado</span>", unsafe_allow_html=True)
+                with col4:
                     if st.button("🗑️", key=f"del_doc_{doc['id']}", help="Eliminar este documento"):
                         eliminar_documento(doc["id"])
                         st.rerun()
+
+                if st.session_state.get(f"mostrar_texto_{doc['id']}"):
+                    texto_doc = obtener_texto_documento(doc["id"])
+                    st.text_area("Texto extraido de este PDF", texto_doc, height=200, key=f"texto_area_{doc['id']}")
+                st.markdown("<hr style='border-color:rgba(255,255,255,0.1); margin:8px 0'>", unsafe_allow_html=True)
 
 
 def mostrar_documentos(usuario):

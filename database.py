@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Capa de acceso a datos (Supabase). Todo lo que toca la base de datos vive aqui."""
 import streamlit as st
+import re
+import unicodedata
 from datetime import datetime, timedelta, date
 from supabase import create_client
 
@@ -261,6 +263,16 @@ def guardar_perfil_alumno(usuario_id, materia, perfil):
 BUCKET_DOCUMENTOS = "documentos-pdf"
 
 
+def _sanear_para_storage(texto):
+    """Supabase Storage rechaza tildes, enies, espacios y varios simbolos en
+    las rutas (error 'InvalidKey'). Esto convierte el texto a algo seguro
+    para usar como nombre de archivo/carpeta, SOLO para la ruta de Storage
+    (el nombre 'bonito' que ve el alumno en la biblioteca no se toca)."""
+    texto = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+    texto = re.sub(r"[^A-Za-z0-9._-]+", "_", texto)
+    return texto.strip("_") or "archivo"
+
+
 def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None):
     """Guarda el documento (metadata + texto), lo parte en fragmentos pequenos
     (documento_chunks) para busqueda por relevancia, y si se paso el PDF
@@ -272,7 +284,10 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
 
         if archivo_bytes:
             import uuid
-            storage_path = f"{materia_general}/{curso}/{uuid.uuid4().hex}_{nombre_archivo}"
+            ruta_materia = _sanear_para_storage(materia_general)
+            ruta_curso = _sanear_para_storage(curso)
+            ruta_archivo = _sanear_para_storage(nombre_archivo)
+            storage_path = f"{ruta_materia}/{ruta_curso}/{uuid.uuid4().hex}_{ruta_archivo}"
             try:
                 supabase.storage.from_(BUCKET_DOCUMENTOS).upload(
                     storage_path, archivo_bytes, {"content-type": "application/pdf"}

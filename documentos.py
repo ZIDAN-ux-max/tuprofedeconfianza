@@ -17,18 +17,22 @@ def _seccion_subir(usuario):
     st.markdown("### 📤 Subir documentos")
     st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:0.9em'>Puedes subir varios PDFs a la vez, todos del mismo curso.</p>", unsafe_allow_html=True)
 
-    materia = st.selectbox("Materia", MATERIAS_DISPONIBLES, key="doc_materia")
+    col_datos, col_archivos = st.columns([1, 2])
 
-    cursos_existentes = listar_cursos(materia)
-    opciones_curso = cursos_existentes + ["+ Nuevo curso..."]
-    seleccion = st.selectbox("Curso", opciones_curso, key="doc_curso_select") if cursos_existentes else "+ Nuevo curso..."
+    with col_datos:
+        materia = st.selectbox("Materia", MATERIAS_DISPONIBLES, key="doc_materia")
 
-    if seleccion == "+ Nuevo curso...":
-        curso = st.text_input("Nombre del curso nuevo (ej: Mate 3, Ingles Tecnico)", key="doc_curso_nuevo")
-    else:
-        curso = seleccion
+        cursos_existentes = listar_cursos(materia)
+        opciones_curso = cursos_existentes + ["+ Nuevo curso..."]
+        seleccion = st.selectbox("Curso", opciones_curso, key="doc_curso_select") if cursos_existentes else "+ Nuevo curso..."
 
-    archivos = st.file_uploader("Selecciona uno o varios PDFs", type=["pdf"], accept_multiple_files=True, key="doc_archivos")
+        if seleccion == "+ Nuevo curso...":
+            curso = st.text_input("Nombre del curso nuevo (ej: Mate 3, Ingles Tecnico)", key="doc_curso_nuevo")
+        else:
+            curso = seleccion
+
+    with col_archivos:
+        archivos = st.file_uploader("Selecciona uno o varios PDFs", type=["pdf"], accept_multiple_files=True, key="doc_archivos")
 
     if st.button("Subir a la biblioteca", use_container_width=True):
         if not curso or not curso.strip():

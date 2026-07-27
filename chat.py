@@ -8,31 +8,38 @@ import textwrap
 from database import guardar_conversacion, cargar_conversaciones, obtener_estadisticas, verificar_logros, listar_cursos
 from tutor_ai import construir_system_prompt, obtener_sugerencias, responder_tutor, actualizar_perfil_alumno
 from utils import extraer_texto_pdf
+from materias_data import EMOJI_MATERIA
 
 
 def mostrar_chat(usuario, modo):
-    col1, col2, col3 = st.columns([1, 3, 1])
-    with col2:
+    col_principal, col_lateral = st.columns([3, 1])
+
+    with col_principal:
         st.image("imagen2.png", use_container_width=True)
+        emoji_modo = EMOJI_MATERIA.get(modo, "📘")
+        st.markdown(textwrap.dedent(f"""
+        <div style='text-align:center; padding:10px 0'>
+            <span style='font-size:1.1em; color:rgba(255,255,255,0.7)'>
+            Estudiando: <strong style='color:#00C9FF'>{emoji_modo} {modo}</strong>
+            </span>
+        </div>
+        """), unsafe_allow_html=True)
 
-    st.markdown(textwrap.dedent(f"""
-    <div style='text-align:center; padding:10px 0'>
-        <span style='font-size:1.1em; color:rgba(255,255,255,0.7)'>
-        Estudiando: <strong style='color:#00C9FF'>{"📐 Matematicas" if modo == "Matematicas" else "🇺🇸 Ingles"}</strong>
-        </span>
-    </div>
-    """), unsafe_allow_html=True)
-
-    cursos_disponibles = listar_cursos(modo)
-    curso_elegido = None
-    if cursos_disponibles:
-        curso_elegido = st.selectbox(
-            "📚 Curso especifico (opcional, usa tus documentos subidos como contexto)",
-            ["Sin curso especifico"] + cursos_disponibles,
-            key=f"curso_chat_{modo}"
-        )
-        if curso_elegido == "Sin curso especifico":
-            curso_elegido = None
+    with col_lateral:
+        st.markdown("<div style='padding-top:10px'></div>", unsafe_allow_html=True)
+        cursos_disponibles = listar_cursos(modo)
+        curso_elegido = None
+        if cursos_disponibles:
+            curso_elegido = st.selectbox(
+                "📚 Curso",
+                ["Sin curso especifico"] + cursos_disponibles,
+                key=f"curso_chat_{modo}",
+                help="Elige un curso de tu biblioteca para que el tutor use tus documentos como contexto"
+            )
+            if curso_elegido == "Sin curso especifico":
+                curso_elegido = None
+        else:
+            st.markdown("<p style='color:rgba(255,255,255,0.4); font-size:0.85em'>Sin cursos en la biblioteca todavia</p>", unsafe_allow_html=True)
 
     st.divider()
 

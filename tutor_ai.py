@@ -210,3 +210,40 @@ Manten cada lista con maximo 8 elementos (si se pasa, elimina los mas antiguos/m
         # La app nunca debe romperse por esto: si falla, el chat sigue normal
         # y el perfil simplemente no se actualiza en este turno.
         pass
+
+
+def generar_formulario(modo, usuario, curso, material_curso):
+    """Genera un 'formulario' (cheat-sheet) de formulas y conceptos clave de
+    un curso, a partir del material subido a la biblioteca, priorizando y
+    explicando con mas detalle los temas donde el alumno tiene dificultad
+    segun su perfil de progreso."""
+    perfil = obtener_perfil_alumno(usuario["id"], modo)
+    dificiles = perfil.get("temas_dificiles") or []
+    dominados = perfil.get("temas_dominados") or []
+
+    instruccion_nivel = ""
+    if dificiles:
+        instruccion_nivel += f"\nEl alumno tiene dificultad en: {', '.join(dificiles)}. Para esos temas, agrega la formula, una breve explicacion de cuando usarla, y un mini-ejemplo."
+    if dominados:
+        instruccion_nivel += f"\nEl alumno ya domina: {', '.join(dominados)}. Para esos temas, pon SOLO la formula, sin explicacion extra (para no ocupar espacio de mas)."
+
+    prompt = f"""Eres Tu Profe de Confianza. A partir del siguiente material real del curso '{curso}' ({modo}),
+crea un FORMULARIO (cheat-sheet) organizado con las formulas y conceptos clave que un alumno necesitaria
+tener a la mano para un examen de este curso.
+
+Usa este formato HTML:
+- Cada tema como encabezado: <h4 style='color:#00C9FF'>Tema</h4>
+- Formulas en LaTeX cuando aplique: $$formula$$
+- Formulas destacadas en un recuadro: <div style='background:rgba(0,201,255,0.08); border-left:3px solid #00C9FF; padding:8px 12px; margin:6px 0'>...</div>
+- Se breve y directo, esto es para repasar rapido antes de un examen, no una clase completa.
+{instruccion_nivel}
+
+Material real del curso (usalo como fuente principal, no inventes formulas que no esten relacionadas):
+{material_curso}
+"""
+    respuesta = client.chat.completions.create(
+        model=MODELO_TUTOR,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=2500
+    )
+    return respuesta.choices[0].message.content

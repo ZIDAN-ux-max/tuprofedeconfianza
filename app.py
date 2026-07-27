@@ -12,6 +12,7 @@ from utils import obtener_nivel
 from chat import mostrar_chat
 from examen import mostrar_modo_examen
 from documentos import mostrar_documentos
+from formulario import mostrar_formulario
 from paginas import mostrar_ranking, mostrar_acerca_de, mostrar_logros, mostrar_estadisticas
 from materias_data import CARRERAS_DISPONIBLES, materias_de_carrera
 
@@ -106,7 +107,7 @@ else:
         st.markdown(f"<span style='background:{nivel_color}; color:white; padding:3px 10px; border-radius:20px; font-size:0.85em'>{nivel}</span>", unsafe_allow_html=True)
         st.markdown(f"<p style='color:#F59E0B; font-weight:bold; margin-top:8px'>🔥 Racha: {racha} dias</p>", unsafe_allow_html=True)
         st.divider()
-        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Documentos", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
+        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Documentos", "Formulario", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
         st.divider()
         if seccion == "Chat":
             materias_alumno = materias_de_carrera(usuario.get("carrera"))
@@ -129,6 +130,8 @@ else:
         mostrar_modo_examen(usuario)
     elif seccion == "Documentos":
         mostrar_documentos(usuario)
+    elif seccion == "Formulario":
+        mostrar_formulario(usuario)
     elif seccion == "Ranking":
         mostrar_ranking(usuario)
     elif seccion == "Acerca de":

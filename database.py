@@ -392,3 +392,41 @@ def eliminar_documento(documento_id):
         return True
     except Exception:
         return False
+
+
+def eliminar_curso(materia_general, curso):
+    """Borra TODOS los documentos de un curso especifico de una sola vez
+    (util para reemplazar en bloque en vez de borrar documento por documento).
+    Tambien intenta borrar sus archivos en Storage; sus fragmentos se borran
+    solos por el ON DELETE CASCADE."""
+    try:
+        docs = supabase.table("documentos").select("storage_path").eq("materia_general", materia_general).eq("curso", curso).execute()
+        rutas = [d["storage_path"] for d in docs.data if d.get("storage_path")]
+        if rutas:
+            try:
+                supabase.storage.from_(BUCKET_DOCUMENTOS).remove(rutas)
+            except Exception:
+                pass
+        supabase.table("documentos").delete().eq("materia_general", materia_general).eq("curso", curso).execute()
+        return True
+    except Exception:
+        return False
+
+
+def eliminar_documentos(ids_documentos):
+    """Borra varios documentos especificos de una sola vez (los que el
+    alumno selecciono a mano con casillas en la biblioteca, ej: 10 de 20)."""
+    if not ids_documentos:
+        return False
+    try:
+        docs = supabase.table("documentos").select("storage_path").in_("id", ids_documentos).execute()
+        rutas = [d["storage_path"] for d in docs.data if d.get("storage_path")]
+        if rutas:
+            try:
+                supabase.storage.from_(BUCKET_DOCUMENTOS).remove(rutas)
+            except Exception:
+                pass
+        supabase.table("documentos").delete().in_("id", ids_documentos).execute()
+        return True
+    except Exception:
+        return False

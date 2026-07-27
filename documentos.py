@@ -5,7 +5,7 @@ usarlos como contexto extra para el tutor en el Chat."""
 import io
 import streamlit as st
 
-from database import guardar_documento, listar_cursos, listar_documentos, eliminar_documento, obtener_texto_documento, obtener_url_documento
+from database import guardar_documento, listar_cursos, listar_documentos, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
 from utils import extraer_texto_pdf
 from materias_data import MATERIAS_DISPONIBLES
 
@@ -54,8 +54,9 @@ def _seccion_subir(usuario):
                 st.error("No se pudo subir ningun documento. Verifica que los PDFs tengan texto seleccionable (no solo imagenes escaneadas).")
 
 
-def _seccion_explorar():
+def _seccion_explorar(usuario):
     st.markdown("### 📚 Biblioteca")
+    es_admin = bool(usuario.get("es_admin"))
     materia_filtro = st.radio("Filtrar por materia", ["Todas"] + MATERIAS_DISPONIBLES, horizontal=True, key="doc_filtro")
     materia_query = None if materia_filtro == "Todas" else materia_filtro
 
@@ -71,8 +72,39 @@ def _seccion_explorar():
 
     for carpeta, docs in sorted(por_curso.items()):
         with st.expander(f"📁 {carpeta} ({len(docs)} documento{'s' if len(docs) != 1 else ''})"):
+            if es_admin:
+                clave_confirmacion = f"confirmar_borrar_curso_{carpeta}"
+                col_titulo, col_borrar_todo = st.columns([4, 2])
+                with col_borrar_todo:
+                    if not st.session_state.get(clave_confirmacion):
+                        if st.button("🗑️ Eliminar todo este curso", key=f"borrar_curso_{carpeta}"):
+                            st.session_state[clave_confirmacion] = True
+                            st.rerun()
+                    else:
+                        st.warning(f"¿Seguro? Se borrarán los {len(docs)} documentos de este curso.")
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("Si, borrar todo", key=f"confirmar_si_{carpeta}"):
+                                eliminar_curso(docs[0]["materia_general"], docs[0]["curso"])
+                                st.session_state[clave_confirmacion] = False
+                                st.rerun()
+                        with c2:
+                            if st.button("Cancelar", key=f"confirmar_no_{carpeta}"):
+                                st.session_state[clave_confirmacion] = False
+                                st.rerun()
+
+            seleccionados = []
             for doc in docs:
-                col1, col2, col3, col4 = st.columns([4, 1.3, 1.3, 0.7])
+                if es_admin:
+                    col0, col1, col2, col3, col4 = st.columns([0.4, 3.6, 1.3, 1.3, 0.7])
+                else:
+                    col1, col2, col3 = st.columns([4, 1.3, 1.3])
+
+                if es_admin:
+                    with col0:
+                        marcado = st.checkbox("", key=f"sel_doc_{doc['id']}", label_visibility="collapsed")
+                        if marcado:
+                            seleccionados.append(doc["id"])
                 with col1:
                     fecha = str(doc.get("fecha_subida", ""))[:10]
                     subio = doc.get("subido_por") or "Alguien"
@@ -86,15 +118,36 @@ def _seccion_explorar():
                         st.markdown(f"[⬇️ Descargar PDF]({url_pdf})")
                     else:
                         st.markdown("<span style='color:rgba(255,255,255,0.4); font-size:0.85em'>Sin PDF guardado</span>", unsafe_allow_html=True)
-                with col4:
-                    if st.button("🗑️", key=f"del_doc_{doc['id']}", help="Eliminar este documento"):
-                        eliminar_documento(doc["id"])
-                        st.rerun()
+                if es_admin:
+                    with col4:
+                        if st.button("🗑️", key=f"del_doc_{doc['id']}", help="Eliminar este documento"):
+                            eliminar_documento(doc["id"])
+                            st.rerun()
 
                 if st.session_state.get(f"mostrar_texto_{doc['id']}"):
                     texto_doc = obtener_texto_documento(doc["id"])
                     st.text_area("Texto extraido de este PDF", texto_doc, height=200, key=f"texto_area_{doc['id']}")
                 st.markdown("<hr style='border-color:rgba(255,255,255,0.1); margin:8px 0'>", unsafe_allow_html=True)
+
+            if es_admin and seleccionados:
+                clave_confirmacion_sel = f"confirmar_borrar_seleccion_{carpeta}"
+                st.markdown(f"**{len(seleccionados)} documento(s) seleccionado(s)**")
+                if not st.session_state.get(clave_confirmacion_sel):
+                    if st.button(f"🗑️ Eliminar los {len(seleccionados)} seleccionados", key=f"borrar_sel_{carpeta}"):
+                        st.session_state[clave_confirmacion_sel] = True
+                        st.rerun()
+                else:
+                    st.warning(f"¿Seguro que quieres borrar estos {len(seleccionados)} documentos?")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("Si, borrar seleccionados", key=f"confirmar_sel_si_{carpeta}"):
+                            eliminar_documentos(seleccionados)
+                            st.session_state[clave_confirmacion_sel] = False
+                            st.rerun()
+                    with c2:
+                        if st.button("Cancelar", key=f"confirmar_sel_no_{carpeta}"):
+                            st.session_state[clave_confirmacion_sel] = False
+                            st.rerun()
 
 
 def mostrar_documentos(usuario):
@@ -106,4 +159,4 @@ def mostrar_documentos(usuario):
     with tab1:
         _seccion_subir(usuario)
     with tab2:
-        _seccion_explorar()
+        _seccion_explorar(usuario)

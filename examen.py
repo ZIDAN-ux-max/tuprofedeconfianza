@@ -10,7 +10,7 @@ import streamlit as st
 
 from tutor_ai import client, MODELO_TUTOR
 from materias_data import MATERIAS_DISPONIBLES
-from database import supabase
+from database import supabase, listar_cursos, obtener_muestra_estilo_curso
 
 PROMPT_EXAMEN_TEMPLATE = """Crea un examen de {materia} para universitarios peruanos con EXACTAMENTE este formato JSON y nada mas:
 {{
@@ -86,8 +86,21 @@ def _init_estado_examen():
             st.session_state[clave] = valor
 
 
-def _generar_examen(materia_examen):
+def _generar_examen(materia_examen, curso_referencia=None):
     prompt_examen = PROMPT_EXAMEN_TEMPLATE.format(materia=materia_examen)
+
+    if curso_referencia:
+        muestra = obtener_muestra_estilo_curso(materia_examen, curso_referencia)
+        if muestra:
+            prompt_examen += (
+                f"\n\nIMPORTANTE: aqui abajo hay fragmentos REALES de examenes/material del curso "
+                f"'{curso_referencia}'. Usalos SOLO como referencia de estilo, nivel de dificultad, "
+                f"formato y tipo de temas que se preguntan en este curso especifico. "
+                f"NO copies preguntas literales de estos fragmentos - crea preguntas NUEVAS y distintas, "
+                f"con datos/numeros diferentes, pero que se sientan del mismo nivel y estilo real de este curso:\n\n"
+                f"{muestra}"
+            )
+
     respuesta_examen = client.chat.completions.create(
         model=MODELO_TUTOR,
         messages=[{"role": "user", "content": prompt_examen}],
@@ -106,8 +119,11 @@ def _generar_examen(materia_examen):
         st.error("Error generando el examen. Intenta de nuevo.")
 
 
-def _pantalla_inicio(materia_examen):
-    st.markdown("""
+def _pantalla_inicio(materia_examen, curso_referencia=None):
+    aviso_referencia = ""
+    if curso_referencia:
+        aviso_referencia = f"<p style='color:#92FE9D; font-size:0.9em'>📚 Usando el estilo real de '{curso_referencia}' de tu biblioteca</p>"
+    st.markdown(f"""
     <div style='background:rgba(255,255,255,0.05); border:1px solid rgba(0,201,255,0.2); border-radius:16px; padding:25px; text-align:center;'>
         <div style='font-size:3em'>📝</div>
         <h3 style='color:#00C9FF'>Pon a prueba tus conocimientos</h3>
@@ -115,12 +131,13 @@ def _pantalla_inicio(materia_examen):
         <p style='color:rgba(255,255,255,0.7)'>✅ 3 preguntas de opcion multiple</p>
         <p style='color:rgba(255,255,255,0.7)'>✍️ 3 preguntas de respuesta abierta</p>
         <p style='color:rgba(255,255,255,0.7)'>🔗 3 preguntas de relacionar conceptos</p>
+        {aviso_referencia}
     </div>
     """, unsafe_allow_html=True)
     st.divider()
     if st.button("🚀 Iniciar Examen", use_container_width=True):
         with st.spinner("Generando tu examen personalizado..."):
-            _generar_examen(materia_examen)
+            _generar_examen(materia_examen, curso_referencia)
 
 
 def _pantalla_preguntas():
@@ -316,10 +333,20 @@ def mostrar_modo_examen(usuario):
     st.session_state.materia_examen_actual = materia_examen
     st.session_state.usuario = usuario  # usado por _calificar_examen para guardar el resultado
 
+    cursos_disponibles = listar_cursos(materia_examen)
+    curso_referencia = None
+    if cursos_disponibles:
+        seleccion_curso = st.selectbox(
+            "📚 Basar el examen en un curso de tu biblioteca (opcional, usa el estilo real de tus documentos/examenes pasados)",
+            ["Examen generico (sin referencia)"] + cursos_disponibles
+        )
+        if seleccion_curso != "Examen generico (sin referencia)":
+            curso_referencia = seleccion_curso
+
     _init_estado_examen()
 
     if not st.session_state.examen_activo and not st.session_state.examen_terminado:
-        _pantalla_inicio(materia_examen)
+        _pantalla_inicio(materia_examen, curso_referencia)
     elif st.session_state.examen_activo and not st.session_state.examen_terminado:
         _pantalla_preguntas()
     elif st.session_state.examen_terminado and st.session_state.resultado_examen:

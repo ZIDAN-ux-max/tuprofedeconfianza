@@ -356,6 +356,39 @@ def obtener_texto_documento(documento_id):
     return ""
 
 
+def obtener_muestra_estilo_curso(materia_general, curso, limite_caracteres=8000):
+    """Trae una muestra representativa de los documentos de un curso (por
+    ejemplo, examenes pasados), tomando fragmentos de VARIOS documentos
+    distintos en vez de solo el primero, para que el Modo Examen pueda
+    generar preguntas nuevas con el mismo estilo/dificultad/formato real,
+    sin copiar preguntas literales de un solo documento."""
+    try:
+        result = supabase.table("documento_chunks").select("documento_id, chunk_index, chunk_texto").eq("materia_general", materia_general).eq("curso", curso).order("documento_id").order("chunk_index").execute()
+        if not result.data:
+            return ""
+
+        por_documento = {}
+        for c in result.data:
+            por_documento.setdefault(c["documento_id"], []).append(c["chunk_texto"])
+
+        partes = []
+        total = 0
+        # tomamos 1-2 fragmentos de CADA documento (no todo de uno solo),
+        # asi la muestra representa varios examenes/temas distintos
+        for doc_id, chunks in por_documento.items():
+            for chunk in chunks[:2]:
+                if total + len(chunk) > limite_caracteres:
+                    break
+                partes.append(chunk)
+                total += len(chunk)
+            if total >= limite_caracteres:
+                break
+
+        return "\n\n---\n\n".join(partes)
+    except Exception:
+        return ""
+
+
 def buscar_fragmentos_relevantes(materia_general, curso, pregunta, top_n=6):
     """Busca, entre TODOS los fragmentos de los documentos de ese curso,
     solo los mas relacionados con la pregunta del alumno (usando similitud

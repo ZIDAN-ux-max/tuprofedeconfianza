@@ -277,7 +277,11 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
                 supabase.storage.from_(BUCKET_DOCUMENTOS).upload(
                     storage_path, archivo_bytes, {"content-type": "application/pdf"}
                 )
-            except Exception:
+            except Exception as e:
+                # TEMPORAL: mostramos el error real para diagnosticar por que
+                # falla la subida a Storage. Quitar el st.error despues.
+                import streamlit as st
+                st.error(f"Error subiendo PDF a Storage: {e}")
                 storage_path = None  # si falla la subida del archivo, seguimos igual guardando el texto
 
         result = supabase.table("documentos").insert({

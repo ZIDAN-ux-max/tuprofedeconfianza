@@ -4,6 +4,7 @@ organizados por materia y curso, y todos pueden verlos, descargarlos y
 usarlos como contexto extra para el tutor en el Chat."""
 import io
 import streamlit as st
+import streamlit.components.v1 as components
 
 from database import guardar_documento, listar_cursos, listar_documentos, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
 from utils import extraer_texto_pdf
@@ -100,9 +101,9 @@ def _seccion_explorar(usuario):
             seleccionados = []
             for doc in docs:
                 if es_admin:
-                    col0, col1, col2, col3, col4 = st.columns([0.4, 3.6, 1.3, 1.3, 0.7])
+                    col0, col1, col2, col2b, col3, col4 = st.columns([0.4, 3.0, 1.1, 1.0, 1.1, 0.7])
                 else:
-                    col1, col2, col3 = st.columns([4, 1.3, 1.3])
+                    col1, col2, col2b, col3 = st.columns([3.6, 1.1, 1.0, 1.1])
 
                 if es_admin:
                     with col0:
@@ -116,6 +117,10 @@ def _seccion_explorar(usuario):
                 with col2:
                     if st.button("👁️ Ver texto", key=f"ver_doc_{doc['id']}"):
                         st.session_state[f"mostrar_texto_{doc['id']}"] = not st.session_state.get(f"mostrar_texto_{doc['id']}", False)
+                with col2b:
+                    if doc.get("storage_path"):
+                        if st.button("📄 Ver PDF", key=f"verpdf_doc_{doc['id']}"):
+                            st.session_state[f"mostrar_pdf_{doc['id']}"] = not st.session_state.get(f"mostrar_pdf_{doc['id']}", False)
                 with col3:
                     url_pdf = obtener_url_documento(doc.get("storage_path"))
                     if url_pdf:
@@ -131,6 +136,14 @@ def _seccion_explorar(usuario):
                 if st.session_state.get(f"mostrar_texto_{doc['id']}"):
                     texto_doc = obtener_texto_documento(doc["id"])
                     st.text_area("Texto extraido de este PDF", texto_doc, height=200, key=f"texto_area_{doc['id']}")
+
+                if st.session_state.get(f"mostrar_pdf_{doc['id']}"):
+                    url_pdf = obtener_url_documento(doc.get("storage_path"))
+                    if url_pdf:
+                        components.iframe(url_pdf, height=550)
+                    else:
+                        st.info("Este documento no tiene PDF guardado para previsualizar.")
+
                 st.markdown("<hr style='border-color:rgba(255,255,255,0.1); margin:8px 0'>", unsafe_allow_html=True)
 
             if es_admin and seleccionados:

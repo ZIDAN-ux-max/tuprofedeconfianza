@@ -323,7 +323,12 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
         if filas_chunks:
             supabase.table("documento_chunks").insert(filas_chunks).execute()
         return True
-    except Exception:
+    except Exception as e:
+        # TEMPORAL: mostramos el error real para diagnosticar por que falla
+        # el guardado (usualmente en el paso de insertar los fragmentos).
+        # Quitar el st.error despues de encontrar y arreglar la causa.
+        import streamlit as st
+        st.error(f"Error guardando documento/fragmentos: {e}")
         return False
 
 

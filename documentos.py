@@ -4,7 +4,6 @@ organizados por materia y curso, y todos pueden verlos, descargarlos y
 usarlos como contexto extra para el tutor en el Chat."""
 import io
 import streamlit as st
-import streamlit.components.v1 as components
 
 from database import guardar_documento, listar_cursos, listar_documentos, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
 from utils import extraer_texto_pdf
@@ -140,7 +139,11 @@ def _seccion_explorar(usuario):
                 if st.session_state.get(f"mostrar_pdf_{doc['id']}"):
                     url_pdf = obtener_url_documento(doc.get("storage_path"))
                     if url_pdf:
-                        components.iframe(url_pdf, height=550)
+                        st.markdown(
+                            f"<iframe src='{url_pdf}' width='100%' height='550' style='border:1px solid rgba(255,255,255,0.15); border-radius:8px;'></iframe>",
+                            unsafe_allow_html=True
+                        )
+                        st.markdown(f"<p style='font-size:0.8em; color:rgba(255,255,255,0.4)'>Si no se ve el PDF arriba, <a href='{url_pdf}' target='_blank' style='color:#00C9FF'>ábrelo en una pestaña nueva</a>.</p>", unsafe_allow_html=True)
                     else:
                         st.info("Este documento no tiene PDF guardado para previsualizar.")
 

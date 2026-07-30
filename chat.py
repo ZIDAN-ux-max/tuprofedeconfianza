@@ -12,35 +12,32 @@ from materias_data import EMOJI_MATERIA
 
 
 def mostrar_chat(usuario, modo):
-    col_principal, col_lateral = st.columns([3, 1])
+    emoji_modo = EMOJI_MATERIA.get(modo, "📘")
 
-    with col_principal:
-        st.image("imagen2.png", use_container_width=True)
-        emoji_modo = EMOJI_MATERIA.get(modo, "📘")
+    col_titulo, col_boton = st.columns([4, 1])
+    with col_titulo:
         st.markdown(textwrap.dedent(f"""
-        <div style='text-align:center; padding:10px 0'>
+        <div style='padding:15px 0 0 0'>
             <span style='font-size:1.1em; color:rgba(255,255,255,0.7)'>
             Estudiando: <strong style='color:#00C9FF'>{emoji_modo} {modo}</strong>
             </span>
         </div>
         """), unsafe_allow_html=True)
 
-    with col_lateral:
-        st.markdown("<div style='padding-top:10px'></div>", unsafe_allow_html=True)
+    curso_elegido = None
+    with col_boton:
         cursos_disponibles = listar_cursos(modo)
-        curso_elegido = None
         if cursos_disponibles:
-            curso_elegido = st.selectbox(
-                "📚 Curso",
-                ["Sin curso especifico"] + cursos_disponibles,
-                key=f"curso_chat_{modo}",
-                help="Elige un curso de tu biblioteca para que el tutor use tus documentos como contexto"
-            )
-            if curso_elegido == "Sin curso especifico":
-                curso_elegido = None
-        else:
-            st.markdown("<p style='color:rgba(255,255,255,0.4); font-size:0.85em'>Sin cursos en la biblioteca todavia</p>", unsafe_allow_html=True)
+            with st.popover("📚 Curso", use_container_width=True):
+                seleccion = st.selectbox(
+                    "Elige un curso de tu biblioteca",
+                    ["Sin curso especifico"] + cursos_disponibles,
+                    key=f"curso_chat_{modo}",
+                    help="El tutor usara tus documentos de ese curso como contexto"
+                )
+                curso_elegido = None if seleccion == "Sin curso especifico" else seleccion
 
+    st.image("imagen2.png", use_container_width=True)
     st.divider()
 
     if "historial" not in st.session_state or st.session_state.get("modo_actual") != modo:

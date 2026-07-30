@@ -100,9 +100,9 @@ def _seccion_explorar(usuario):
             seleccionados = []
             for doc in docs:
                 if es_admin:
-                    col0, col1, col2, col2b, col3, col4 = st.columns([0.4, 3.0, 1.1, 1.0, 1.1, 0.7])
+                    col0, col1, col2, col3, col4 = st.columns([0.4, 3.6, 1.3, 1.3, 0.7])
                 else:
-                    col1, col2, col2b, col3 = st.columns([3.6, 1.1, 1.0, 1.1])
+                    col1, col2, col3 = st.columns([4, 1.3, 1.3])
 
                 if es_admin:
                     with col0:
@@ -116,14 +116,10 @@ def _seccion_explorar(usuario):
                 with col2:
                     if st.button("👁️ Ver texto", key=f"ver_doc_{doc['id']}"):
                         st.session_state[f"mostrar_texto_{doc['id']}"] = not st.session_state.get(f"mostrar_texto_{doc['id']}", False)
-                with col2b:
-                    if doc.get("storage_path"):
-                        if st.button("📄 Ver PDF", key=f"verpdf_doc_{doc['id']}"):
-                            st.session_state[f"mostrar_pdf_{doc['id']}"] = not st.session_state.get(f"mostrar_pdf_{doc['id']}", False)
                 with col3:
                     url_pdf = obtener_url_documento(doc.get("storage_path"))
                     if url_pdf:
-                        st.markdown(f"[⬇️ Descargar PDF]({url_pdf})")
+                        st.markdown(f"[📄 Abrir PDF]({url_pdf})")
                     else:
                         st.markdown("<span style='color:rgba(255,255,255,0.4); font-size:0.85em'>Sin PDF guardado</span>", unsafe_allow_html=True)
                 if es_admin:
@@ -135,17 +131,6 @@ def _seccion_explorar(usuario):
                 if st.session_state.get(f"mostrar_texto_{doc['id']}"):
                     texto_doc = obtener_texto_documento(doc["id"])
                     st.text_area("Texto extraido de este PDF", texto_doc, height=200, key=f"texto_area_{doc['id']}")
-
-                if st.session_state.get(f"mostrar_pdf_{doc['id']}"):
-                    url_pdf = obtener_url_documento(doc.get("storage_path"))
-                    if url_pdf:
-                        st.markdown(
-                            f"<iframe src='{url_pdf}' width='100%' height='550' style='border:1px solid rgba(255,255,255,0.15); border-radius:8px;'></iframe>",
-                            unsafe_allow_html=True
-                        )
-                        st.markdown(f"<p style='font-size:0.8em; color:rgba(255,255,255,0.4)'>Si no se ve el PDF arriba, <a href='{url_pdf}' target='_blank' style='color:#00C9FF'>ábrelo en una pestaña nueva</a>.</p>", unsafe_allow_html=True)
-                    else:
-                        st.info("Este documento no tiene PDF guardado para previsualizar.")
 
                 st.markdown("<hr style='border-color:rgba(255,255,255,0.1); margin:8px 0'>", unsafe_allow_html=True)
 

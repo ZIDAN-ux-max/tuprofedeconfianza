@@ -9,12 +9,13 @@ from database import guardar_conversacion, cargar_conversaciones, obtener_estadi
 from tutor_ai import construir_system_prompt, obtener_sugerencias, responder_tutor, actualizar_perfil_alumno
 from utils import extraer_texto_pdf
 from materias_data import EMOJI_MATERIA
+from formulario import renderizar_generador_formulario
 
 
 def mostrar_chat(usuario, modo):
     emoji_modo = EMOJI_MATERIA.get(modo, "📘")
 
-    col_titulo, col_boton = st.columns([4, 1])
+    col_titulo, col_boton1, col_boton2 = st.columns([3, 1, 1])
     with col_titulo:
         st.markdown(textwrap.dedent(f"""
         <div style='padding:15px 0 0 0'>
@@ -25,7 +26,7 @@ def mostrar_chat(usuario, modo):
         """), unsafe_allow_html=True)
 
     curso_elegido = None
-    with col_boton:
+    with col_boton1:
         cursos_disponibles = listar_cursos(modo)
         if cursos_disponibles:
             with st.popover("📚 Curso", use_container_width=True):
@@ -36,6 +37,13 @@ def mostrar_chat(usuario, modo):
                     help="El tutor usara tus documentos de ese curso como contexto"
                 )
                 curso_elegido = None if seleccion == "Sin curso especifico" else seleccion
+
+    with col_boton2:
+        with st.popover("📋 Formulario", use_container_width=True):
+            if curso_elegido:
+                renderizar_generador_formulario(usuario, modo=modo, key_prefix=f"popover_{modo}_{curso_elegido}_", curso_fijo=curso_elegido)
+            else:
+                st.info("Primero elige un curso en '📚 Curso' para poder generar su formulario.")
 
     st.image("imagen2.png", use_container_width=True)
     st.divider()

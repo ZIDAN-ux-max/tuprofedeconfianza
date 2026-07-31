@@ -227,29 +227,32 @@ Manten cada lista con maximo 8 elementos (si se pasa, elimina los mas antiguos/m
 
 
 def generar_formulario(modo, usuario, curso, material_curso):
-    """Genera un 'formulario' (cheat-sheet) de formulas y conceptos clave de
-    un curso, a partir del material subido a la biblioteca, priorizando y
-    explicando con mas detalle los temas donde el alumno tiene dificultad
-    segun su perfil de progreso."""
+    """Genera un 'formulario' (cheat-sheet) de formulas clave de un curso,
+    como tarjetas cortas y numeradas (no un texto largo en parrafos),
+    priorizando los temas donde el alumno tiene mas dificultad segun su
+    perfil. Devuelve una lista de tarjetas ya estructurada, el diseño
+    (cuadricula de tarjetas) lo controla el codigo, no la IA - asi el
+    resultado siempre se ve ordenado y consistente."""
     perfil = obtener_perfil_alumno(usuario["id"], modo)
     dificiles = perfil.get("temas_dificiles") or []
     dominados = perfil.get("temas_dominados") or []
 
     instruccion_nivel = ""
     if dificiles:
-        instruccion_nivel += f"\nEl alumno tiene dificultad en: {', '.join(dificiles)}. Para esos temas, agrega la formula, una breve explicacion de cuando usarla, y un mini-ejemplo."
+        instruccion_nivel += f"\nEl alumno tiene dificultad en: {', '.join(dificiles)}. Para esos temas, agrega una 'nota' corta (max 15 palabras) explicando cuando usar la formula."
     if dominados:
-        instruccion_nivel += f"\nEl alumno ya domina: {', '.join(dominados)}. Para esos temas, pon SOLO la formula, sin explicacion extra (para no ocupar espacio de mas)."
+        instruccion_nivel += f"\nEl alumno ya domina: {', '.join(dominados)}. Para esos temas, deja 'nota' vacio (solo la formula, sin explicacion extra)."
 
-    prompt = f"""Eres Tu Profe de Confianza. A partir del siguiente material real del curso '{curso}' ({modo}),
-crea un FORMULARIO (cheat-sheet) organizado con las formulas y conceptos clave que un alumno necesitaria
-tener a la mano para un examen de este curso.
+    prompt = f"""A partir de este material real del curso '{curso}' ({modo}), extrae las formulas y
+conceptos clave que un alumno necesitaria tener a la mano para un examen de este curso.
 
-Usa este formato HTML:
-- Cada tema como encabezado: <h4 style='color:#00C9FF'>Tema</h4>
-- Formulas en LaTeX cuando aplique: $$formula$$
-- Formulas destacadas en un recuadro: <div style='background:rgba(0,201,255,0.08); border-left:3px solid #00C9FF; padding:8px 12px; margin:6px 0'>...</div>
-- Se breve y directo, esto es para repasar rapido antes de un examen, no una clase completa.
+Devuelve SOLO un JSON (sin texto extra, sin markdown) con este formato exacto:
+{{
+  "tarjetas": [
+    {{"numero": 1, "titulo": "Nombre corto del concepto (max 6 palabras)", "formula": "codigo LaTeX SIN simbolos de dolar, ej: a^n \\\\cdot a^m = a^{{n+m}}", "nota": "explicacion de una linea o vacio si el alumno ya domina esto"}}
+  ]
+}}
+Maximo 16 tarjetas. Cada tarjeta debe ser corta y directa (como una tarjeta de estudio, NO una clase completa).
 {instruccion_nivel}
 
 Material real del curso (usalo como fuente principal, no inventes formulas que no esten relacionadas):
@@ -258,6 +261,10 @@ Material real del curso (usalo como fuente principal, no inventes formulas que n
     respuesta = client.chat.completions.create(
         model=MODELO_TUTOR,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=2500
+        max_tokens=2500,
+        response_format={"type": "json_object"}
     )
-    return respuesta.choices[0].message.content
+    try:
+        return json.loads(respuesta.choices[0].message.content).get("tarjetas", [])
+    except Exception:
+        return []

@@ -112,14 +112,6 @@ else:
         if seccion == "Chat":
             materias_alumno = materias_de_carrera(usuario.get("carrera"))
             modo = st.radio("Que quieres estudiar?", materias_alumno)
-            st.divider()
-            st.markdown("### Sube un archivo")
-            archivo = st.file_uploader("PDF o imagen", type=["pdf", "png", "jpg", "jpeg"])
-            if archivo:
-                st.success(f"Archivo cargado: {archivo.name}")
-                st.session_state.archivo = archivo
-            else:
-                st.session_state.archivo = None
         st.divider()
         if st.button("Cerrar sesion", use_container_width=True):
             st.session_state.usuario = None

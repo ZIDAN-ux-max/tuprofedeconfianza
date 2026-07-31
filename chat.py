@@ -15,7 +15,7 @@ from formulario import renderizar_generador_formulario
 def mostrar_chat(usuario, modo):
     emoji_modo = EMOJI_MATERIA.get(modo, "📘")
 
-    col_titulo, col_boton1, col_boton2 = st.columns([3, 1, 1])
+    col_titulo, col_boton1, col_boton2, col_boton3 = st.columns([2, 1, 1, 1])
     with col_titulo:
         st.markdown(textwrap.dedent(f"""
         <div style='padding:15px 0 0 0'>
@@ -44,6 +44,15 @@ def mostrar_chat(usuario, modo):
                 renderizar_generador_formulario(usuario, modo=modo, key_prefix=f"popover_{modo}_{curso_elegido}_", curso_fijo=curso_elegido)
             else:
                 st.info("Primero elige un curso en '📚 Curso' para poder generar su formulario.")
+
+    with col_boton3:
+        with st.popover("📎 Archivo", use_container_width=True):
+            archivo = st.file_uploader("PDF o imagen", type=["pdf", "png", "jpg", "jpeg"], key=f"archivo_chat_{modo}")
+            if archivo:
+                st.success(f"Cargado: {archivo.name}")
+                st.session_state.archivo = archivo
+            else:
+                st.session_state.archivo = None
 
     st.image("imagen2.png", use_container_width=True)
     st.divider()

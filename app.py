@@ -7,12 +7,12 @@ examen, paginas)."""
 import streamlit as st
 
 from estilos import aplicar_estilos
-from database import login, registrar, registrar_asistencia, obtener_estadisticas, supabase
+from database import login, registrar, registrar_asistencia, obtener_estadisticas, supabase, listar_cursos
 from utils import obtener_nivel
 from chat import mostrar_chat
 from examen import mostrar_modo_examen
 from documentos import mostrar_documentos
-from formulario import mostrar_formulario
+from formulario import mostrar_formulario, renderizar_generador_formulario
 from paginas import mostrar_ranking, mostrar_acerca_de, mostrar_logros, mostrar_estadisticas
 from materias_data import CARRERAS_DISPONIBLES, materias_de_carrera
 
@@ -109,9 +109,33 @@ else:
         st.divider()
         seccion = st.radio("Menu", ["Chat", "Modo Examen", "Documentos", "Formulario", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
         st.divider()
+        curso_elegido = None
         if seccion == "Chat":
             materias_alumno = materias_de_carrera(usuario.get("carrera"))
             modo = st.radio("Que quieres estudiar?", materias_alumno)
+
+            cursos_disponibles = listar_cursos(modo)
+            if cursos_disponibles:
+                seleccion_curso = st.selectbox(
+                    "📚 Curso (opcional)",
+                    ["Sin curso especifico"] + cursos_disponibles,
+                    help="El tutor usara tus documentos de ese curso como contexto"
+                )
+                curso_elegido = None if seleccion_curso == "Sin curso especifico" else seleccion_curso
+
+            with st.expander("📋 Formulario"):
+                if curso_elegido:
+                    renderizar_generador_formulario(usuario, modo=modo, key_prefix=f"sidebar_{modo}_{curso_elegido}_", curso_fijo=curso_elegido)
+                else:
+                    st.info("Elige un curso arriba para generar su formulario.")
+
+            with st.expander("📎 Archivo"):
+                archivo = st.file_uploader("PDF o imagen", type=["pdf", "png", "jpg", "jpeg"], key=f"archivo_chat_{modo}")
+                if archivo:
+                    st.success(f"Cargado: {archivo.name}")
+                    st.session_state.archivo = archivo
+                else:
+                    st.session_state.archivo = None
         st.divider()
         if st.button("Cerrar sesion", use_container_width=True):
             st.session_state.usuario = None
@@ -133,4 +157,4 @@ else:
     elif seccion == "Mis Estadisticas":
         mostrar_estadisticas(stats)
     else:
-        mostrar_chat(usuario, modo)
+        mostrar_chat(usuario, modo, curso_elegido)

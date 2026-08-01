@@ -83,12 +83,16 @@ if st.session_state.usuario is None:
 
         if st.button("Registrarse", use_container_width=True):
             if nombre and email_reg and password_reg:
-                usuario = registrar(nombre, email_reg, password_reg, edad=edad_reg, grado=grado_reg, ciclo=ciclo_reg, carrera=carrera_reg)
+                usuario, error = registrar(nombre, email_reg, password_reg, edad=edad_reg, grado=grado_reg, ciclo=ciclo_reg, carrera=carrera_reg)
                 if usuario:
                     st.session_state.usuario = usuario
                     st.rerun()
+                elif error == "email":
+                    st.error("Ese email ya esta registrado")
+                elif error == "nombre":
+                    st.error("Ese nombre ya esta en uso, elige otro (ej: agrega tu apellido)")
                 else:
-                    st.error("El email ya existe")
+                    st.error("No se pudo completar el registro, intenta de nuevo")
             else:
                 st.warning("Completa todos los campos")
 

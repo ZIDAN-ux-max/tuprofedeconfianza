@@ -24,8 +24,15 @@ def login(email, password):
 def registrar(nombre, email, password, edad=None, grado=None, ciclo=None, carrera=None):
     """Crea un usuario nuevo. edad/grado/ciclo/carrera son opcionales pero
     recomendados para que el tutor pueda personalizar mejor sus explicaciones
-    y filtrar las materias relevantes."""
+    y filtrar las materias relevantes.
+    Devuelve (usuario, error): error es None si salio bien, o "email"/"nombre"
+    segun cual de los dos ya estaba en uso."""
     try:
+        if supabase.table("usuarios").select("id").eq("email", email).execute().data:
+            return None, "email"
+        if supabase.table("usuarios").select("id").eq("nombre", nombre).execute().data:
+            return None, "nombre"
+
         payload = {
             "nombre": nombre,
             "email": email,
@@ -40,9 +47,9 @@ def registrar(nombre, email, password, edad=None, grado=None, ciclo=None, carrer
         if carrera:
             payload["carrera"] = carrera
         result = supabase.table("usuarios").insert(payload).execute()
-        return result.data[0]
+        return result.data[0], None
     except Exception:
-        return None
+        return None, "otro"
 
 
 # ===================== CONVERSACIONES =====================

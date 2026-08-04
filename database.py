@@ -176,12 +176,7 @@ def obtener_ranking():
                     "logros": len(logros.data)
                 })
         return ranking
-    except Exception as e:
-        # TEMPORAL: mostramos el error real en vez de esconderlo, para poder
-        # diagnosticar por que el ranking sale vacio. Quitar el st.error
-        # despues de encontrar y arreglar la causa.
-        import streamlit as st
-        st.error(f"Error en obtener_ranking: {e}")
+    except Exception:
         return []
 
 
@@ -305,12 +300,8 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
                 supabase.storage.from_(BUCKET_DOCUMENTOS).upload(
                     storage_path, archivo_bytes, {"content-type": "application/pdf"}
                 )
-            except Exception as e:
-                # TEMPORAL: mostramos el error real para diagnosticar por que
-                # falla la subida a Storage. Quitar el st.error despues.
-                import streamlit as st
-                st.error(f"Error subiendo PDF a Storage: {e}")
-                storage_path = None  # si falla la subida del archivo, seguimos igual guardando el texto
+            except Exception:
+                storage_path = None  # si falla la subida del archivo, seguimos igual guardando el texto (la UI ya avisa "Sin PDF guardado" cuando corresponde)
 
         result = supabase.table("documentos").insert({
             "materia_general": materia_general,
@@ -337,12 +328,7 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
         if filas_chunks:
             supabase.table("documento_chunks").insert(filas_chunks).execute()
         return True
-    except Exception as e:
-        # TEMPORAL: mostramos el error real para diagnosticar por que falla
-        # el guardado (usualmente en el paso de insertar los fragmentos).
-        # Quitar el st.error despues de encontrar y arreglar la causa.
-        import streamlit as st
-        st.error(f"Error guardando documento/fragmentos: {e}")
+    except Exception:
         return False
 
 

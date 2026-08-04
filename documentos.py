@@ -5,7 +5,7 @@ usarlos como contexto extra para el tutor en el Chat."""
 import io
 import streamlit as st
 
-from database import guardar_documento, listar_cursos, listar_documentos, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
+from database import guardar_documento, listar_cursos, listar_documentos, listar_ciclos, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
 from utils import extraer_texto_pdf
 from materias_data import MATERIAS_DISPONIBLES
 
@@ -31,6 +31,8 @@ def _seccion_subir(usuario):
         else:
             curso = seleccion
 
+        ciclo = st.text_input("Ciclo (opcional, ej: 2026-1)", key="doc_ciclo")
+
     with col_archivos:
         archivos = st.file_uploader("Selecciona uno o varios PDFs", type=["pdf"], accept_multiple_files=True, key="doc_archivos")
 
@@ -46,7 +48,7 @@ def _seccion_subir(usuario):
                 bytes_pdf = archivo.getvalue()
                 texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
                 if texto:
-                    ok = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf)
+                    ok = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo)
                     if ok:
                         subidos += 1
                 progreso.progress((i + 1) / len(archivos))
@@ -64,14 +66,21 @@ def _seccion_explorar(usuario):
     materia_filtro = st.radio("Filtrar por materia", ["Todas"] + MATERIAS_DISPONIBLES, horizontal=True, key="doc_filtro")
     materia_query = None if materia_filtro == "Todas" else materia_filtro
 
-    documentos = listar_documentos(materia_query)
+    ciclos_disponibles = listar_ciclos(materia_query)
+    ciclo_query = None
+    if ciclos_disponibles:
+        ciclo_filtro = st.selectbox("Filtrar por ciclo", ["Todos"] + ciclos_disponibles, key="doc_filtro_ciclo")
+        ciclo_query = None if ciclo_filtro == "Todos" else ciclo_filtro
+
+    documentos = listar_documentos(materia_query, ciclo_query)
     if not documentos:
         st.info("Todavia no hay documentos subidos. Sube el primero arriba.")
         return
 
     por_curso = {}
     for doc in documentos:
-        clave = f"{doc['materia_general']} - {doc['curso']}"
+        etiqueta_ciclo = f" ({doc['ciclo']})" if doc.get("ciclo") else ""
+        clave = f"{doc['materia_general']} - {doc['curso']}{etiqueta_ciclo}"
         por_curso.setdefault(clave, []).append(doc)
 
     for carpeta, docs in sorted(por_curso.items()):

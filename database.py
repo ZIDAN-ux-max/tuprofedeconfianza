@@ -280,11 +280,13 @@ def _sanear_para_storage(texto):
     return texto.strip("_") or "archivo"
 
 
-def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None):
+def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None):
     """Guarda el documento (metadata + texto), lo parte en fragmentos pequenos
     (documento_chunks) para busqueda por relevancia, y si se paso el PDF
     original en bytes, lo sube a Supabase Storage para poder descargarlo
-    despues desde la biblioteca."""
+    despues desde la biblioteca. 'ciclo' es solo una etiqueta opcional para
+    filtrar en la biblioteca (ej: '2026-1') - no afecta la busqueda del
+    tutor, que sigue siendo por materia+curso."""
     try:
         curso = curso.strip()
         storage_path = None
@@ -309,6 +311,7 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
         result = supabase.table("documentos").insert({
             "materia_general": materia_general,
             "curso": curso,
+            "ciclo": ciclo.strip() if ciclo else None,
             "nombre_archivo": nombre_archivo,
             "contenido_texto": contenido_texto,
             "subido_por": subido_por,
@@ -362,15 +365,30 @@ def listar_cursos(materia_general):
         return []
 
 
-def listar_documentos(materia_general=None):
-    """Lista todos los documentos, opcionalmente filtrados por materia,
-    agrupables luego por curso en la UI."""
+def listar_documentos(materia_general=None, ciclo=None):
+    """Lista todos los documentos, opcionalmente filtrados por materia y/o
+    ciclo, agrupables luego por curso en la UI."""
     try:
-        query = supabase.table("documentos").select("id, materia_general, curso, nombre_archivo, subido_por, fecha_subida, storage_path")
+        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, nombre_archivo, subido_por, fecha_subida, storage_path")
         if materia_general:
             query = query.eq("materia_general", materia_general)
+        if ciclo:
+            query = query.eq("ciclo", ciclo)
         result = query.order("curso").execute()
         return result.data
+    except Exception:
+        return []
+
+
+def listar_ciclos(materia_general=None):
+    """Devuelve la lista de ciclos unicos ya usados (ej: '2026-1'), para
+    mostrarlos como filtro en la biblioteca."""
+    try:
+        query = supabase.table("documentos").select("ciclo")
+        if materia_general:
+            query = query.eq("materia_general", materia_general)
+        result = query.execute()
+        return sorted(set(d["ciclo"] for d in result.data if d.get("ciclo")))
     except Exception:
         return []
 

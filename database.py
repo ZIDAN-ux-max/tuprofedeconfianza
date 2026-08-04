@@ -15,7 +15,8 @@ supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_SERVIC
 # ===================== USUARIOS =====================
 
 def login(email, password):
-    result = supabase.table("usuarios").select("*").eq("email", email).eq("password", hash_password(password)).execute()
+    email = email.strip().lower()
+    result = supabase.table("usuarios").select("*").ilike("email", email).eq("password", hash_password(password)).execute()
     if result.data:
         return result.data[0]
     return None
@@ -26,11 +27,14 @@ def registrar(nombre, email, password, edad=None, grado=None, ciclo=None, carrer
     recomendados para que el tutor pueda personalizar mejor sus explicaciones
     y filtrar las materias relevantes.
     Devuelve (usuario, error): error es None si salio bien, o "email"/"nombre"
-    segun cual de los dos ya estaba en uso."""
+    segun cual de los dos ya estaba en uso (sin importar mayus/minusculas)."""
     try:
-        if supabase.table("usuarios").select("id").eq("email", email).execute().data:
+        email = email.strip().lower()
+        nombre = nombre.strip()
+
+        if supabase.table("usuarios").select("id").ilike("email", email).execute().data:
             return None, "email"
-        if supabase.table("usuarios").select("id").eq("nombre", nombre).execute().data:
+        if supabase.table("usuarios").select("id").ilike("nombre", nombre).execute().data:
             return None, "nombre"
 
         payload = {

@@ -13,6 +13,7 @@ from chat import mostrar_chat
 from examen import mostrar_modo_examen
 from documentos import mostrar_documentos
 from formulario import mostrar_formulario, renderizar_generador_formulario
+from calendario import mostrar_calendario
 from paginas import mostrar_ranking, mostrar_acerca_de, mostrar_logros, mostrar_estadisticas
 from materias_data import CARRERAS_DISPONIBLES, materias_de_carrera
 
@@ -111,7 +112,7 @@ else:
         st.markdown(f"<span style='background:{nivel_color}; color:white; padding:3px 10px; border-radius:20px; font-size:0.85em'>{nivel}</span>", unsafe_allow_html=True)
         st.markdown(f"<p style='color:#F59E0B; font-weight:bold; margin-top:8px'>🔥 Racha: {racha} dias</p>", unsafe_allow_html=True)
         st.divider()
-        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Documentos", "Formulario", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
+        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Documentos", "Formulario", "Calendario", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
         st.divider()
         curso_elegido = None
         if seccion == "Chat":
@@ -152,6 +153,8 @@ else:
         mostrar_documentos(usuario)
     elif seccion == "Formulario":
         mostrar_formulario(usuario)
+    elif seccion == "Calendario":
+        mostrar_calendario(usuario)
     elif seccion == "Ranking":
         mostrar_ranking(usuario)
     elif seccion == "Acerca de":

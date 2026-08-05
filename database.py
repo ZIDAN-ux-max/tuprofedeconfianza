@@ -502,3 +502,39 @@ def eliminar_documentos(ids_documentos):
         return True
     except Exception:
         return False
+
+
+# ===================== CALENDARIO PERSONAL (NUEVO) =====================
+# A diferencia de la biblioteca de documentos (compartida), el calendario
+# es personal: cada alumno solo ve y administra sus propios eventos.
+
+def guardar_evento(usuario_id, titulo, fecha, tipo="Otro", materia=None, notas=None):
+    try:
+        supabase.table("eventos_calendario").insert({
+            "usuario_id": usuario_id,
+            "titulo": titulo.strip(),
+            "tipo": tipo,
+            "fecha": str(fecha),
+            "materia": materia,
+            "notas": notas.strip() if notas else None
+        }).execute()
+        return True
+    except Exception:
+        return False
+
+
+def listar_eventos(usuario_id):
+    """Devuelve los eventos del alumno ordenados por fecha mas cercana primero."""
+    try:
+        result = supabase.table("eventos_calendario").select("*").eq("usuario_id", usuario_id).order("fecha").execute()
+        return result.data
+    except Exception:
+        return []
+
+
+def eliminar_evento(evento_id):
+    try:
+        supabase.table("eventos_calendario").delete().eq("id", evento_id).execute()
+        return True
+    except Exception:
+        return False

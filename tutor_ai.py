@@ -10,8 +10,8 @@ from database import obtener_perfil_alumno, guardar_perfil_alumno, buscar_fragme
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-MODELO_TUTOR = "llama-3.3-70b-versatile"
-MODELO_RESUMEN = "llama-3.1-8b-instant"  # modelo pequeno y barato solo para resumir progreso
+MODELO_TUTOR = "openai/gpt-oss-120b"  # antes: llama-3.3-70b-versatile (descontinuado por Groq en agosto 2026)
+MODELO_RESUMEN = "openai/gpt-oss-20b"  # antes: llama-3.1-8b-instant (descontinuado por Groq en agosto 2026)
 
 
 ESTRUCTURA_CLARA = """

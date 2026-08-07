@@ -12,6 +12,7 @@ client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
 MODELO_TUTOR = "openai/gpt-oss-120b"  # antes: llama-3.3-70b-versatile (descontinuado por Groq en agosto 2026)
 MODELO_RESUMEN = "openai/gpt-oss-20b"  # antes: llama-3.1-8b-instant (descontinuado por Groq en agosto 2026)
+MODELO_VISION = "qwen/qwen3.6-27b"  # unico modelo vigente de Groq con soporte de imagenes (para leer fotos de procedimientos)
 
 
 ESTRUCTURA_CLARA = """
@@ -268,3 +269,49 @@ Material real del curso (usalo como fuente principal, no inventes formulas que n
         return json.loads(respuesta.choices[0].message.content).get("tarjetas", [])
     except Exception:
         return []
+
+
+def transcribir_procedimiento_imagen(imagen_base64, mime_type="image/jpeg"):
+    """Usa el modelo de vision de Groq para leer una foto de un procedimiento
+    escrito a mano y devolverlo como texto. El alumno puede corregir despues
+    lo que la IA haya leido mal antes de pedir la revision real."""
+    respuesta = client.chat.completions.create(
+        model=MODELO_VISION,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Transcribe EXACTAMENTE el procedimiento matematico escrito en esta imagen, paso por paso, tal como esta escrito (no lo corrijas, no agregues nada, solo transcribe lo que ves). Si hay formulas, escribelas en notacion de texto simple (ej: x^2, 3/4, integral de...)."},
+                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{imagen_base64}"}}
+            ]
+        }],
+        max_tokens=1500
+    )
+    return respuesta.choices[0].message.content
+
+
+def revisar_solucion(modo, usuario, problema, procedimiento):
+    """Revisa el procedimiento del alumno paso por paso: confirma lo que esta
+    bien, encuentra el PRIMER error y lo explica sin dar la respuesta directa,
+    para que el alumno piense en como corregirlo."""
+    prompt = f"""Eres Tu Profe de Confianza, revisando el procedimiento de un alumno de {modo}.
+
+Problema que el alumno esta resolviendo:
+{problema}
+
+Procedimiento que escribio el alumno (puede tener errores):
+{procedimiento}
+
+Revisa el procedimiento PASO POR PASO:
+- Para cada paso que este correcto, confirmalo brevemente con: <span style='color:#92FE9D; font-weight:bold'>✓ Correcto:</span>
+- En el PRIMER paso donde encuentres un error, marcalo con: <span style='color:#EF4444; font-weight:bold'>✗ Aqui hay un error:</span> y explica que tipo de error es (conceptual, de calculo, de signo, etc) SIN dar la respuesta correcta completa - guialo con una pregunta o pista para que el mismo lo encuentre.
+- No sigas revisando los pasos DESPUES del primer error (ya no tiene caso si el resto parte de un error).
+- Si TODO el procedimiento esta correcto de principio a fin, felicitalo claramente y confirma que el resultado es correcto.
+- Se breve en cada paso, esto no es una clase nueva, es una revision.
+""" + ESTRUCTURA_CLARA
+
+    respuesta = client.chat.completions.create(
+        model=MODELO_TUTOR,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=2000
+    )
+    return respuesta.choices[0].message.content

@@ -307,6 +307,7 @@ Revisa el procedimiento PASO POR PASO:
 - No sigas revisando los pasos DESPUES del primer error (ya no tiene caso si el resto parte de un error).
 - Si TODO el procedimiento esta correcto de principio a fin, felicitalo claramente y confirma que el resultado es correcto.
 - Se breve en cada paso, esto no es una clase nueva, es una revision.
+- IMPORTANTE: cuando escribas cualquier expresion matematica (exponentes, fracciones, raices, integrales, etc), usa notacion LaTeX entre simbolos de dolar, ej: $x^2$, $$\\int_{{-1}}^{{3}} 3x^2 \\, dx$$. Nunca escribas exponentes como x^2 en texto plano ni fracciones como a/b - siempre en LaTeX.
 """ + ESTRUCTURA_CLARA
 
     respuesta = client.chat.completions.create(

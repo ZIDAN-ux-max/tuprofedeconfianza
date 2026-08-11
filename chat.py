@@ -10,7 +10,7 @@ import streamlit as st
 
 from database import guardar_conversacion, cargar_conversaciones, obtener_estadisticas, verificar_logros
 from tutor_ai import construir_system_prompt, obtener_sugerencias, responder_tutor, actualizar_perfil_alumno
-from utils import extraer_texto_pdf
+from utils import extraer_texto_pdf, normalizar_latex
 from materias_data import EMOJI_MATERIA
 
 
@@ -68,7 +68,7 @@ def mostrar_chat(usuario, modo, curso_elegido=None):
     for mensaje in st.session_state.historial:
         rol = mensaje["role"]
         with st.chat_message(rol):
-            st.markdown(mensaje["content"], unsafe_allow_html=True)
+            st.markdown(normalizar_latex(mensaje["content"]), unsafe_allow_html=True)
 
     if prompt := st.chat_input("Escribe tu pregunta aqui..."):
         with st.chat_message("user"):
@@ -82,4 +82,4 @@ def mostrar_chat(usuario, modo, curso_elegido=None):
             st.success(f"🏆 Nuevo logro: {logro['emoji']} {logro['nombre']} - {logro['descripcion']}")
 
         with st.chat_message("assistant"):
-            st.markdown(texto, unsafe_allow_html=True)
+            st.markdown(normalizar_latex(texto), unsafe_allow_html=True)

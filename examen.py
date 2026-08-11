@@ -297,20 +297,18 @@ def _pantalla_resultado():
 
     for i, res in enumerate(resultado["resultados"]):
         if res["es_correcta"] is True:
-            icono, color, borde = "✅", "rgba(146,254,157,0.1)", "rgba(146,254,157,0.3)"
+            icono = "✅"
         elif res["es_correcta"] is None:
-            icono, color, borde = "⚡", "rgba(245,158,11,0.1)", "rgba(245,158,11,0.3)"
+            icono = "⚡"
         else:
-            icono, color, borde = "❌", "rgba(239,68,68,0.1)", "rgba(239,68,68,0.3)"
+            icono = "❌"
 
-        st.markdown(textwrap.dedent(f"""
-        <div style='background:{color}; border:1px solid {borde}; border-radius:12px; padding:15px; margin-bottom:10px;'>
-            <p style='color:white; font-weight:bold'>{icono} Pregunta {i+1}: {res['pregunta']}</p>
-            <p style='color:rgba(255,255,255,0.7); font-size:0.9em'>Tu respuesta: {res['tu_respuesta']}</p>
-            <p style='color:rgba(255,255,255,0.7); font-size:0.9em'>Respuesta correcta: {res['correcta']}</p>
-            {f"<p style='color:#F59E0B; font-size:0.85em'>{res.get('feedback','')}</p>" if res.get('feedback') else ''}
-        </div>
-        """), unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown(f"**{icono} Pregunta {i+1}:** {normalizar_latex(res['pregunta'])}", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:rgba(255,255,255,0.7); font-size:0.9em'>Tu respuesta:</span> {normalizar_latex(str(res['tu_respuesta']))}", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:rgba(255,255,255,0.7); font-size:0.9em'>Respuesta correcta:</span> {normalizar_latex(str(res['correcta']))}", unsafe_allow_html=True)
+            if res.get("feedback"):
+                st.markdown(f"<span style='color:#F59E0B; font-size:0.85em'>{normalizar_latex(res['feedback'])}</span>", unsafe_allow_html=True)
 
     st.divider()
     if st.button("🔄 Nuevo Examen", use_container_width=True):

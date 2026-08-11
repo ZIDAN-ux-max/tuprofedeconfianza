@@ -51,3 +51,15 @@ def dividir_en_fragmentos(texto, tamano=900, solape=150):
             break
         inicio = fin - solape
     return fragmentos
+
+
+def normalizar_latex(texto):
+    """La IA a veces escribe formulas con \\[ \\] o \\( \\) en vez de $$ $$
+    o $ $ (que es lo que el renderizador de Streamlit reconoce). Esto
+    convierte esos delimitadores para que el LaTeX se muestre bien sin
+    depender 100% de que la IA siga el formato pedido al pie de la letra."""
+    if not texto:
+        return texto
+    texto = texto.replace("\\[", "$$").replace("\\]", "$$")
+    texto = texto.replace("\\(", "$").replace("\\)", "$")
+    return texto

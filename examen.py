@@ -10,6 +10,7 @@ import streamlit as st
 
 from tutor_ai import client, MODELO_TUTOR
 from materias_data import MATERIAS_DISPONIBLES
+from utils import normalizar_latex
 from database import supabase, listar_cursos, obtener_muestra_estilo_curso
 
 PROMPT_EXAMEN_TEMPLATE = """Crea un examen de {materia} para universitarios peruanos con EXACTAMENTE este formato JSON y nada mas:
@@ -151,7 +152,7 @@ def _pantalla_preguntas():
     for i, pregunta in enumerate(preguntas):
         tipo = pregunta.get("tipo")
         st.markdown(f"<p style='color:#00C9FF; font-weight:bold'>Pregunta {i+1} de {total}</p>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:white; font-size:1.1em'>{pregunta['pregunta']}</p>", unsafe_allow_html=True)
+        st.markdown(normalizar_latex(pregunta['pregunta']), unsafe_allow_html=True)
 
         if tipo == "multiple":
             opciones = pregunta.get("opciones", [])

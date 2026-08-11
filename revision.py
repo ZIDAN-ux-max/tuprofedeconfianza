@@ -8,6 +8,7 @@ import streamlit as st
 
 from tutor_ai import transcribir_procedimiento_imagen, revisar_solucion
 from materias_data import materias_de_carrera
+from utils import normalizar_latex
 
 
 def mostrar_revision(usuario):
@@ -53,7 +54,7 @@ def mostrar_revision(usuario):
 
     if st.session_state.get("rev_resultado"):
         st.divider()
-        st.markdown(st.session_state["rev_resultado"], unsafe_allow_html=True)
+        st.markdown(normalizar_latex(st.session_state["rev_resultado"]), unsafe_allow_html=True)
 
 
 def _ejecutar_revision(usuario, modo, problema, procedimiento):

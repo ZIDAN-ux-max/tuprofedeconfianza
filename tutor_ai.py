@@ -22,6 +22,7 @@ IMPORTANTE - estructura visual clara (como una clase bien ordenada, no un parraf
 - Cuando enumeres varias cosas, usa una lista real: <ul style='margin:6px 0'><li>...</li></ul>
 - Deja espacio entre secciones (no lo apretes todo junto)
 - El resultado final de cada ejercicio va en su propio bloque, bien visible, al final de ese ejercicio (no mezclado con la explicacion)
+- MUY IMPORTANTE: nunca metas formulas con simbolos de dolar ($...$) dentro de un <h4> o dentro de un <li>. Los titulos y las viñetas van SIEMPRE en texto simple, sin formulas adentro. Si necesitas mostrar una formula relacionada a un titulo o a un punto de una lista, ponla en una linea aparte, JUSTO DESPUES, fuera de esa etiqueta.
 """
 
 PROMPTS_BASE = {

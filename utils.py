@@ -55,11 +55,29 @@ def dividir_en_fragmentos(texto, tamano=900, solape=150):
 
 def normalizar_latex(texto):
     """La IA a veces escribe formulas con \\[ \\] o \\( \\) en vez de $$ $$
-    o $ $ (que es lo que el renderizador de Streamlit reconoce). Esto
-    convierte esos delimitadores para que el LaTeX se muestre bien sin
-    depender 100% de que la IA siga el formato pedido al pie de la letra."""
+    o $ $ (que es lo que el renderizador de Streamlit reconoce). Tambien a
+    veces usa corchetes simples [ ] sin barra invertida, en su propia linea,
+    como forma de 'destacar' una formula. Esto convierte todo eso al formato
+    que Streamlit si reconoce, sin depender 100% de que la IA siga el
+    formato pedido al pie de la letra."""
     if not texto:
         return texto
     texto = texto.replace("\\[", "$$").replace("\\]", "$$")
     texto = texto.replace("\\(", "$").replace("\\)", "$")
+
+    import re
+
+    def _convertir_linea(match):
+        contenido = match.group(1).strip()
+        return f"$${contenido}$$"
+
+    # lineas que son SOLO una formula entre corchetes simples (ej: "[ v(t)=3t+1 ]")
+    texto = re.sub(r'(?m)^\s*\[\s*(.+?)\s*\]\s*$', _convertir_linea, texto)
+
+    # si una formula (con simbolo $) quedo atrapada dentro de un <h4> o <li>,
+    # Streamlit no la renderiza ahi adentro. Quitamos esa etiqueta especifica
+    # (solo cuando tiene una formula) para que el LaTeX si se muestre bien.
+    texto = re.sub(r'<h4[^>]*>([^<]*\$[^<]*)</h4>', lambda m: f"\n**{m.group(1)}**\n", texto)
+    texto = re.sub(r'<li>([^<]*\$[^<]*)</li>', lambda m: f"- {m.group(1)}\n", texto)
+
     return texto

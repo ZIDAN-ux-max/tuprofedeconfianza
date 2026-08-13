@@ -77,7 +77,7 @@ def normalizar_latex(texto):
     # si una formula (con simbolo $) quedo atrapada dentro de un <h4> o <li>,
     # Streamlit no la renderiza ahi adentro. Quitamos esa etiqueta especifica
     # (solo cuando tiene una formula) para que el LaTeX si se muestre bien.
-    texto = re.sub(r'<h4[^>]*>([^<]*\$[^<]*)</h4>', lambda m: f"\n**{m.group(1)}**\n", texto)
-    texto = re.sub(r'<li>([^<]*\$[^<]*)</li>', lambda m: f"- {m.group(1)}\n", texto)
+    texto = re.sub(r'<h4[^>]*>(.*?\$.*?)</h4>', lambda m: f"\n**{m.group(1)}**\n", texto, flags=re.DOTALL)
+    texto = re.sub(r'<li>(.*?\$.*?)</li>', lambda m: f"- {m.group(1)}\n", texto, flags=re.DOTALL)
 
     return texto

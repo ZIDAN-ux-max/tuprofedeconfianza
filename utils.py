@@ -74,6 +74,16 @@ def normalizar_latex(texto):
     # lineas que son SOLO una formula entre corchetes simples (ej: "[ v(t)=3t+1 ]")
     texto = re.sub(r'(?m)^\s*\[\s*(.+?)\s*\]\s*$', _convertir_linea, texto)
 
+    # bloques \begin{aligned}...\end{aligned} (o align/cases/matrix) que la IA
+    # a veces manda sueltos, sin envolver en $$ $$. Si ya vienen envueltos en
+    # $$, el (?<!\$) / (?!\$) evita tocarlos de nuevo.
+    texto = re.sub(
+        r'(?<!\$)\\begin\{(aligned|align|cases|matrix|pmatrix|bmatrix)\}.*?\\end\{\1\}(?!\$)',
+        lambda m: f"$${m.group(0)}$$",
+        texto,
+        flags=re.DOTALL
+    )
+
     # si una formula (con simbolo $) quedo atrapada dentro de un <h4> o <li>,
     # Streamlit no la renderiza ahi adentro. Quitamos esa etiqueta especifica
     # (solo cuando tiene una formula) para que el LaTeX si se muestre bien.

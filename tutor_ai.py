@@ -183,7 +183,7 @@ def responder_tutor(system_prompt, historial):
     """Llama al modelo principal del tutor con el historial reciente."""
     respuesta = client.chat.completions.create(
         model=MODELO_TUTOR,
-        messages=[{"role": "system", "content": system_prompt}] + historial[-10:]
+        messages=[{"role": "system", "content": system_prompt}] + historial[-6:]
     )
     return respuesta.choices[0].message.content
 

@@ -112,6 +112,16 @@ def registrar_asistencia(usuario_id):
         return 0
 
 
+def limpiar_usuarios_inactivos():
+    """Borra usuarios rotativos (es_fijo=false) que llevan mas de 30 dias
+    sin usar la app, liberando su cupo. No toca a los usuarios fijos."""
+    try:
+        limite = (date.today() - timedelta(days=30)).isoformat()
+        supabase.table("usuarios").delete().eq("es_fijo", False).lt("ultima_visita", limite).execute()
+    except Exception:
+        pass
+
+
 # ===================== ESTADISTICAS / RANKING =====================
 
 def obtener_estadisticas(usuario_id):

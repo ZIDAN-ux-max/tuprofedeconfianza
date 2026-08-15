@@ -93,6 +93,8 @@ if st.session_state.usuario is None:
                     st.error("Ese email ya esta registrado")
                 elif error == "nombre":
                     st.error("Ese nombre ya esta en uso, elige otro (ej: agrega tu apellido)")
+                elif error == "cupo_lleno":
+                    st.error("Ya alcanzamos el maximo de cupos disponibles por ahora. Vuelve a intentarlo mas adelante, se liberan cupos regularmente.")
                 else:
                     st.error("No se pudo completar el registro, intenta de nuevo")
             else:

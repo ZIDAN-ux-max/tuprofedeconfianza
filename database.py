@@ -26,9 +26,14 @@ def registrar(nombre, email, password, edad=None, grado=None, ciclo=None, carrer
     """Crea un usuario nuevo. edad/grado/ciclo/carrera son opcionales pero
     recomendados para que el tutor pueda personalizar mejor sus explicaciones
     y filtrar las materias relevantes.
-    Devuelve (usuario, error): error es None si salio bien, o "email"/"nombre"
-    segun cual de los dos ya estaba en uso (sin importar mayus/minusculas)."""
+    Devuelve (usuario, error): error es None si salio bien, o "email"/"nombre"/
+    "cupo_lleno" segun cual haya fallado."""
     try:
+        limpiar_usuarios_inactivos()
+        total = supabase.table("usuarios").select("id", count="exact").execute()
+        if (total.count or 0) >= 100:
+            return None, "cupo_lleno"
+
         email = email.strip().lower()
         nombre = nombre.strip()
 

@@ -553,3 +553,45 @@ def eliminar_evento(evento_id):
         return True
     except Exception:
         return False
+
+
+# ===================== MI DIA / TAREAS DIARIAS (NUEVO) =====================
+# Lista de tareas de texto libre que cada alumno arma para su propio dia
+# (ej: gym, leer, tender la cama). Personal, no se comparte entre alumnos.
+
+def agregar_tarea(usuario_id, texto, fecha=None):
+    try:
+        supabase.table("tareas_diarias").insert({
+            "usuario_id": usuario_id,
+            "texto": texto.strip(),
+            "fecha": str(fecha) if fecha else str(date.today())
+        }).execute()
+        return True
+    except Exception:
+        return False
+
+
+def listar_tareas_dia(usuario_id, fecha=None):
+    """Devuelve las tareas del alumno para un dia dado (hoy por defecto)."""
+    try:
+        f = str(fecha) if fecha else str(date.today())
+        result = supabase.table("tareas_diarias").select("*").eq("usuario_id", usuario_id).eq("fecha", f).order("creado_en").execute()
+        return result.data
+    except Exception:
+        return []
+
+
+def marcar_tarea(tarea_id, completado):
+    try:
+        supabase.table("tareas_diarias").update({"completado": completado}).eq("id", tarea_id).execute()
+        return True
+    except Exception:
+        return False
+
+
+def eliminar_tarea(tarea_id):
+    try:
+        supabase.table("tareas_diarias").delete().eq("id", tarea_id).execute()
+        return True
+    except Exception:
+        return False

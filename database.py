@@ -595,3 +595,22 @@ def eliminar_tarea(tarea_id):
         return True
     except Exception:
         return False
+
+
+def listar_tareas_rango(usuario_id, fecha_inicio, fecha_fin):
+    """Devuelve todas las tareas del alumno entre dos fechas (inclusive),
+    para armar la tabla semanal y calcular la bateria de cada dia."""
+    try:
+        result = (
+            supabase.table("tareas_diarias")
+            .select("*")
+            .eq("usuario_id", usuario_id)
+            .gte("fecha", str(fecha_inicio))
+            .lte("fecha", str(fecha_fin))
+            .order("fecha")
+            .order("creado_en")
+            .execute()
+        )
+        return result.data
+    except Exception:
+        return []

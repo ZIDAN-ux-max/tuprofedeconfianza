@@ -3,6 +3,7 @@
 su propio dia (ej: gym, leer, tender la cama). Personal, no se comparte
 entre alumnos."""
 from datetime import date, timedelta
+import re
 
 import streamlit as st
 
@@ -161,12 +162,19 @@ def _seccion_semana(usuario):
         </table>
     </div>
     """
-    st.markdown(tabla_html, unsafe_allow_html=True)
+    st.markdown(_minificar(tabla_html), unsafe_allow_html=True)
     st.markdown(
         "<p style='color:rgba(255,255,255,0.4); font-size:0.8em; margin-top:8px;'>"
         "· = no planeada ese dia &nbsp;&nbsp; ✗ = planeada pero no cumplida &nbsp;&nbsp; ✓ = cumplida</p>",
         unsafe_allow_html=True
     )
+
+
+def _minificar(html):
+    """Streamlit corta el HTML largo en las lineas en blanco (las trata como
+    un nuevo bloque de markdown y escapa las etiquetas). Juntamos todo en
+    una sola linea para que se renderice entero como HTML."""
+    return re.sub(r'\s*\n\s*', '', html)
 
 
 def mostrar_tareas(usuario):

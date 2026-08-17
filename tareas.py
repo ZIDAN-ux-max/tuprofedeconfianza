@@ -81,7 +81,7 @@ def _seccion_semana(usuario):
     with st.container(border=True):
         st.markdown("<h3 style='margin-top:0;'>📅 Esta semana</h3>", unsafe_allow_html=True)
 
-        col1, col2 = st.columns([4, 1])
+        col1, col2, col3 = st.columns([3, 2, 1])
         with col1:
             texto = st.text_input(
                 "Agregar tarea",
@@ -90,11 +90,19 @@ def _seccion_semana(usuario):
                 placeholder="Agregar tarea de hoy (ej: gym, leer, tender la cama)"
             )
         with col2:
+            importancia = st.selectbox(
+                "Importancia",
+                ["🟢 Rápida (1pt)", "🟡 Media (2pt)", "🔴 Importante (3pt)"],
+                key="tarea_importancia",
+                label_visibility="collapsed"
+            )
+        with col3:
             if st.button("➕ Agregar", use_container_width=True, key="btn_agregar_semana"):
                 if not texto or not texto.strip():
                     st.warning("Escribe algo primero")
                 else:
-                    agregar_tarea(usuario["id"], texto)
+                    puntos = {"🟢 Rápida (1pt)": 1, "🟡 Media (2pt)": 2, "🔴 Importante (3pt)": 3}[importancia]
+                    agregar_tarea(usuario["id"], texto, puntos=puntos)
                     st.rerun()
 
         if not filas_actividades:

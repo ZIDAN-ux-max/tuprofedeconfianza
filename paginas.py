@@ -25,8 +25,10 @@ def mostrar_ranking(usuario):
             f"<span style='font-size:1.5em'>{medalla}</span>"
             f"<strong style='color:white; margin-left:10px'>{est['nombre']}</strong>"
             f"{etiqueta_tu}"
-            f"<span style='float:right; color:rgba(255,255,255,0.6)'>"
-            f"💬 {est['total']} &nbsp; 🔥 {est['racha']} &nbsp; 🏅 {est['logros']}"
+            f"<span style='float:right; color:#00C9FF; font-weight:bold;'>⭐ {est['puntos']} pts</span>"
+            f"<br>"
+            f"<span style='color:rgba(255,255,255,0.6); font-size:0.85em;'>"
+            f"💬 {est['total']} mensajes &nbsp; ✅ {est['puntos_tareas']}pts tareas &nbsp; 🏅 {est['puntos_logros']}pts logros &nbsp; 🔥 {est['racha']} dias"
             f"</span>"
             f"</div>"
         )

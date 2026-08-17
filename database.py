@@ -559,12 +559,13 @@ def eliminar_evento(evento_id):
 # Lista de tareas de texto libre que cada alumno arma para su propio dia
 # (ej: gym, leer, tender la cama). Personal, no se comparte entre alumnos.
 
-def agregar_tarea(usuario_id, texto, fecha=None):
+def agregar_tarea(usuario_id, texto, fecha=None, puntos=1):
     try:
         supabase.table("tareas_diarias").insert({
             "usuario_id": usuario_id,
             "texto": texto.strip(),
-            "fecha": str(fecha) if fecha else str(date.today())
+            "fecha": str(fecha) if fecha else str(date.today()),
+            "puntos": puntos
         }).execute()
         return True
     except Exception:

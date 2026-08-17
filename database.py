@@ -173,22 +173,53 @@ def obtener_estadisticas(usuario_id):
 
 
 def obtener_ranking():
+    """Ranking combinado: puntos de tareas cumplidas + puntos de logros +
+    una fraccion de los mensajes de chat (para que seguir preguntando siga
+    sumando, sin que aplaste el esfuerzo de la disciplina diaria)."""
     try:
-        result = supabase.table("conversaciones").select("usuario_id").execute()
-        conteo = {}
-        for c in result.data:
+        conv = supabase.table("conversaciones").select("usuario_id").execute()
+        conteo_chat = {}
+        for c in conv.data:
             uid = c["usuario_id"]
-            conteo[uid] = conteo.get(uid, 0) + 1
+            conteo_chat[uid] = conteo_chat.get(uid, 0) + 1
+
+        tareas = supabase.table("tareas_diarias").select("usuario_id, puntos").eq("completado", True).execute()
+        puntos_tareas = {}
+        for t in tareas.data:
+            uid = t["usuario_id"]
+            puntos_tareas[uid] = puntos_tareas.get(uid, 0) + (t.get("puntos") or 1)
+
+        logros_puntos_por_nombre = {l["nombre"]: l.get("puntos", 0) for l in LOGROS_DISPONIBLES}
+        logros = supabase.table("logros").select("usuario_id, nombre").execute()
+        puntos_logros = {}
+        cant_logros = {}
+        for l in logros.data:
+            uid = l["usuario_id"]
+            puntos_logros[uid] = puntos_logros.get(uid, 0) + logros_puntos_por_nombre.get(l["nombre"], 0)
+            cant_logros[uid] = cant_logros.get(uid, 0) + 1
+
+        todos_ids = set(conteo_chat) | set(puntos_tareas) | set(puntos_logros)
+
+        calculado = []
+        for uid in todos_ids:
+            pc = conteo_chat.get(uid, 0) // 3
+            pt = puntos_tareas.get(uid, 0)
+            pl = puntos_logros.get(uid, 0)
+            calculado.append((uid, pc + pt + pl, pc, pt, pl))
+        calculado.sort(key=lambda x: x[1], reverse=True)
+
         ranking = []
-        for uid, total in sorted(conteo.items(), key=lambda x: x[1], reverse=True)[:10]:
+        for uid, total_puntos, pc, pt, pl in calculado[:10]:
             usuario = supabase.table("usuarios").select("nombre, racha").eq("id", uid).execute()
             if usuario.data:
-                logros = supabase.table("logros").select("nombre").eq("usuario_id", uid).execute()
                 ranking.append({
                     "nombre": usuario.data[0]["nombre"],
-                    "total": total,
+                    "total": conteo_chat.get(uid, 0),
                     "racha": usuario.data[0].get("racha", 0),
-                    "logros": len(logros.data)
+                    "logros": cant_logros.get(uid, 0),
+                    "puntos": total_puntos,
+                    "puntos_tareas": pt,
+                    "puntos_logros": pl
                 })
         return ranking
     except Exception:

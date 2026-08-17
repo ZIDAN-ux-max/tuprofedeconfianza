@@ -3,7 +3,7 @@
 import streamlit as st
 import textwrap
 
-from database import obtener_ranking, obtener_logros_usuario
+from database import obtener_ranking, obtener_logros_usuario, obtener_mi_rango, progreso_siguiente_rango
 from logros_data import LOGROS_DISPONIBLES
 from materias_data import EMOJI_MATERIA
 
@@ -131,3 +131,55 @@ def mostrar_estadisticas(stats):
             st.success(f"Excelente! Llevas {stats['hoy']} preguntas hoy. Eres un crack!")
     else:
         st.info("Aun no tienes estadisticas. Ve al chat y empieza!")
+
+
+def mostrar_mi_rango(usuario):
+    st.markdown("<h1 style='text-align:center;'>🏅 Mi Rango</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<p style='text-align:center; color:rgba(255,255,255,0.6)'>Tu progreso trimestral de disciplina y estudio</p>",
+        unsafe_allow_html=True
+    )
+    st.divider()
+
+    datos = obtener_mi_rango(usuario["id"])
+    nombres_trimestre = {1: "Ene-Mar", 2: "Abr-Jun", 3: "Jul-Sep", 4: "Oct-Dic"}
+
+    st.markdown(
+        f"<div style='background:rgba(255,255,255,0.05); border:1px solid rgba(0,201,255,0.3); "
+        f"border-radius:16px; padding:25px; text-align:center;'>"
+        f"<div style='font-size:2.5em;'>{datos['rango']}</div>"
+        f"<div style='color:rgba(255,255,255,0.6); margin-top:5px;'>Trimestre {nombres_trimestre[datos['trimestre']]} {datos['anio']}</div>"
+        f"<div style='font-size:1.8em; color:#00C9FF; font-weight:bold; margin-top:10px;'>{datos['puntos']} pts</div>"
+        f"</div>",
+        unsafe_allow_html=True
+    )
+
+    st.write("")
+    siguiente = progreso_siguiente_rango(datos["puntos"])
+    if siguiente:
+        faltan, proximo = siguiente
+        st.markdown(
+            f"<p style='text-align:center; color:rgba(255,255,255,0.7)'>"
+            f"Te faltan <strong style='color:#00C9FF;'>{faltan} pts</strong> para llegar a {proximo}</p>",
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            "<p style='text-align:center; color:rgba(255,255,255,0.7)'>"
+            "Llegaste al rango maximo de este trimestre 🎉</p>",
+            unsafe_allow_html=True
+        )
+
+    if datos["historial"]:
+        st.write("")
+        st.markdown("<h3>Historial de trimestres</h3>", unsafe_allow_html=True)
+        for h in reversed(datos["historial"]):
+            st.markdown(
+                f"<div style='background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); "
+                f"border-radius:12px; padding:12px 18px; margin-bottom:6px; "
+                f"display:flex; justify-content:space-between; align-items:center;'>"
+                f"<span style='color:white;'>{nombres_trimestre.get(h['trimestre'], '')} {h['anio']}</span>"
+                f"<span style='color:rgba(255,255,255,0.8);'>{h['rango']} · {h['puntos_totales']} pts</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )

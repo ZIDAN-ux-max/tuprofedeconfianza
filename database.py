@@ -646,3 +646,132 @@ def listar_tareas_rango(usuario_id, fecha_inicio, fecha_fin):
         return result.data
     except Exception:
         return []
+
+
+# ===================== MI RANGO (TRIMESTRAL) =====================
+# Rango personal que sube cada trimestre segun los puntos acumulados
+# (tareas + logros + chat, la misma formula que el Ranking general pero
+# filtrada solo a las fechas de ese trimestre).
+
+RANGOS_TRIMESTRE = [
+    (0, "🥉 Bronce"),
+    (100, "🥈 Cobre"),
+    (250, "🥇 Oro"),
+    (500, "💎 Platino"),
+    (1000, "👑 Diamante"),
+]
+
+
+def calcular_rango(puntos):
+    rango = RANGOS_TRIMESTRE[0][1]
+    for umbral, nombre in RANGOS_TRIMESTRE:
+        if puntos >= umbral:
+            rango = nombre
+    return rango
+
+
+def progreso_siguiente_rango(puntos):
+    """Devuelve (puntos_que_faltan, nombre_siguiente_rango), o None si ya
+    esta en el rango maximo de este trimestre."""
+    for umbral, nombre in RANGOS_TRIMESTRE:
+        if puntos < umbral:
+            return umbral - puntos, nombre
+    return None
+
+
+def _limites_trimestre(anio, trimestre):
+    primer_mes = (trimestre - 1) * 3 + 1
+    inicio = date(anio, primer_mes, 1)
+    if primer_mes + 3 > 12:
+        fin = date(anio, 12, 31)
+    else:
+        fin = date(anio, primer_mes + 3, 1) - timedelta(days=1)
+    return inicio, fin
+
+
+def obtener_puntos_trimestre(usuario_id, fecha_inicio, fecha_fin):
+    """Suma los puntos (chat/3 + tareas cumplidas + logros) de un usuario
+    dentro de un rango de fechas, para calcular su rango de ese trimestre."""
+    try:
+        fin_dia_completo = f"{fecha_fin}T23:59:59"
+
+        conv = (
+            supabase.table("conversaciones").select("id")
+            .eq("usuario_id", usuario_id)
+            .gte("fecha", str(fecha_inicio)).lte("fecha", fin_dia_completo)
+            .execute()
+        )
+        puntos_chat = len(conv.data) // 3
+
+        tareas = (
+            supabase.table("tareas_diarias").select("puntos")
+            .eq("usuario_id", usuario_id).eq("completado", True)
+            .gte("fecha", str(fecha_inicio)).lte("fecha", str(fecha_fin))
+            .execute()
+        )
+        puntos_tareas = sum((t.get("puntos") or 1) for t in tareas.data)
+
+        logros_puntos_por_nombre = {l["nombre"]: l.get("puntos", 0) for l in LOGROS_DISPONIBLES}
+        logros = (
+            supabase.table("logros").select("nombre")
+            .eq("usuario_id", usuario_id)
+            .gte("fecha", str(fecha_inicio)).lte("fecha", fin_dia_completo)
+            .execute()
+        )
+        puntos_logros = sum(logros_puntos_por_nombre.get(l["nombre"], 0) for l in logros.data)
+
+        return puntos_chat + puntos_tareas + puntos_logros
+    except Exception:
+        return 0
+
+
+def obtener_mi_rango(usuario_id):
+    """Progreso del trimestre actual (puntos + rango en vivo) mas el
+    historial de trimestres ya cerrados. Si detecta que el trimestre
+    anterior nunca se guardo, lo cierra solo en este momento (sin cron,
+    igual que la limpieza de cupos vencidos)."""
+    hoy = date.today()
+    trimestre_actual = (hoy.month - 1) // 3 + 1
+    anio_actual = hoy.year
+
+    try:
+        historial = (
+            supabase.table("rangos_historial").select("*")
+            .eq("usuario_id", usuario_id)
+            .order("anio").order("trimestre")
+            .execute().data
+        )
+    except Exception:
+        historial = []
+
+    anio_prev, trim_prev = (anio_actual, trimestre_actual - 1) if trimestre_actual > 1 else (anio_actual - 1, 4)
+    ya_guardado = any(h["anio"] == anio_prev and h["trimestre"] == trim_prev for h in historial)
+
+    if not ya_guardado:
+        inicio_prev, fin_prev = _limites_trimestre(anio_prev, trim_prev)
+        if fin_prev < hoy:
+            puntos_prev = obtener_puntos_trimestre(usuario_id, inicio_prev, fin_prev)
+            rango_prev = calcular_rango(puntos_prev)
+            try:
+                supabase.table("rangos_historial").insert({
+                    "usuario_id": usuario_id,
+                    "anio": anio_prev,
+                    "trimestre": trim_prev,
+                    "puntos_totales": puntos_prev,
+                    "rango": rango_prev
+                }).execute()
+                historial.append({"anio": anio_prev, "trimestre": trim_prev, "puntos_totales": puntos_prev, "rango": rango_prev})
+            except Exception:
+                pass
+
+    inicio_actual, _ = _limites_trimestre(anio_actual, trimestre_actual)
+    puntos_actual = obtener_puntos_trimestre(usuario_id, inicio_actual, hoy)
+    rango_actual = calcular_rango(puntos_actual)
+
+    return {
+        "anio": anio_actual,
+        "trimestre": trimestre_actual,
+        "puntos": puntos_actual,
+        "rango": rango_actual,
+        "historial": historial
+    }

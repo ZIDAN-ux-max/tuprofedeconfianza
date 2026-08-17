@@ -16,7 +16,7 @@ from formulario import mostrar_formulario, renderizar_generador_formulario
 from calendario import mostrar_calendario
 from tareas import mostrar_tareas
 from revision import mostrar_revision
-from paginas import mostrar_ranking, mostrar_acerca_de, mostrar_logros, mostrar_estadisticas
+from paginas import mostrar_ranking, mostrar_acerca_de, mostrar_logros, mostrar_estadisticas, mostrar_mi_rango
 from materias_data import CARRERAS_DISPONIBLES, materias_de_carrera
 
 st.set_page_config(
@@ -116,7 +116,7 @@ else:
         st.markdown(f"<span style='background:{nivel_color}; color:white; padding:3px 10px; border-radius:20px; font-size:0.85em'>{nivel}</span>", unsafe_allow_html=True)
         st.markdown(f"<p style='color:#F59E0B; font-weight:bold; margin-top:8px'>🔥 Racha: {racha} dias</p>", unsafe_allow_html=True)
         st.divider()
-        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Revisa mi Solucion", "Documentos", "Formulario", "Calendario", "Mi Dia", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
+        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Revisa mi Solucion", "Documentos", "Formulario", "Calendario", "Mi Dia", "Mi Rango", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
         st.divider()
         curso_elegido = None
         if seccion == "Chat":
@@ -161,6 +161,8 @@ else:
         mostrar_calendario(usuario)
     elif seccion == "Mi Dia":
         mostrar_tareas(usuario)
+    elif seccion == "Mi Rango":
+        mostrar_mi_rango(usuario)
     elif seccion == "Revisa mi Solucion":
         mostrar_revision(usuario)
     elif seccion == "Ranking":

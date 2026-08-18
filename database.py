@@ -396,11 +396,19 @@ def obtener_url_documento(storage_path):
         return None
 
 
-def listar_cursos(materia_general):
-    """Devuelve la lista de cursos unicos ya creados para una materia,
-    para poder mostrarlos como sugerencia al subir o elegir curso."""
+def listar_cursos(materia_general, universidad=None, ciclo=None):
+    """Devuelve la lista de cursos unicos ya creados para una materia, para
+    poder mostrarlos como sugerencia al subir o elegir curso. Si se pasan
+    universidad/ciclo, filtra solo a los cursos de esa universidad y ciclo
+    (para que el selector del Chat no mezcle documentos de otras
+    universidades que casualmente pusieron el mismo nombre de curso)."""
     try:
-        result = supabase.table("documentos").select("curso").eq("materia_general", materia_general).execute()
+        query = supabase.table("documentos").select("curso").eq("materia_general", materia_general)
+        if universidad:
+            query = query.eq("universidad", universidad)
+        if ciclo:
+            query = query.eq("ciclo", ciclo)
+        result = query.execute()
         cursos = sorted(set(d["curso"] for d in result.data))
         return cursos
     except Exception:

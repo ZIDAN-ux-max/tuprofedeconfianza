@@ -129,7 +129,13 @@ else:
             materias_alumno = materias_de_carrera(usuario.get("carrera"))
             modo = st.radio("Que quieres estudiar?", materias_alumno)
 
-            cursos_disponibles = listar_cursos(modo)
+            cursos_disponibles = listar_cursos(modo, universidad=usuario.get("universidad"))
+            if not cursos_disponibles and usuario.get("universidad"):
+                # fallback: si todavia no hay documentos etiquetados con tu
+                # universidad (por ejemplo los subidos antes de este cambio),
+                # mostramos todos los cursos de la materia para no dejarte
+                # sin nada util.
+                cursos_disponibles = listar_cursos(modo)
             if cursos_disponibles:
                 key_selector = f"curso_selector_{modo}"
                 # Si el alumno todavia no eligio nada a mano y solo hay un

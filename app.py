@@ -125,9 +125,20 @@ else:
 
             cursos_disponibles = listar_cursos(modo)
             if cursos_disponibles:
+                key_selector = f"curso_selector_{modo}"
+                # Si el alumno todavia no eligio nada a mano y solo hay un
+                # curso subido para esta materia, lo dejamos puesto de una
+                # (para que no tenga que re-seleccionarlo cada vez que la
+                # pagina se recarga). Con key= aqui, Streamlit ademas
+                # recuerda la eleccion durante toda la sesion en vez de
+                # resetearla a "Sin curso especifico" en cada rerun.
+                if key_selector not in st.session_state and len(cursos_disponibles) == 1:
+                    st.session_state[key_selector] = cursos_disponibles[0]
+
                 seleccion_curso = st.selectbox(
                     "📚 Curso (opcional)",
                     ["Sin curso especifico"] + cursos_disponibles,
+                    key=key_selector,
                     help="El tutor usara tus documentos de ese curso como contexto"
                 )
                 curso_elegido = None if seleccion_curso == "Sin curso especifico" else seleccion_curso

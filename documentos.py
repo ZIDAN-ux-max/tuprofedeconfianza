@@ -32,6 +32,12 @@ def _seccion_subir(usuario):
             curso = seleccion
 
         ciclo = st.text_input("Ciclo (opcional, ej: 2026-1)", key="doc_ciclo")
+        universidad = st.text_input(
+            "Universidad o instituto (opcional)",
+            value=usuario.get("universidad") or "",
+            key="doc_universidad",
+            help="Para que el Chat solo te muestre documentos de tu misma universidad, no mezclados con los de otras"
+        )
 
     with col_archivos:
         archivos = st.file_uploader("Selecciona uno o varios PDFs", type=["pdf"], accept_multiple_files=True, key="doc_archivos")
@@ -48,7 +54,7 @@ def _seccion_subir(usuario):
                 bytes_pdf = archivo.getvalue()
                 texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
                 if texto:
-                    ok = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo)
+                    ok = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo, universidad=universidad)
                     if ok:
                         subidos += 1
                 progreso.progress((i + 1) / len(archivos))

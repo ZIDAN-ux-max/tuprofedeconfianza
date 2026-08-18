@@ -328,13 +328,15 @@ def _sanear_para_storage(texto):
     return texto.strip("_") or "archivo"
 
 
-def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None):
+def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None):
     """Guarda el documento (metadata + texto), lo parte en fragmentos pequenos
     (documento_chunks) para busqueda por relevancia, y si se paso el PDF
     original en bytes, lo sube a Supabase Storage para poder descargarlo
-    despues desde la biblioteca. 'ciclo' es solo una etiqueta opcional para
-    filtrar en la biblioteca (ej: '2026-1') - no afecta la busqueda del
-    tutor, que sigue siendo por materia+curso."""
+    despues desde la biblioteca. 'ciclo' y 'universidad' son etiquetas para
+    filtrar en la biblioteca y en el selector de curso del Chat (asi no se
+    mezclan documentos de distintas universidades con el mismo nombre de
+    curso) - no afectan la busqueda del tutor en si, que sigue siendo por
+    materia+curso."""
     try:
         curso = curso.strip()
         storage_path = None
@@ -356,6 +358,7 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
             "materia_general": materia_general,
             "curso": curso,
             "ciclo": ciclo.strip() if ciclo else None,
+            "universidad": universidad.strip() if universidad else None,
             "nombre_archivo": nombre_archivo,
             "contenido_texto": contenido_texto,
             "subido_por": subido_por,

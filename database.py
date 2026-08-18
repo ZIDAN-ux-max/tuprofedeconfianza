@@ -22,10 +22,11 @@ def login(email, password):
     return None
 
 
-def registrar(nombre, email, password, edad=None, grado=None, ciclo=None, carrera=None):
-    """Crea un usuario nuevo. edad/grado/ciclo/carrera son opcionales pero
-    recomendados para que el tutor pueda personalizar mejor sus explicaciones
-    y filtrar las materias relevantes.
+def registrar(nombre, email, password, edad=None, grado=None, ciclo=None, carrera=None, universidad=None):
+    """Crea un usuario nuevo. edad/grado/ciclo/carrera/universidad son
+    opcionales pero recomendados para que el tutor pueda personalizar mejor
+    sus explicaciones, filtrar las materias relevantes, y para que el Chat
+    solo muestre documentos de la propia universidad y ciclo del alumno.
     Devuelve (usuario, error): error es None si salio bien, o "email"/"nombre"/
     "cupo_lleno" segun cual haya fallado."""
     try:
@@ -55,6 +56,8 @@ def registrar(nombre, email, password, edad=None, grado=None, ciclo=None, carrer
             payload["ciclo"] = ciclo
         if carrera:
             payload["carrera"] = carrera
+        if universidad:
+            payload["universidad"] = universidad.strip()
         result = supabase.table("usuarios").insert(payload).execute()
         return result.data[0], None
     except Exception:

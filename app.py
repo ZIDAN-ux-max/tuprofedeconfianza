@@ -79,14 +79,20 @@ if st.session_state.usuario is None:
             )
             ciclo_reg = None
             carrera_reg = None
+            universidad_reg = None
         else:
             grado_reg = nivel_reg
             ciclo_reg = st.selectbox("Ciclo", [str(n) for n in range(1, 11)], key="reg_ciclo")
             carrera_reg = st.selectbox("Carrera (para mostrarte las materias correctas)", CARRERAS_DISPONIBLES, key="reg_carrera")
+            universidad_reg = st.text_input(
+                "Universidad o instituto",
+                key="reg_universidad",
+                help="Asi solo veras los documentos de tu propia universidad y ciclo, no mezclados con los de otras"
+            )
 
         if st.button("Registrarse", use_container_width=True):
             if nombre and email_reg and password_reg:
-                usuario, error = registrar(nombre, email_reg, password_reg, edad=edad_reg, grado=grado_reg, ciclo=ciclo_reg, carrera=carrera_reg)
+                usuario, error = registrar(nombre, email_reg, password_reg, edad=edad_reg, grado=grado_reg, ciclo=ciclo_reg, carrera=carrera_reg, universidad=universidad_reg)
                 if usuario:
                     st.session_state.usuario = usuario
                     st.rerun()

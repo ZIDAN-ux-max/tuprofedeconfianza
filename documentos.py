@@ -5,7 +5,7 @@ usarlos como contexto extra para el tutor en el Chat."""
 import io
 import streamlit as st
 
-from database import guardar_documento, listar_cursos, listar_documentos, listar_ciclos, listar_carreras, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
+from database import guardar_documento, listar_cursos, listar_documentos, listar_ciclos, listar_carreras, usuario_subio_documento, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
 from utils import extraer_texto_pdf
 from materias_data import MATERIAS_DISPONIBLES
 
@@ -88,6 +88,11 @@ def _seccion_subir(usuario):
 def _seccion_explorar(usuario):
     st.markdown("### 📚 Biblioteca")
     es_admin = bool(usuario.get("es_admin"))
+
+    if not es_admin and not usuario_subio_documento(usuario["nombre"]):
+        st.info("📤 Sube al menos un documento tuyo (con contenido real) para desbloquear la biblioteca de todos. Ve a la pestaña 'Subir'.")
+        return
+
     materia_filtro = st.radio("Filtrar por materia", ["Todas"] + MATERIAS_DISPONIBLES, horizontal=True, key="doc_filtro")
     materia_query = None if materia_filtro == "Todas" else materia_filtro
 

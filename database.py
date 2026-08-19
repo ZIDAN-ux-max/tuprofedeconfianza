@@ -434,6 +434,17 @@ def listar_cursos(materia_general, universidad=None, ciclo=None):
         return []
 
 
+def usuario_subio_documento(nombre_usuario):
+    """True si este usuario ya subio al menos un documento valido (paso el
+    filtro de contenido minimo). Se usa para desbloquear la Biblioteca:
+    incentiva a que suban material antes de poder ver el de los demas."""
+    try:
+        result = supabase.table("documentos").select("id").eq("subido_por", nombre_usuario).limit(1).execute()
+        return bool(result.data)
+    except Exception:
+        return False
+
+
 def listar_documentos(materia_general=None, ciclo=None, carrera=None):
     """Lista todos los documentos, opcionalmente filtrados por materia y/o
     ciclo y/o carrera, agrupables luego por curso en la UI."""

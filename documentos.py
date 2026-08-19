@@ -38,6 +38,12 @@ def _seccion_subir(usuario):
             key="doc_universidad",
             help="Para que el Chat solo te muestre documentos de tu misma universidad, no mezclados con los de otras"
         )
+        carrera = st.text_input(
+            "Carrera (opcional, ej: Ing. Civil, Medicina)",
+            value=usuario.get("carrera") or "",
+            key="doc_carrera",
+            help="Para ordenar la biblioteca y no mezclar documentos de otras carreras"
+        )
 
     with col_archivos:
         archivos = st.file_uploader("Selecciona uno o varios PDFs", type=["pdf"], accept_multiple_files=True, key="doc_archivos")
@@ -50,20 +56,28 @@ def _seccion_subir(usuario):
         else:
             progreso = st.progress(0)
             subidos = 0
+            duplicados = 0
+            fallidos = 0
             for i, archivo in enumerate(archivos):
                 bytes_pdf = archivo.getvalue()
                 texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
                 if texto:
-                    ok = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo, universidad=universidad)
-                    if ok:
+                    resultado = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo, universidad=universidad, carrera=carrera)
+                    if resultado == "ok":
                         subidos += 1
+                    elif resultado == "duplicado":
+                        duplicados += 1
+                    else:
+                        fallidos += 1
+                else:
+                    fallidos += 1
                 progreso.progress((i + 1) / len(archivos))
-            if subidos == len(archivos):
-                st.success(f"Se subieron los {subidos} documentos a '{curso}' correctamente")
-            elif subidos > 0:
-                st.warning(f"Se subieron {subidos} de {len(archivos)} documentos. Algunos fallaron (revisa que no sean PDFs escaneados sin texto).")
-            else:
-                st.error("No se pudo subir ningun documento. Verifica que los PDFs tengan texto seleccionable (no solo imagenes escaneadas).")
+            if subidos:
+                st.success(f"Se subieron {subidos} documento(s) a '{curso}' correctamente")
+            if duplicados:
+                st.info(f"{duplicados} documento(s) no se subieron porque ya existían (mismo contenido, aunque el nombre del archivo sea distinto)")
+            if fallidos:
+                st.error(f"{fallidos} documento(s) fallaron. Verifica que los PDFs tengan texto seleccionable (no solo imagenes escaneadas).")
 
 
 def _seccion_explorar(usuario):

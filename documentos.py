@@ -5,7 +5,7 @@ usarlos como contexto extra para el tutor en el Chat."""
 import io
 import streamlit as st
 
-from database import guardar_documento, listar_cursos, listar_documentos, listar_ciclos, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
+from database import guardar_documento, listar_cursos, listar_documentos, listar_ciclos, listar_carreras, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
 from utils import extraer_texto_pdf
 from materias_data import MATERIAS_DISPONIBLES
 
@@ -86,13 +86,21 @@ def _seccion_explorar(usuario):
     materia_filtro = st.radio("Filtrar por materia", ["Todas"] + MATERIAS_DISPONIBLES, horizontal=True, key="doc_filtro")
     materia_query = None if materia_filtro == "Todas" else materia_filtro
 
-    ciclos_disponibles = listar_ciclos(materia_query)
-    ciclo_query = None
-    if ciclos_disponibles:
-        ciclo_filtro = st.selectbox("Filtrar por ciclo", ["Todos"] + ciclos_disponibles, key="doc_filtro_ciclo")
-        ciclo_query = None if ciclo_filtro == "Todos" else ciclo_filtro
+    col_ciclo, col_carrera = st.columns(2)
+    with col_ciclo:
+        ciclos_disponibles = listar_ciclos(materia_query)
+        ciclo_query = None
+        if ciclos_disponibles:
+            ciclo_filtro = st.selectbox("Filtrar por ciclo", ["Todos"] + ciclos_disponibles, key="doc_filtro_ciclo")
+            ciclo_query = None if ciclo_filtro == "Todos" else ciclo_filtro
+    with col_carrera:
+        carreras_disponibles = listar_carreras(materia_query)
+        carrera_query = None
+        if carreras_disponibles:
+            carrera_filtro = st.selectbox("Filtrar por carrera", ["Todas"] + carreras_disponibles, key="doc_filtro_carrera")
+            carrera_query = None if carrera_filtro == "Todas" else carrera_filtro
 
-    documentos = listar_documentos(materia_query, ciclo_query)
+    documentos = listar_documentos(materia_query, ciclo_query, carrera_query)
     if not documentos:
         st.info("Todavia no hay documentos subidos. Sube el primero arriba.")
         return
@@ -100,7 +108,8 @@ def _seccion_explorar(usuario):
     por_curso = {}
     for doc in documentos:
         etiqueta_ciclo = f" ({doc['ciclo']})" if doc.get("ciclo") else ""
-        clave = f"{doc['materia_general']} - {doc['curso']}{etiqueta_ciclo}"
+        etiqueta_carrera = f" [{doc['carrera']}]" if doc.get("carrera") else ""
+        clave = f"{doc['materia_general']} - {doc['curso']}{etiqueta_ciclo}{etiqueta_carrera}"
         por_curso.setdefault(clave, []).append(doc)
 
     for carpeta, docs in sorted(por_curso.items()):

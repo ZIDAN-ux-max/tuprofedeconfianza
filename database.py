@@ -6,7 +6,7 @@ import unicodedata
 from datetime import datetime, timedelta, date
 from supabase import create_client
 
-from utils import hash_password, dividir_en_fragmentos
+from utils import hash_password, dividir_en_fragmentos, hash_texto
 from logros_data import LOGROS_DISPONIBLES
 
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_SERVICE_KEY"])
@@ -328,18 +328,27 @@ def _sanear_para_storage(texto):
     return texto.strip("_") or "archivo"
 
 
-def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None):
+def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None, carrera=None):
     """Guarda el documento (metadata + texto), lo parte en fragmentos pequenos
     (documento_chunks) para busqueda por relevancia, y si se paso el PDF
     original en bytes, lo sube a Supabase Storage para poder descargarlo
-    despues desde la biblioteca. 'ciclo' y 'universidad' son etiquetas para
-    filtrar en la biblioteca y en el selector de curso del Chat (asi no se
-    mezclan documentos de distintas universidades con el mismo nombre de
-    curso) - no afectan la busqueda del tutor en si, que sigue siendo por
-    materia+curso."""
+    despues desde la biblioteca. 'ciclo', 'universidad' y 'carrera' son
+    etiquetas para filtrar en la biblioteca y en el selector de curso del
+    Chat (asi no se mezclan documentos de distintas universidades/carreras
+    con el mismo nombre de curso) - no afectan la busqueda del tutor en si,
+    que sigue siendo por materia+curso.
+
+    Devuelve "ok" si se guardo, "duplicado" si ya existia un documento con
+    el mismo contenido (mismo texto, aunque cambie el nombre del archivo),
+    o False si fallo la subida."""
     try:
         curso = curso.strip()
         storage_path = None
+        contenido_hash = hash_texto(contenido_texto)
+
+        ya_existe = supabase.table("documentos").select("id").eq("contenido_hash", contenido_hash).limit(1).execute()
+        if ya_existe.data:
+            return "duplicado"
 
         if archivo_bytes:
             import uuid
@@ -359,8 +368,10 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
             "curso": curso,
             "ciclo": ciclo.strip() if ciclo else None,
             "universidad": universidad.strip() if universidad else None,
+            "carrera": carrera.strip() if carrera else None,
             "nombre_archivo": nombre_archivo,
             "contenido_texto": contenido_texto,
+            "contenido_hash": contenido_hash,
             "subido_por": subido_por,
             "storage_path": storage_path
         }).execute()
@@ -379,7 +390,7 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
         ]
         if filas_chunks:
             supabase.table("documento_chunks").insert(filas_chunks).execute()
-        return True
+        return "ok"
     except Exception:
         return False
 
@@ -415,15 +426,17 @@ def listar_cursos(materia_general, universidad=None, ciclo=None):
         return []
 
 
-def listar_documentos(materia_general=None, ciclo=None):
+def listar_documentos(materia_general=None, ciclo=None, carrera=None):
     """Lista todos los documentos, opcionalmente filtrados por materia y/o
-    ciclo, agrupables luego por curso en la UI."""
+    ciclo y/o carrera, agrupables luego por curso en la UI."""
     try:
-        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, nombre_archivo, subido_por, fecha_subida, storage_path")
+        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, carrera, nombre_archivo, subido_por, fecha_subida, storage_path")
         if materia_general:
             query = query.eq("materia_general", materia_general)
         if ciclo:
             query = query.eq("ciclo", ciclo)
+        if carrera:
+            query = query.eq("carrera", carrera)
         result = query.order("curso").execute()
         return result.data
     except Exception:
@@ -439,6 +452,19 @@ def listar_ciclos(materia_general=None):
             query = query.eq("materia_general", materia_general)
         result = query.execute()
         return sorted(set(d["ciclo"] for d in result.data if d.get("ciclo")))
+    except Exception:
+        return []
+
+
+def listar_carreras(materia_general=None):
+    """Devuelve la lista de carreras unicas ya usadas (ej: 'Ing. Civil'),
+    para mostrarlas como filtro en la biblioteca."""
+    try:
+        query = supabase.table("documentos").select("carrera")
+        if materia_general:
+            query = query.eq("materia_general", materia_general)
+        result = query.execute()
+        return sorted(set(d["carrera"] for d in result.data if d.get("carrera")))
     except Exception:
         return []
 

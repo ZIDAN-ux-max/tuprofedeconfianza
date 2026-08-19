@@ -11,6 +11,10 @@ from logros_data import LOGROS_DISPONIBLES
 
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_SERVICE_KEY"])
 
+MIN_CARACTERES_DOCUMENTO = 300  # ~50-60 palabras. Filtra portadas sueltas, hojas
+# casi en blanco o PDFs sin contenido real; un examen o apunte normal de 1 pagina
+# ya supera esto de sobra.
+
 
 # ===================== USUARIOS =====================
 
@@ -340,9 +344,13 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
 
     Devuelve "ok" si se guardo, "duplicado" si ya existia un documento con
     el mismo contenido (mismo texto, aunque cambie el nombre del archivo),
-    o False si fallo la subida."""
+    "vacio" si el texto extraido es muy corto para ser un documento real
+    (menos de MIN_CARACTERES_DOCUMENTO caracteres, ej: portada suelta o
+    PDF casi en blanco), o False si fallo la subida."""
     try:
         curso = curso.strip()
+        if len((contenido_texto or "").strip()) < MIN_CARACTERES_DOCUMENTO:
+            return "vacio"
         storage_path = None
         contenido_hash = hash_texto(contenido_texto)
 

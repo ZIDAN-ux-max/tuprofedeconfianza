@@ -57,6 +57,7 @@ def _seccion_subir(usuario):
             progreso = st.progress(0)
             subidos = 0
             duplicados = 0
+            vacios = 0
             fallidos = 0
             for i, archivo in enumerate(archivos):
                 bytes_pdf = archivo.getvalue()
@@ -67,6 +68,8 @@ def _seccion_subir(usuario):
                         subidos += 1
                     elif resultado == "duplicado":
                         duplicados += 1
+                    elif resultado == "vacio":
+                        vacios += 1
                     else:
                         fallidos += 1
                 else:
@@ -76,6 +79,8 @@ def _seccion_subir(usuario):
                 st.success(f"Se subieron {subidos} documento(s) a '{curso}' correctamente")
             if duplicados:
                 st.info(f"{duplicados} documento(s) no se subieron porque ya existían (mismo contenido, aunque el nombre del archivo sea distinto)")
+            if vacios:
+                st.warning(f"{vacios} documento(s) no se subieron porque tienen muy poco contenido (portada suelta, hoja casi en blanco, etc.)")
             if fallidos:
                 st.error(f"{fallidos} documento(s) fallaron. Verifica que los PDFs tengan texto seleccionable (no solo imagenes escaneadas).")
 

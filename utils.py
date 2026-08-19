@@ -10,6 +10,12 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 
+def hash_texto(texto):
+    """Genera un hash SHA-256 del contenido de texto de un documento, para
+    detectar duplicados aunque el archivo se haya subido con otro nombre."""
+    return hashlib.sha256(texto.strip().encode()).hexdigest()
+
+
 def extraer_texto_pdf(archivo, max_caracteres=3000):
     """Extrae texto de un PDF. Por defecto solo 3000 caracteres (uso rapido
     en el chat), pero la biblioteca de documentos pide mucho mas

@@ -292,6 +292,19 @@ def obtener_perfil_alumno(usuario_id, materia):
     }
 
 
+def obtener_temas_debiles(usuario_id, materias):
+    """Junta los temas_dificiles guardados en el perfil del alumno para
+    cada una de sus materias. Devuelve {materia: [temas]} solo con las
+    materias que tienen al menos un tema dificil registrado."""
+    resultado = {}
+    for materia in materias:
+        perfil = obtener_perfil_alumno(usuario_id, materia)
+        temas = perfil.get("temas_dificiles") or []
+        if temas:
+            resultado[materia] = temas
+    return resultado
+
+
 def guardar_perfil_alumno(usuario_id, materia, perfil):
     """Crea o actualiza (upsert) el perfil de progreso del alumno en una materia."""
     try:

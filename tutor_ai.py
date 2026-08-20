@@ -55,6 +55,8 @@ Guia rapida de sonidos que se prestan a confusion (usa siempre esta
 aproximacion, no la mezcles con IPA ni inventes otra):
 - "wh" (what, why, when, white) -> sonido "u", NUNCA "j": what's up -> "uats-ap"
   (no "juats-ap"), why -> "uai", when -> "uen"
+  EJEMPLO DE ERROR A EVITAR: escribir "juáts" para "what's" esta MAL, la
+  forma correcta es "uats" (sin ninguna j al inicio)
 - "th" sin vibrar (think, three, math) -> aproximar como "z" o "s" fuerte:
   think -> "zink"
 - "th" vibrando (this, that, the) -> aproximar como "d": this -> "dis"

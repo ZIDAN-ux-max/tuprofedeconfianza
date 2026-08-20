@@ -6,7 +6,7 @@ import io
 import streamlit as st
 
 from database import guardar_documento, listar_cursos, listar_documentos, listar_ciclos, listar_carreras, usuario_subio_documento, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
-from utils import extraer_texto_pdf
+from utils import extraer_texto_pdf, extraer_texto_pptx
 from materias_data import MATERIAS_DISPONIBLES
 
 LIMITE_CARACTERES_DOCUMENTO = 60000  # ~20 paginas por archivo. Ya no se manda todo al tutor de una:
@@ -46,7 +46,7 @@ def _seccion_subir(usuario):
         )
 
     with col_archivos:
-        archivos = st.file_uploader("Selecciona uno o varios PDFs", type=["pdf"], accept_multiple_files=True, key="doc_archivos")
+        archivos = st.file_uploader("Selecciona uno o varios PDFs o PPTX", type=["pdf", "pptx"], accept_multiple_files=True, key="doc_archivos")
 
     if st.button("Subir a la biblioteca", use_container_width=True):
         if not curso or not curso.strip():
@@ -61,7 +61,10 @@ def _seccion_subir(usuario):
             fallidos = 0
             for i, archivo in enumerate(archivos):
                 bytes_pdf = archivo.getvalue()
-                texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
+                if archivo.name.lower().endswith(".pptx"):
+                    texto = extraer_texto_pptx(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
+                else:
+                    texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
                 if texto:
                     resultado = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo, universidad=universidad, carrera=carrera)
                     if resultado == "ok":
@@ -82,7 +85,7 @@ def _seccion_subir(usuario):
             if vacios:
                 st.warning(f"{vacios} documento(s) no se subieron porque tienen muy poco contenido (portada suelta, hoja casi en blanco, etc.)")
             if fallidos:
-                st.error(f"{fallidos} documento(s) fallaron. Verifica que los PDFs tengan texto seleccionable (no solo imagenes escaneadas).")
+                st.error(f"{fallidos} documento(s) fallaron. Verifica que el PDF tenga texto seleccionable (no solo imagenes escaneadas) o que el PPTX no este dañado.")
 
 
 def _seccion_explorar(usuario):
@@ -167,9 +170,9 @@ def _seccion_explorar(usuario):
                 with col3:
                     url_pdf = obtener_url_documento(doc.get("storage_path"))
                     if url_pdf:
-                        st.markdown(f"[📄 Abrir PDF]({url_pdf})")
+                        st.markdown(f"[📄 Abrir archivo]({url_pdf})")
                     else:
-                        st.markdown("<span style='color:rgba(255,255,255,0.4); font-size:0.85em'>Sin PDF guardado</span>", unsafe_allow_html=True)
+                        st.markdown("<span style='color:rgba(255,255,255,0.4); font-size:0.85em'>Sin archivo guardado</span>", unsafe_allow_html=True)
                 if es_admin:
                     with col4:
                         if st.button("🗑️", key=f"del_doc_{doc['id']}", help="Eliminar este documento"):

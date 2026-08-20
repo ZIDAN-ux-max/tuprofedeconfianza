@@ -3,6 +3,7 @@
 import hashlib
 import io
 import PyPDF2
+from pptx import Presentation
 
 
 def hash_password(password):
@@ -25,6 +26,29 @@ def extraer_texto_pdf(archivo, max_caracteres=3000):
         texto = ""
         for page in pdf_reader.pages:
             texto += page.extract_text()
+        return texto[:max_caracteres]
+    except Exception:
+        return None
+
+
+def extraer_texto_pptx(archivo, max_caracteres=3000):
+    """Extrae el texto de todas las diapositivas de un PPTX (titulos,
+    contenido de cajas de texto y tablas), mismo uso que extraer_texto_pdf."""
+    try:
+        presentacion = Presentation(io.BytesIO(archivo.read()))
+        texto = ""
+        for diapositiva in presentacion.slides:
+            for forma in diapositiva.shapes:
+                if forma.has_text_frame:
+                    for parrafo in forma.text_frame.paragraphs:
+                        for run in parrafo.runs:
+                            texto += run.text + " "
+                    texto += "\n"
+                if forma.has_table:
+                    for fila in forma.table.rows:
+                        for celda in fila.cells:
+                            texto += celda.text + " "
+                    texto += "\n"
         return texto[:max_caracteres]
     except Exception:
         return None

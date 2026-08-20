@@ -364,9 +364,10 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
             ruta_curso = _sanear_para_storage(curso)
             ruta_archivo = _sanear_para_storage(nombre_archivo)
             storage_path = f"{ruta_materia}/{ruta_curso}/{uuid.uuid4().hex}_{ruta_archivo}"
+            content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation" if nombre_archivo.lower().endswith(".pptx") else "application/pdf"
             try:
                 supabase.storage.from_(BUCKET_DOCUMENTOS).upload(
-                    storage_path, archivo_bytes, {"content-type": "application/pdf"}
+                    storage_path, archivo_bytes, {"content-type": content_type}
                 )
             except Exception:
                 storage_path = None  # si falla la subida del archivo, seguimos igual guardando el texto (la UI ya avisa "Sin PDF guardado" cuando corresponde)

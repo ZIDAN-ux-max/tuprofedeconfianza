@@ -8,10 +8,10 @@ Curso/Formulario/Archivo viven en la barra lateral de app.py (asi se
 quedan siempre visibles, sin depender de trucos de CSS)."""
 import streamlit as st
 
-from database import guardar_conversacion, cargar_conversaciones, obtener_estadisticas, verificar_logros
+from database import guardar_conversacion, cargar_conversaciones, obtener_estadisticas, verificar_logros, obtener_temas_debiles
 from tutor_ai import construir_system_prompt, obtener_sugerencias, responder_tutor, actualizar_perfil_alumno
 from utils import extraer_texto_pdf, normalizar_latex
-from materias_data import EMOJI_MATERIA
+from materias_data import EMOJI_MATERIA, materias_de_carrera
 
 
 def mostrar_chat(usuario, modo, curso_elegido=None):
@@ -23,6 +23,16 @@ def mostrar_chat(usuario, modo, curso_elegido=None):
         f"</span></div>",
         unsafe_allow_html=True
     )
+
+    if "temas_debiles_usuario" not in st.session_state:
+        materias_alumno = materias_de_carrera(usuario.get("carrera"))
+        st.session_state.temas_debiles_usuario = obtener_temas_debiles(usuario["id"], materias_alumno)
+
+    temas_debiles = st.session_state.temas_debiles_usuario
+    if temas_debiles:
+        partes = [f"**{mat}**: {', '.join(temas[:2])}" for mat, temas in temas_debiles.items()]
+        st.info(f"📌 Temas donde venís con más dificultad — {' · '.join(partes)}. ¿Repasamos alguno?")
+
     st.divider()
 
     if "historial" not in st.session_state or st.session_state.get("modo_actual") != modo:
@@ -45,6 +55,7 @@ def mostrar_chat(usuario, modo, curso_elegido=None):
         st.session_state.historial.append({"role": "assistant", "content": texto})
         guardar_conversacion(usuario["id"], pregunta, texto, modo)
         actualizar_perfil_alumno(usuario["id"], modo, pregunta, texto)
+        st.session_state.pop("temas_debiles_usuario", None)  # se recalcula en el proximo rerun, por si cambio
         stats = obtener_estadisticas(usuario["id"])
         nuevos_logros = verificar_logros(usuario["id"], stats)
         return texto, nuevos_logros

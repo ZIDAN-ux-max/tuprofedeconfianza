@@ -88,6 +88,11 @@ def _seccion_lista(usuario):
                 + "</div>",
                 unsafe_allow_html=True
             )
+            if evento.get("tipo") == "Examen" and evento.get("materia") and 0 <= dias_faltantes <= 4:
+                if st.button(f"🎯 Practicar con un examen de {evento['materia']}", key=f"practicar_{evento['id']}"):
+                    st.session_state["menu_seccion"] = "Modo Examen"
+                    st.session_state["examen_materia_select"] = evento["materia"]
+                    st.rerun()
         with col2:
             if st.button("🗑️", key=f"del_evento_{evento['id']}"):
                 eliminar_evento(evento["id"])

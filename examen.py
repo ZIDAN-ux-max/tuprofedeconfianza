@@ -328,7 +328,7 @@ def mostrar_modo_examen(usuario):
     st.markdown("<h1 style='text-align:center;'>📝 Modo Examen</h1>", unsafe_allow_html=True)
     st.divider()
 
-    materia_examen = st.selectbox("Elige la materia del examen", MATERIAS_DISPONIBLES)
+    materia_examen = st.selectbox("Elige la materia del examen", MATERIAS_DISPONIBLES, key="examen_materia_select")
     st.session_state.materia_examen_actual = materia_examen
     st.session_state.usuario = usuario  # usado por _calificar_examen para guardar el resultado
 

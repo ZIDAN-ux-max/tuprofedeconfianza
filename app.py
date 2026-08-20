@@ -122,7 +122,7 @@ else:
         st.markdown(f"<span style='background:{nivel_color}; color:white; padding:3px 10px; border-radius:20px; font-size:0.85em'>{nivel}</span>", unsafe_allow_html=True)
         st.markdown(f"<p style='color:#F59E0B; font-weight:bold; margin-top:8px'>🔥 Racha: {racha} dias</p>", unsafe_allow_html=True)
         st.divider()
-        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Revisa mi Solucion", "Documentos", "Formulario", "Calendario", "Mi Dia", "Mi Rango", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"])
+        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Revisa mi Solucion", "Documentos", "Formulario", "Calendario", "Mi Dia", "Mi Rango", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"], key="menu_seccion")
         st.divider()
         curso_elegido = None
         if seccion == "Chat":

@@ -96,6 +96,8 @@ def _seccion_explorar(usuario):
         st.info("📤 Sube al menos un documento tuyo (con contenido real) para desbloquear la biblioteca de todos. Ve a la pestaña 'Subir'.")
         return
 
+    busqueda = st.text_input("🔍 Buscar por curso o nombre de archivo", key="doc_busqueda", placeholder="ej: Estática, examen parcial...")
+
     materia_filtro = st.radio("Filtrar por materia", ["Todas"] + MATERIAS_DISPONIBLES, horizontal=True, key="doc_filtro")
     materia_query = None if materia_filtro == "Todas" else materia_filtro
 
@@ -114,8 +116,17 @@ def _seccion_explorar(usuario):
             carrera_query = None if carrera_filtro == "Todas" else carrera_filtro
 
     documentos = listar_documentos(materia_query, ciclo_query, carrera_query)
+    if busqueda and busqueda.strip():
+        texto_buscado = busqueda.strip().lower()
+        documentos = [
+            d for d in documentos
+            if texto_buscado in (d.get("curso") or "").lower() or texto_buscado in (d.get("nombre_archivo") or "").lower()
+        ]
     if not documentos:
-        st.info("Todavia no hay documentos subidos. Sube el primero arriba.")
+        if busqueda and busqueda.strip():
+            st.info(f"No se encontró ningún documento que coincida con '{busqueda.strip()}'.")
+        else:
+            st.info("Todavia no hay documentos subidos. Sube el primero arriba.")
         return
 
     por_curso = {}

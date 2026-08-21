@@ -54,6 +54,12 @@ def mostrar_acerca_de():
         <p style='color:rgba(255,255,255,0.8)'>✅ Tutor personalizado segun edad, grado/ciclo y progreso</p>
         <h3 style='color:#00C9FF'>Contacto</h3>
         <p style='color:rgba(255,255,255,0.8)'>Tienes sugerencias? Escribenos y mejoramos juntos.</p>
+        <a href="https://wa.me/51973400107?text=Hola!%20Vengo%20de%20Tu%20Profe%20de%20Confianza%20y%20queria..."
+           target="_blank"
+           style="display:inline-block; background:linear-gradient(90deg,#00C9FF,#92FE9D); color:#0a0a0a;
+           font-weight:bold; padding:10px 22px; border-radius:10px; text-decoration:none; margin-top:8px;">
+           💬 Escríbenos por WhatsApp
+        </a>
     </div>
     """, unsafe_allow_html=True)
 

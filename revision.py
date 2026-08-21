@@ -6,7 +6,7 @@ import base64
 
 import streamlit as st
 
-from tutor_ai import transcribir_procedimiento_imagen, revisar_solucion
+from tutor_ai import transcribir_procedimiento_imagen, revisar_solucion, actualizar_perfil_alumno
 from materias_data import materias_de_carrera
 from utils import normalizar_latex
 
@@ -65,5 +65,7 @@ def _ejecutar_revision(usuario, modo, problema, procedimiento):
     else:
         with st.spinner("Revisando tu procedimiento paso a paso..."):
             resultado = revisar_solucion(modo, usuario, problema, procedimiento)
+        actualizar_perfil_alumno(usuario["id"], modo, problema, resultado)
+        st.session_state.pop("temas_debiles_usuario", None)  # se recalcula, por si cambio
         st.session_state["rev_resultado"] = resultado
         st.rerun()

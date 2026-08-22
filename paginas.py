@@ -12,7 +12,7 @@ def mostrar_ranking(usuario):
     st.markdown("<h1 style='text-align:center;'>🏆 Ranking de Estudiantes</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.6)'>Compite con tus companeros y llega al top!</p>", unsafe_allow_html=True)
     st.divider()
-    ranking = obtener_ranking()
+    ranking, mi_posicion = obtener_ranking(usuario_id=usuario.get("id"))
     medallas = ["🥇", "🥈", "🥉"]
     for i, est in enumerate(ranking):
         medalla = medallas[i] if i < 3 else f"#{i+1}"
@@ -33,6 +33,18 @@ def mostrar_ranking(usuario):
             f"</div>"
         )
         st.markdown(html_fila, unsafe_allow_html=True)
+
+    if mi_posicion:
+        st.markdown(
+            f"<div style='background:rgba(0,201,255,0.08); border:1px dashed rgba(0,201,255,0.5); "
+            f"border-radius:16px; padding:15px; margin-top:10px; text-align:center;'>"
+            f"<span style='color:#00C9FF; font-weight:bold'>Tu puesto: #{mi_posicion['puesto']} de {mi_posicion['de_total']}</span>"
+            f"<br><span style='color:rgba(255,255,255,0.6); font-size:0.85em'>⭐ {mi_posicion['puntos']} pts — sigue sumando para subir</span>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+    elif not ranking:
+        st.info("Todavia no hay actividad registrada. Usa el Chat, completa tareas o desbloquea logros para aparecer aca.")
 
 
 def mostrar_acerca_de():

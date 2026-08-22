@@ -180,10 +180,15 @@ def obtener_estadisticas(usuario_id):
     }
 
 
-def obtener_ranking():
+def obtener_ranking(usuario_id=None, top=30):
     """Ranking combinado: puntos de tareas cumplidas + puntos de logros +
     una fraccion de los mensajes de chat (para que seguir preguntando siga
-    sumando, sin que aplaste el esfuerzo de la disciplina diaria)."""
+    sumando, sin que aplaste el esfuerzo de la disciplina diaria).
+
+    Devuelve (lista_top, mi_posicion). 'lista_top' son los primeros 'top'
+    puestos. 'mi_posicion' es None si no se paso usuario_id o si ese
+    usuario ya esta dentro de 'lista_top'; si esta mas abajo, es un dict
+    con su puesto y puntos exactos, para poder mostrarlo aparte."""
     try:
         conv = supabase.table("conversaciones").select("usuario_id").execute()
         conteo_chat = {}
@@ -217,7 +222,7 @@ def obtener_ranking():
         calculado.sort(key=lambda x: x[1], reverse=True)
 
         ranking = []
-        for uid, total_puntos, pc, pt, pl in calculado[:10]:
+        for uid, total_puntos, pc, pt, pl in calculado[:top]:
             usuario = supabase.table("usuarios").select("nombre, racha").eq("id", uid).execute()
             if usuario.data:
                 ranking.append({
@@ -229,9 +234,17 @@ def obtener_ranking():
                     "puntos_tareas": pt,
                     "puntos_logros": pl
                 })
-        return ranking
+
+        mi_posicion = None
+        if usuario_id and usuario_id not in [uid for uid, *_ in calculado[:top]]:
+            for i, (uid, total_puntos, pc, pt, pl) in enumerate(calculado):
+                if uid == usuario_id:
+                    mi_posicion = {"puesto": i + 1, "puntos": total_puntos, "de_total": len(calculado)}
+                    break
+
+        return ranking, mi_posicion
     except Exception:
-        return []
+        return [], None
 
 
 # ===================== LOGROS =====================

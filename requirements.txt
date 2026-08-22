@@ -4,3 +4,5 @@ supabase
 PyPDF2
 python-pptx
 scikit-learn
+matplotlib
+reportlab

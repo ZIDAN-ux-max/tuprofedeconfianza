@@ -258,13 +258,17 @@ Manten cada lista con maximo 8 elementos (si se pasa, elimina los mas antiguos/m
         pass
 
 
-def generar_formulario(modo, usuario, curso, material_curso):
+def generar_formulario(modo, usuario, curso, material_curso, enfoque=None):
     """Genera un 'formulario' (cheat-sheet) de formulas clave de un curso,
     como tarjetas cortas y numeradas (no un texto largo en parrafos),
     priorizando los temas donde el alumno tiene mas dificultad segun su
     perfil. Devuelve una lista de tarjetas ya estructurada, el diseño
     (cuadricula de tarjetas) lo controla el codigo, no la IA - asi el
-    resultado siempre se ve ordenado y consistente."""
+    resultado siempre se ve ordenado y consistente.
+
+    Si 'enfoque' viene definido (ej: 'solo cinematica' o 'leyes de Newton'),
+    SOLO se incluyen formulas relacionadas a eso, ignorando el resto del
+    material aunque tenga otros temas."""
     perfil = obtener_perfil_alumno(usuario["id"], modo)
     dificiles = perfil.get("temas_dificiles") or []
     dominados = perfil.get("temas_dominados") or []
@@ -274,6 +278,10 @@ def generar_formulario(modo, usuario, curso, material_curso):
         instruccion_nivel += f"\nEl alumno tiene dificultad en: {', '.join(dificiles)}. Para esos temas, agrega una 'nota' corta (max 15 palabras) explicando cuando usar la formula."
     if dominados:
         instruccion_nivel += f"\nEl alumno ya domina: {', '.join(dominados)}. Para esos temas, deja 'nota' vacio (solo la formula, sin explicacion extra)."
+
+    instruccion_enfoque = ""
+    if enfoque and enfoque.strip():
+        instruccion_enfoque = f"\n\nIMPORTANTE - El alumno pidio enfocarse SOLO en: \"{enfoque.strip()}\". Ignora por completo cualquier formula o tema del material que no este relacionado a esto, aunque aparezca en el material. No agregues temas de relleno."
 
     prompt = f"""A partir de este material real del curso '{curso}' ({modo}), extrae las formulas y
 conceptos clave que un alumno necesitaria tener a la mano para un examen de este curso.
@@ -285,7 +293,7 @@ Devuelve SOLO un JSON (sin texto extra, sin markdown) con este formato exacto:
   ]
 }}
 Maximo 16 tarjetas. Cada tarjeta debe ser corta y directa (como una tarjeta de estudio, NO una clase completa).
-{instruccion_nivel}
+{instruccion_nivel}{instruccion_enfoque}
 
 Material real del curso (usalo como fuente principal, no inventes formulas que no esten relacionadas):
 {material_curso}

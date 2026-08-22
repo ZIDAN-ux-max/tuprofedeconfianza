@@ -15,9 +15,10 @@ import streamlit as st
 from database import listar_cursos, obtener_muestra_estilo_curso
 from tutor_ai import generar_formulario
 from materias_data import materias_de_carrera
+from pdf_formulario import generar_pdf_formulario
 
 
-def _mostrar_tarjetas(tarjetas, curso_mostrado):
+def _mostrar_tarjetas(tarjetas, curso_mostrado, materia_mostrada):
     """Dibuja las tarjetas en una cuadricula de 2 columnas."""
     if not tarjetas:
         st.warning("No se pudo generar el formulario. Intenta de nuevo.")
@@ -42,16 +43,30 @@ def _mostrar_tarjetas(tarjetas, curso_mostrado):
                 if nota:
                     st.caption(nota)
 
-    texto_plano = "\n".join(
-        f"{t.get('numero', i+1)}. {t.get('titulo','')}: {t.get('formula','')}" + (f" ({t['nota']})" if t.get("nota") else "")
-        for i, t in enumerate(tarjetas)
-    )
-    st.download_button(
-        "⬇️ Descargar como texto",
-        data=texto_plano,
-        file_name=f"formulario_{curso_mostrado}.txt",
-        use_container_width=True
-    )
+    col_pdf, col_txt = st.columns(2)
+    with col_pdf:
+        try:
+            pdf_buffer = generar_pdf_formulario(curso_mostrado, materia_mostrada, tarjetas)
+            st.download_button(
+                "📄 Descargar como PDF",
+                data=pdf_buffer,
+                file_name=f"formulario_{curso_mostrado}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        except Exception:
+            st.caption("No se pudo generar el PDF, intenta con la descarga en texto.")
+    with col_txt:
+        texto_plano = "\n".join(
+            f"{t.get('numero', i+1)}. {t.get('titulo','')}: {t.get('formula','')}" + (f" ({t['nota']})" if t.get("nota") else "")
+            for i, t in enumerate(tarjetas)
+        )
+        st.download_button(
+            "⬇️ Descargar como texto",
+            data=texto_plano,
+            file_name=f"formulario_{curso_mostrado}.txt",
+            use_container_width=True
+        )
 
 
 def renderizar_generador_formulario(usuario, modo=None, key_prefix="", curso_fijo=None):
@@ -75,21 +90,29 @@ def renderizar_generador_formulario(usuario, modo=None, key_prefix="", curso_fij
             return
         curso = st.selectbox("Curso", cursos_disponibles, key=f"{key_prefix}form_curso")
 
+    enfoque = st.text_input(
+        "¿Algo en particular? (opcional)",
+        key=f"{key_prefix}form_enfoque",
+        placeholder="ej: solo cinematica, solo leyes de Newton..."
+    )
+
     if st.button("✨ Generar formulario", key=f"{key_prefix}form_generar", use_container_width=True):
         with st.spinner("Revisando tu material y armando las tarjetas..."):
             material = obtener_muestra_estilo_curso(modo, curso, limite_caracteres=15000)
             if not material:
                 st.warning("No se encontro material suficiente de este curso.")
             else:
-                tarjetas = generar_formulario(modo, usuario, curso, material)
+                tarjetas = generar_formulario(modo, usuario, curso, material, enfoque=enfoque)
                 st.session_state[f"{key_prefix}ultimo_formulario"] = tarjetas
                 st.session_state[f"{key_prefix}ultimo_formulario_curso"] = curso
+                st.session_state[f"{key_prefix}ultimo_formulario_materia"] = modo
 
     if st.session_state.get(f"{key_prefix}ultimo_formulario"):
         st.divider()
         _mostrar_tarjetas(
             st.session_state[f"{key_prefix}ultimo_formulario"],
-            st.session_state.get(f"{key_prefix}ultimo_formulario_curso")
+            st.session_state.get(f"{key_prefix}ultimo_formulario_curso"),
+            st.session_state.get(f"{key_prefix}ultimo_formulario_materia") or modo
         )
 
 

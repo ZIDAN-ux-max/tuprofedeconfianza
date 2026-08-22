@@ -50,6 +50,28 @@ def mostrar_ranking(usuario):
 def mostrar_acerca_de():
     st.markdown("<h1 style='text-align:center;'>Acerca de Tu Profe de Confianza</h1>", unsafe_allow_html=True)
     st.divider()
+
+    pasos = [
+        ("Elige tu materia y curso", "En el Chat, elige la materia y el curso que quieras estudiar en el menu de la izquierda."),
+        ("Pregunta lo que necesites", "Escribe tu duda como se la dirias a un compañero. El tutor explica paso a paso, no solo da la respuesta."),
+        ("Sube tus apuntes", "En Documentos, sube al menos un apunte tuyo (PDF o PPTX) para desbloquear la biblioteca de todos."),
+        ("Practica antes de un examen", "Usa Modo Examen para generar preguntas de practica, o Formulario para un resumen de formulas del curso."),
+        ("Sigue tu progreso", "En Mi Rango, Mis Logros y Ranking puedes ver tu racha, insignias y como vas frente a tus compañeros."),
+    ]
+    st.markdown("<h3 style='color:#00C9FF; text-align:center'>🚀 Primeros pasos</h3>", unsafe_allow_html=True)
+    for i, (titulo, desc) in enumerate(pasos, start=1):
+        st.markdown(
+            f"<div style='background:rgba(255,255,255,0.04); border-left:4px solid #00C9FF; "
+            f"border-radius:8px; padding:12px 16px; margin-bottom:8px;'>"
+            f"<span style='background:#00C9FF; color:#0F0C29; font-weight:bold; border-radius:50%; "
+            f"padding:2px 10px; font-size:0.9em'>{i}</span> "
+            f"<strong style='color:white'>{titulo}</strong>"
+            f"<br><span style='color:rgba(255,255,255,0.6); font-size:0.9em'>{desc}</span>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+    st.divider()
+
     st.markdown("""
     <div style='background:rgba(255,255,255,0.05); border:1px solid rgba(0,201,255,0.2); border-radius:16px; padding:25px;'>
         <h3 style='color:#00C9FF'>Nuestra Mision</h3>

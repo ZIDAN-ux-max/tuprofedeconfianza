@@ -8,6 +8,7 @@ import streamlit as st
 
 from database import guardar_evento, listar_eventos, eliminar_evento
 from materias_data import materias_de_carrera
+from utils import hoy_peru
 
 TIPOS_EVENTO = ["Examen", "Entrega", "Otro"]
 EMOJI_TIPO = {"Examen": "📝", "Entrega": "📦", "Otro": "📌"}
@@ -32,7 +33,7 @@ def _seccion_agregar(usuario):
         titulo = st.text_input("Titulo (ej: Examen Parcial, Entrega TP3)", key="cal_titulo")
         materia = st.selectbox("Materia (opcional)", ["Sin materia especifica"] + materias_alumno, key="cal_materia")
     with col2:
-        fecha = st.date_input("Fecha", value=date.today(), key="cal_fecha")
+        fecha = st.date_input("Fecha", value=hoy_peru(), key="cal_fecha")
         tipo = st.selectbox("Tipo", TIPOS_EVENTO, key="cal_tipo")
 
     notas = st.text_area("Notas (opcional)", key="cal_notas", height=70)
@@ -57,7 +58,7 @@ def _seccion_lista(usuario):
         st.info("No tienes fechas guardadas todavia. Agrega la primera arriba.")
         return
 
-    hoy = date.today()
+    hoy = hoy_peru()
     for evento in eventos:
         fecha_evento = date.fromisoformat(str(evento["fecha"]))
         dias_faltantes = (fecha_evento - hoy).days

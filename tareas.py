@@ -10,6 +10,7 @@ from database import (
     agregar_tarea, listar_tareas_dia, marcar_tarea, eliminar_tarea,
     listar_tareas_rango
 )
+from utils import hoy_peru
 
 
 def _seccion_lista(usuario):
@@ -60,7 +61,7 @@ def _bateria_html(pct):
 
 
 def _seccion_semana(usuario):
-    hoy = date.today()
+    hoy = hoy_peru()
     lunes = hoy - timedelta(days=hoy.weekday())
     dias_semana = [lunes + timedelta(days=i) for i in range(7)]
     nombres_dia = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
@@ -169,7 +170,7 @@ def mostrar_tareas(usuario):
     st.markdown("<h1 style='text-align:center;'>☀️ Mi Dia</h1>", unsafe_allow_html=True)
     st.markdown(
         f"<p style='text-align:center; color:rgba(255,255,255,0.6)'>"
-        f"{date.today().strftime('%d/%m/%Y')} · Que vas a hacer hoy?</p>",
+        f"{hoy_peru().strftime('%d/%m/%Y')} · Que vas a hacer hoy?</p>",
         unsafe_allow_html=True
     )
     st.divider()

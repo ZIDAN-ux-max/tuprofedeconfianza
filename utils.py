@@ -4,6 +4,23 @@ import hashlib
 import io
 import PyPDF2
 from pptx import Presentation
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+ZONA_HORARIA = ZoneInfo("America/Lima")
+
+
+def ahora_peru():
+    """Fecha y hora actual en horario de Peru (UTC-5), sin importar en que
+    zona horaria este el servidor donde corre la app (Streamlit Cloud usa
+    UTC por defecto). Usar SIEMPRE esto en vez de datetime.now()."""
+    return datetime.now(ZONA_HORARIA)
+
+
+def hoy_peru():
+    """Solo la fecha (sin hora) de hoy en horario de Peru. Usar SIEMPRE
+    esto en vez de date.today()."""
+    return ahora_peru().date()
 
 
 def hash_password(password):

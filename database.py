@@ -6,7 +6,7 @@ import unicodedata
 from datetime import datetime, timedelta, date
 from supabase import create_client
 
-from utils import hash_password, dividir_en_fragmentos, hash_texto
+from utils import hash_password, dividir_en_fragmentos, hash_texto, ahora_peru, hoy_peru
 from logros_data import LOGROS_DISPONIBLES
 
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_SERVICE_KEY"])
@@ -76,7 +76,7 @@ def guardar_conversacion(usuario_id, mensaje, respuesta, materia):
         "mensaje": mensaje,
         "respuesta": respuesta,
         "materia": materia,
-        "fecha": datetime.now().isoformat()
+        "fecha": ahora_peru().isoformat()
     }).execute()
 
 
@@ -93,8 +93,8 @@ def cargar_conversaciones(usuario_id, materia):
 
 def registrar_asistencia(usuario_id):
     try:
-        hoy = date.today().isoformat()
-        hora_actual = datetime.now().hour
+        hoy = hoy_peru().isoformat()
+        hora_actual = ahora_peru().hour
         existe = supabase.table("asistencia").select("*").eq("usuario_id", usuario_id).eq("fecha", hoy).execute()
         if not existe.data:
             usuario = supabase.table("usuarios").select("*").eq("id", usuario_id).execute().data[0]
@@ -102,7 +102,7 @@ def registrar_asistencia(usuario_id):
             racha_actual = usuario.get("racha") or 0
             if ultima:
                 ultima_date = date.fromisoformat(str(ultima).split("T")[0])
-                diferencia = (date.today() - ultima_date).days
+                diferencia = (hoy_peru() - ultima_date).days
                 if diferencia == 1:
                     racha_actual += 1
                 elif diferencia > 1:
@@ -128,7 +128,7 @@ def limpiar_usuarios_inactivos():
     """Borra usuarios rotativos (es_fijo=false) que llevan mas de 30 dias
     sin usar la app, liberando su cupo. No toca a los usuarios fijos."""
     try:
-        limite = (date.today() - timedelta(days=30)).isoformat()
+        limite = (hoy_peru() - timedelta(days=30)).isoformat()
         supabase.table("usuarios").delete().eq("es_fijo", False).lt("ultima_visita", limite).execute()
     except Exception:
         pass
@@ -145,14 +145,15 @@ def obtener_estadisticas(usuario_id):
         m = c.get("materia", "Otro")
         conteo_por_materia[m] = conteo_por_materia.get(m, 0) + 1
 
-    hoy = datetime.now().date()
-    semana = datetime.now() - timedelta(days=7)
+    hoy = ahora_peru().date()
+    semana = ahora_peru() - timedelta(days=7)
     hoy_count = 0
     semana_count = 0
     for c in result.data:
         try:
             if c.get("fecha"):
-                fecha = datetime.fromisoformat(str(c["fecha"]).replace("Z", "+00:00").split("+")[0])
+                fecha = datetime.fromisoformat(str(c["fecha"]).replace("Z", "+00:00"))
+                fecha = fecha.replace(tzinfo=None)  # se compara como hora local, sin importar si el dato viejo era UTC o el nuevo es Peru
                 if fecha.date() == hoy:
                     hoy_count += 1
                 if fecha >= semana.replace(tzinfo=None):
@@ -164,7 +165,7 @@ def obtener_estadisticas(usuario_id):
         racha_val = racha_result.data[0].get("racha", 0) if racha_result.data else 0
     except Exception:
         racha_val = 0
-    hora_actual = datetime.now().hour
+    hora_actual = ahora_peru().hour
     return {
         "total": total,
         "por_materia": conteo_por_materia,
@@ -246,7 +247,7 @@ def otorgar_logro(usuario_id, logro):
         "nombre": logro["nombre"],
         "descripcion": logro["descripcion"],
         "emoji": logro["emoji"],
-        "fecha": datetime.now().isoformat()
+        "fecha": ahora_peru().isoformat()
     }).execute()
 
 
@@ -316,7 +317,7 @@ def guardar_perfil_alumno(usuario_id, materia, perfil):
             "temas_dificiles": perfil.get("temas_dificiles", []),
             "nivel_estimado": perfil.get("nivel_estimado", "sin_evaluar"),
             "ultimo_resumen": perfil.get("ultimo_resumen", ""),
-            "actualizado_en": datetime.now().isoformat()
+            "actualizado_en": ahora_peru().isoformat()
         }
         if existente.data:
             supabase.table("perfil_alumno").update(payload).eq("id", existente.data[0]["id"]).execute()
@@ -668,7 +669,7 @@ def agregar_tarea(usuario_id, texto, fecha=None, puntos=1):
         supabase.table("tareas_diarias").insert({
             "usuario_id": usuario_id,
             "texto": texto.strip(),
-            "fecha": str(fecha) if fecha else str(date.today()),
+            "fecha": str(fecha) if fecha else str(hoy_peru()),
             "puntos": puntos
         }).execute()
         return True
@@ -679,7 +680,7 @@ def agregar_tarea(usuario_id, texto, fecha=None, puntos=1):
 def listar_tareas_dia(usuario_id, fecha=None):
     """Devuelve las tareas del alumno para un dia dado (hoy por defecto)."""
     try:
-        f = str(fecha) if fecha else str(date.today())
+        f = str(fecha) if fecha else str(hoy_peru())
         result = supabase.table("tareas_diarias").select("*").eq("usuario_id", usuario_id).eq("fecha", f).order("creado_en").execute()
         return result.data
     except Exception:
@@ -803,7 +804,7 @@ def obtener_mi_rango(usuario_id):
     historial de trimestres ya cerrados. Si detecta que el trimestre
     anterior nunca se guardo, lo cierra solo en este momento (sin cron,
     igual que la limpieza de cupos vencidos)."""
-    hoy = date.today()
+    hoy = hoy_peru()
     trimestre_actual = (hoy.month - 1) // 3 + 1
     anio_actual = hoy.year
 

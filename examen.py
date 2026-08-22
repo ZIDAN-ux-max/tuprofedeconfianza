@@ -10,7 +10,7 @@ import streamlit as st
 
 from tutor_ai import client, MODELO_TUTOR
 from materias_data import MATERIAS_DISPONIBLES
-from utils import normalizar_latex
+from utils import normalizar_latex, ahora_peru
 from database import supabase, listar_cursos, obtener_muestra_estilo_curso
 
 PROMPT_EXAMEN_TEMPLATE = """Crea un examen de {materia} para universitarios peruanos con EXACTAMENTE este formato JSON y nada mas:
@@ -263,7 +263,7 @@ Responde SOLO con este JSON: {{"correcta": true/false, "parcial": true/false, "f
             "respuesta_correcta": str(nota),
             "respuesta_usuario": str(puntaje),
             "correcta": nota >= 11,
-            "fecha": datetime.now().isoformat()
+            "fecha": ahora_peru().isoformat()
         }).execute()
     except Exception:
         pass

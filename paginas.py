@@ -70,6 +70,19 @@ def mostrar_acerca_de():
             f"</div>",
             unsafe_allow_html=True
         )
+
+    st.markdown(
+        "<div style='background:rgba(0,201,255,0.06); border:1px solid rgba(0,201,255,0.25); "
+        "border-radius:12px; padding:14px 18px; margin-top:6px;'>"
+        "<strong style='color:#92FE9D'>⭐ ¿Como se ganan los puntos del Ranking?</strong>"
+        "<br><span style='color:rgba(255,255,255,0.75); font-size:0.9em'>"
+        "💬 1 punto cada 3 mensajes que le mandes al Chat<br>"
+        "✅ 1 punto por cada tarea que completes en Mi Dia<br>"
+        "🔥 10, 25 o 60 puntos extra al llegar a 3, 7 y 30 dias seguidos de racha<br>"
+        "🏅 Mas puntos por cada logro que desbloquees (revisa Mis Logros para ver todos)"
+        "</span></div>",
+        unsafe_allow_html=True
+    )
     st.divider()
 
     st.markdown("""

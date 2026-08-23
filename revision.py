@@ -33,12 +33,19 @@ def mostrar_revision(usuario):
             _ejecutar_revision(usuario, modo, problema, procedimiento_texto)
 
     with tab2:
-        foto = st.file_uploader("Sube una foto de tu procedimiento escrito", type=["png", "jpg", "jpeg"], key="rev_foto")
-        if foto and st.button("👁️ Leer la foto", key="rev_boton_leer", use_container_width=True):
+        fotos = st.file_uploader(
+            "Sube una o varias fotos de tu procedimiento escrito (en orden, si son varias paginas)",
+            type=["png", "jpg", "jpeg"],
+            accept_multiple_files=True,
+            key="rev_foto"
+        )
+        if fotos and len(fotos) > 4:
+            st.warning("Maximo 4 fotos a la vez. Se usaran solo las primeras 4.")
+            fotos = fotos[:4]
+        if fotos and st.button("👁️ Leer la(s) foto(s)", key="rev_boton_leer", use_container_width=True):
             with st.spinner("Leyendo tu procedimiento..."):
-                imagen_b64 = base64.b64encode(foto.getvalue()).decode()
-                mime = foto.type or "image/jpeg"
-                texto_leido = transcribir_procedimiento_imagen(imagen_b64, mime)
+                imagenes = [(base64.b64encode(f.getvalue()).decode(), f.type or "image/jpeg") for f in fotos]
+                texto_leido = transcribir_procedimiento_imagen(imagenes)
                 st.session_state["rev_texto_de_foto"] = texto_leido
 
         if st.session_state.get("rev_texto_de_foto"):

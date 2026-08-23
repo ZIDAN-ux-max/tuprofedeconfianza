@@ -344,20 +344,27 @@ Material real del curso (usalo como fuente principal, no inventes formulas que n
         return []
 
 
-def transcribir_procedimiento_imagen(imagen_base64, mime_type="image/jpeg"):
-    """Usa el modelo de vision de Groq para leer una foto de un procedimiento
-    escrito a mano y devolverlo como texto. El alumno puede corregir despues
-    lo que la IA haya leido mal antes de pedir la revision real."""
+def transcribir_procedimiento_imagen(imagenes):
+    """Usa el modelo de vision de Groq para leer una o varias fotos de un
+    procedimiento escrito a mano y devolverlo como texto unico. 'imagenes'
+    es una lista de tuplas (imagen_base64, mime_type), en el orden en que
+    deben leerse (ej: pagina 1, pagina 2...). El alumno puede corregir
+    despues lo que la IA haya leido mal antes de pedir la revision real."""
+    instruccion = "Transcribe EXACTAMENTE el procedimiento matematico escrito en esta imagen, paso por paso, tal como esta escrito (no lo corrijas, no agregues nada, solo transcribe lo que ves). Si hay formulas, escribelas en notacion de texto simple (ej: x^2, 3/4, integral de...)."
+    if len(imagenes) > 1:
+        instruccion = f"Estas {len(imagenes)} imagenes son paginas seguidas de UN MISMO procedimiento matematico escrito a mano, en orden. Transcribe TODO el procedimiento completo, uniendo las paginas en un solo texto continuo, tal como esta escrito (no lo corrijas, no agregues nada). Si hay formulas, escribelas en notacion de texto simple (ej: x^2, 3/4, integral de...)."
+
+    contenido = [{"type": "text", "text": instruccion}]
+    for imagen_base64, mime_type in imagenes:
+        contenido.append({"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{imagen_base64}"}})
+
     respuesta = client.chat.completions.create(
         model=MODELO_VISION,
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "text", "text": "Transcribe EXACTAMENTE el procedimiento matematico escrito en esta imagen, paso por paso, tal como esta escrito (no lo corrijas, no agregues nada, solo transcribe lo que ves). Si hay formulas, escribelas en notacion de texto simple (ej: x^2, 3/4, integral de...)."},
-                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{imagen_base64}"}}
-            ]
-        }],
-        max_tokens=1500
+        messages=[{"role": "user", "content": contenido}],
+        max_tokens=min(1200 * len(imagenes), 3000),  # topeado para no pasarnos del limite de tokens por minuto de la cuenta
+        reasoning_format="hidden"  # este modelo "piensa" antes de responder;
+        # sin esto, a veces ese pensamiento interno se filtra en la respuesta
+        # en vez de solo la transcripcion final
     )
     return respuesta.choices[0].message.content
 

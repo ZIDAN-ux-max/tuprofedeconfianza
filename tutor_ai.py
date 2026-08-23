@@ -7,6 +7,7 @@ import streamlit as st
 from groq import Groq
 
 from database import obtener_perfil_alumno, guardar_perfil_alumno, buscar_fragmentos_relevantes
+from utils import reparar_backslashes_latex
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
@@ -309,6 +310,15 @@ Devuelve SOLO un JSON (sin texto extra, sin markdown) con este formato exacto:
   ]
 }}
 Maximo 16 tarjetas. Cada tarjeta debe ser corta y directa (como una tarjeta de estudio, NO una clase completa).
+
+CRITICO sobre el campo "formula" - NUNCA omitas las barras invertidas (\\\\)
+de los comandos LaTeX, aunque estes generando JSON. Cada comando SIEMPRE
+lleva su barra invertida, y \\\\frac SIEMPRE lleva sus dos pares de llaves
+completos (numerador y denominador cada uno en su propio par de llaves).
+MAL (invalido, sin barras ni llaves completas): "int x^n dx = fracx^{{n+1}}n + 1 + C"
+BIEN: "\\\\int x^n \\\\, dx = \\\\frac{{x^{{n+1}}}}{{n+1}} + C"
+MAL: "fraccos(ax)a"
+BIEN: "\\\\frac{{\\\\cos(ax)}}{{a}}"
 {instruccion_nivel}{instruccion_enfoque}
 
 Material real del curso (usalo como fuente principal, no inventes formulas que no esten relacionadas):
@@ -322,7 +332,10 @@ Material real del curso (usalo como fuente principal, no inventes formulas que n
             max_tokens=1800,
             response_format={"type": "json_object"}
         )
-        return json.loads(respuesta.choices[0].message.content).get("tarjetas", [])
+        tarjetas = json.loads(respuesta.choices[0].message.content).get("tarjetas", [])
+        for tarjeta in tarjetas:
+            tarjeta["formula"] = reparar_backslashes_latex(tarjeta.get("formula", ""))
+        return tarjetas
     except Exception as e:
         # DIAGNOSTICO TEMPORAL: guardamos el error real (sin romper la app)
         # para poder ver que esta pasando de verdad, en vez de adivinar.

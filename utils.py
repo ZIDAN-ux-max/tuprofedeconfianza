@@ -2,6 +2,7 @@
 """Funciones utilitarias generales: seguridad, lectura de PDF y niveles."""
 import hashlib
 import io
+import re
 import PyPDF2
 from pptx import Presentation
 from datetime import datetime
@@ -32,6 +33,28 @@ def hash_texto(texto):
     """Genera un hash SHA-256 del contenido de texto de un documento, para
     detectar duplicados aunque el archivo se haya subido con otro nombre."""
     return hashlib.sha256(texto.strip().encode()).hexdigest()
+
+
+COMANDOS_LATEX_COMUNES = [
+    "int", "frac", "sqrt", "sum", "cdot", "times", "div", "pm", "infty",
+    "sin", "cos", "tan", "log", "ln", "vec", "hat", "left", "right",
+    "leq", "geq", "neq", "approx", "partial", "nabla", "alpha", "beta",
+    "gamma", "delta", "theta", "pi", "sigma", "omega", "lambda", "mu",
+]
+_PATRON_LATEX_SIN_BARRA = re.compile(
+    r"(?<!\\)\b(" + "|".join(COMANDOS_LATEX_COMUNES) + r")\b"
+)
+
+
+def reparar_backslashes_latex(formula):
+    """A veces un modelo de IA, al devolver JSON estricto, 'le tiene miedo'
+    a las barras invertidas (\\) porque en JSON hay que escribirlas dobles,
+    y termina mandando comandos LaTeX sin la barra (ej: 'int f(x) dx' en
+    vez de '\\int f(x)\\,dx'). Esta funcion repara los casos mas comunes,
+    sin depender de que la IA lo haga bien."""
+    if not formula:
+        return formula
+    return _PATRON_LATEX_SIN_BARRA.sub(r"\\\1", formula)
 
 
 def extraer_texto_pdf(archivo, max_caracteres=3000):

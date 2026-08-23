@@ -98,7 +98,7 @@ def renderizar_generador_formulario(usuario, modo=None, key_prefix="", curso_fij
 
     if st.button("✨ Generar formulario", key=f"{key_prefix}form_generar", use_container_width=True):
         with st.spinner("Revisando tu material y armando las tarjetas..."):
-            material = obtener_muestra_estilo_curso(modo, curso, limite_caracteres=15000)
+            material = obtener_muestra_estilo_curso(modo, curso, limite_caracteres=6000)
             if not material:
                 st.warning("No se encontro material suficiente de este curso.")
             else:

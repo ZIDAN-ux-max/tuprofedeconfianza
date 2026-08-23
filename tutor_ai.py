@@ -319,7 +319,7 @@ Material real del curso (usalo como fuente principal, no inventes formulas que n
         respuesta = client.chat.completions.create(
             model=MODELO_TUTOR,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=2500,
+            max_tokens=1800,
             response_format={"type": "json_object"}
         )
         return json.loads(respuesta.choices[0].message.content).get("tarjetas", [])

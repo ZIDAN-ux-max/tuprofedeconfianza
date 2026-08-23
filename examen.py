@@ -73,7 +73,18 @@ PROMPT_EXAMEN_TEMPLATE = """Crea un examen de {materia} para universitarios peru
     }}
   ]
 }}
-Responde SOLO con el JSON, sin explicaciones ni texto adicional."""
+Responde SOLO con el JSON, sin explicaciones ni texto adicional.
+
+REGLA CRITICA: NUNCA crees una pregunta que dependa de una figura, diagrama,
+grafico o imagen que no puedas mostrar (ej: "segun la figura, halla x",
+"observa el diagrama y calcula...", "en la imagen siguiente"). El alumno
+NO va a ver ninguna imagen, solo el texto de la pregunta. Si el material de
+referencia tiene preguntas asi, REESCRIBE la pregunta para que sea
+autosuficiente: describe con palabras todos los datos necesarios (medidas,
+angulos, relaciones) directamente en el texto, en vez de asumir que hay un
+dibujo. Ejemplo MAL: "Segun la figura, halla x si el triangulo es
+rectangulo". Ejemplo BIEN: "Un triangulo rectangulo tiene catetos de 3 cm y
+4 cm. Halla la hipotenusa (x)"."""
 
 
 def _init_estado_examen():

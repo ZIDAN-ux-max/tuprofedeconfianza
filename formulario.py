@@ -103,9 +103,12 @@ def renderizar_generador_formulario(usuario, modo=None, key_prefix="", curso_fij
                 st.warning("No se encontro material suficiente de este curso.")
             else:
                 tarjetas = generar_formulario(modo, usuario, curso, material, enfoque=enfoque)
-                st.session_state[f"{key_prefix}ultimo_formulario"] = tarjetas
-                st.session_state[f"{key_prefix}ultimo_formulario_curso"] = curso
-                st.session_state[f"{key_prefix}ultimo_formulario_materia"] = modo
+                if tarjetas:
+                    st.session_state[f"{key_prefix}ultimo_formulario"] = tarjetas
+                    st.session_state[f"{key_prefix}ultimo_formulario_curso"] = curso
+                    st.session_state[f"{key_prefix}ultimo_formulario_materia"] = modo
+                else:
+                    st.error("No se pudo generar el formulario (puede ser un corte momentaneo del servicio). Intenta de nuevo en unos segundos.")
 
     if st.session_state.get(f"{key_prefix}ultimo_formulario"):
         st.divider()

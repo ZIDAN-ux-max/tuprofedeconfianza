@@ -23,6 +23,22 @@ IMPORTANTE - estructura visual clara (como una clase bien ordenada, no un parraf
 - Deja espacio entre secciones (no lo apretes todo junto)
 - El resultado final de cada ejercicio va en su propio bloque, bien visible, al final de ese ejercicio (no mezclado con la explicacion)
 - MUY IMPORTANTE: nunca metas formulas con simbolos de dolar ($...$) dentro de un <h4> o dentro de un <li>. Los titulos y las viñetas van SIEMPRE en texto simple, sin formulas adentro. Si necesitas mostrar una formula relacionada a un titulo o a un punto de una lista, ponla en una linea aparte, JUSTO DESPUES, fuera de esa etiqueta.
+
+IMPORTANTE sobre formulas con LaTeX: manten las formulas SIMPLES para que
+se rendericen bien. Evita mezclar comandos de espaciado (\\; \\,) o \\text{}
+para unidades DENTRO de la misma formula matematica - eso a veces no se
+renderiza bien y se ve como codigo crudo en vez de una formula.
+MAL: $\\vec F = 50\\;\\text{N}\\,\\hat i$
+BIEN: $\\vec{F} = 50\\hat{i}$ N (la unidad va como texto normal, fuera del simbolo de dolar)
+Igual para escalares: en vez de $5 \\, \\text{m/s}$, escribe $5$ m/s.
+Tampoco uses \\times para multiplicar dentro de una formula con \\text{} y \\frac{{}}{{}} combinados en la misma linea (esa mezcla especifica tampoco se renderiza bien) - separa la conversion en pasos mas simples, uno por linea, en vez de una sola formula larga con todo junto.
+
+IMPORTANTE sobre negrita: NUNCA uses asteriscos de markdown (**texto**)
+para poner algo en negrita, ni siquiera para negrita simple sin color -
+mezclado con las etiquetas HTML de color que ya usas, a veces no se
+renderiza y quedan asteriscos sueltos visibles. Usa SIEMPRE
+<span style='font-weight:bold'>texto</span> para cualquier negrita,
+tenga color o no.
 """
 
 PROMPTS_BASE = {
@@ -298,15 +314,20 @@ Maximo 16 tarjetas. Cada tarjeta debe ser corta y directa (como una tarjeta de e
 Material real del curso (usalo como fuente principal, no inventes formulas que no esten relacionadas):
 {material_curso}
 """
-    respuesta = client.chat.completions.create(
-        model=MODELO_TUTOR,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=2500,
-        response_format={"type": "json_object"}
-    )
+    respuesta = None
     try:
+        respuesta = client.chat.completions.create(
+            model=MODELO_TUTOR,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=2500,
+            response_format={"type": "json_object"}
+        )
         return json.loads(respuesta.choices[0].message.content).get("tarjetas", [])
     except Exception:
+        # Si la API falla (corte momentaneo, limite de uso, etc.) o la
+        # respuesta no vino en el formato esperado, no rompemos la app -
+        # formulario.py ya sabe mostrar un aviso de "intenta de nuevo"
+        # cuando recibe una lista vacia.
         return []
 
 

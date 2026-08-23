@@ -323,11 +323,11 @@ Material real del curso (usalo como fuente principal, no inventes formulas que n
             response_format={"type": "json_object"}
         )
         return json.loads(respuesta.choices[0].message.content).get("tarjetas", [])
-    except Exception:
-        # Si la API falla (corte momentaneo, limite de uso, etc.) o la
-        # respuesta no vino en el formato esperado, no rompemos la app -
-        # formulario.py ya sabe mostrar un aviso de "intenta de nuevo"
-        # cuando recibe una lista vacia.
+    except Exception as e:
+        # DIAGNOSTICO TEMPORAL: guardamos el error real (sin romper la app)
+        # para poder ver que esta pasando de verdad, en vez de adivinar.
+        import streamlit as _st
+        _st.session_state["ultimo_error_formulario"] = str(e)
         return []
 
 

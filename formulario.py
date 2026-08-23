@@ -109,6 +109,8 @@ def renderizar_generador_formulario(usuario, modo=None, key_prefix="", curso_fij
                     st.session_state[f"{key_prefix}ultimo_formulario_materia"] = modo
                 else:
                     st.error("No se pudo generar el formulario (puede ser un corte momentaneo del servicio). Intenta de nuevo en unos segundos.")
+                    if st.session_state.get("ultimo_error_formulario"):
+                        st.caption(f"Detalle tecnico (para reportar): {st.session_state['ultimo_error_formulario']}")
 
     if st.session_state.get(f"{key_prefix}ultimo_formulario"):
         st.divider()

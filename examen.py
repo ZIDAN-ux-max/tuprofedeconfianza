@@ -12,6 +12,7 @@ from tutor_ai import client, MODELO_TUTOR
 from materias_data import MATERIAS_DISPONIBLES
 from utils import normalizar_latex, ahora_peru
 from database import supabase, listar_cursos, obtener_muestra_estilo_curso
+from examen_pdf import generar_pdf_examen
 
 PROMPT_EXAMEN_TEMPLATE = """Crea un examen de {materia} para universitarios peruanos con EXACTAMENTE este formato JSON y nada mas:
 {{
@@ -87,8 +88,18 @@ def _init_estado_examen():
             st.session_state[clave] = valor
 
 
-def _generar_examen(materia_examen, curso_referencia=None):
+def _generar_examen(materia_examen, curso_referencia=None, instrucciones=None):
     prompt_examen = PROMPT_EXAMEN_TEMPLATE.format(materia=materia_examen)
+
+    if instrucciones and instrucciones.strip():
+        prompt_examen += (
+            f"\n\nIMPORTANTE - El alumno pidio esto para su examen: \"{instrucciones.strip()}\". "
+            f"Ajusta el examen a este pedido (ej: si pide 'solo opcion multiple', cambia los tipos de "
+            f"pregunta a 'multiple' aunque la plantilla original tenga otros tipos; si pide un tema "
+            f"puntual, enfoca TODAS las preguntas en ese tema; si pide mas o menos preguntas, respeta esa "
+            f"cantidad). El formato JSON de salida debe seguir siendo igual de valido, solo cambia el "
+            f"contenido segun lo pedido."
+        )
 
     if curso_referencia:
         muestra = obtener_muestra_estilo_curso(materia_examen, curso_referencia)
@@ -135,10 +146,15 @@ def _pantalla_inicio(materia_examen, curso_referencia=None):
         {aviso_referencia}
     </div>
     """, unsafe_allow_html=True)
+    instrucciones = st.text_input(
+        "¿Como quieres tu examen? (opcional)",
+        key="examen_instrucciones",
+        placeholder="ej: solo opcion multiple, enfocate en cinematica, 12 preguntas..."
+    )
     st.divider()
     if st.button("🚀 Iniciar Examen", use_container_width=True):
         with st.spinner("Generando tu examen personalizado..."):
-            _generar_examen(materia_examen, curso_referencia)
+            _generar_examen(materia_examen, curso_referencia, instrucciones)
 
 
 def _pantalla_preguntas():
@@ -147,6 +163,18 @@ def _pantalla_preguntas():
     respondidas = len(st.session_state.respuestas_examen)
     st.markdown(f"<p style='color:rgba(255,255,255,0.6)'>Progreso: {respondidas}/{total} preguntas respondidas</p>", unsafe_allow_html=True)
     st.progress(respondidas / total if total > 0 else 0)
+
+    try:
+        pdf_buffer = generar_pdf_examen(st.session_state.get("materia_examen_actual", ""), st.session_state.get("curso_examen_actual"), preguntas)
+        st.download_button(
+            "📄 Descargar examen en PDF (para resolver en papel)",
+            data=pdf_buffer,
+            file_name="examen.pdf",
+            mime="application/pdf"
+        )
+    except Exception:
+        pass
+
     st.divider()
 
     for i, pregunta in enumerate(preguntas):
@@ -331,7 +359,6 @@ def mostrar_modo_examen(usuario):
     materia_examen = st.selectbox("Elige la materia del examen", MATERIAS_DISPONIBLES, key="examen_materia_select")
     st.session_state.materia_examen_actual = materia_examen
     st.session_state.usuario = usuario  # usado por _calificar_examen para guardar el resultado
-
     cursos_disponibles = listar_cursos(materia_examen)
     curso_referencia = None
     if cursos_disponibles:
@@ -342,6 +369,7 @@ def mostrar_modo_examen(usuario):
         if seleccion_curso != "Examen generico (sin referencia)":
             curso_referencia = seleccion_curso
 
+    st.session_state.curso_examen_actual = curso_referencia
     _init_estado_examen()
 
     if not st.session_state.examen_activo and not st.session_state.examen_terminado:

@@ -113,7 +113,7 @@ def _generar_examen(materia_examen, curso_referencia=None, instrucciones=None):
         )
 
     if curso_referencia:
-        muestra = obtener_muestra_estilo_curso(materia_examen, curso_referencia, limite_caracteres=5000)
+        muestra = obtener_muestra_estilo_curso(materia_examen, curso_referencia, limite_caracteres=3000)
         if muestra:
             prompt_examen += (
                 f"\n\nIMPORTANTE: aqui abajo hay fragmentos REALES de examenes/material del curso "
@@ -124,23 +124,33 @@ def _generar_examen(materia_examen, curso_referencia=None, instrucciones=None):
                 f"{muestra}"
             )
 
-    try:
-        respuesta_examen = client.chat.completions.create(
-            model=MODELO_TUTOR,
-            messages=[{"role": "user", "content": prompt_examen}],
-            max_tokens=3500
-        )
-        texto_json = respuesta_examen.choices[0].message.content
-        texto_json = texto_json.replace("```json", "").replace("```", "").strip()
-        datos_examen = json.loads(texto_json)
-        st.session_state.preguntas_examen = datos_examen["preguntas"]
-        st.session_state.examen_activo = True
-        st.session_state.respuestas_examen = {}
-        st.session_state.examen_terminado = False
-        st.rerun()
-    except Exception as e:
-        st.error("Error generando el examen. Intenta de nuevo.")
-        st.caption(f"Detalle tecnico (para reportar): {e}")
+    ultimo_error = None
+    for intento in range(2):
+        try:
+            respuesta_examen = client.chat.completions.create(
+                model=MODELO_TUTOR,
+                messages=[{"role": "user", "content": prompt_examen}],
+                max_tokens=3500
+            )
+            texto_json = respuesta_examen.choices[0].message.content
+            texto_json = texto_json.replace("```json", "").replace("```", "").strip()
+            datos_examen = json.loads(texto_json)
+            st.session_state.preguntas_examen = datos_examen["preguntas"]
+            st.session_state.examen_activo = True
+            st.session_state.respuestas_examen = {}
+            st.session_state.examen_terminado = False
+            st.rerun()
+            return
+        except Exception as e:
+            ultimo_error = e
+            # Un corte a mitad de camino suele ser por mala suerte de timing
+            # (la cuenta de Groq comparte el limite de tokens por minuto
+            # entre todos los alumnos usando la app a la vez) - reintentamos
+            # una vez antes de rendirnos, sin que el alumno tenga que hacerlo
+            # el mismo manualmente.
+
+    st.error("Error generando el examen (puede ser que varios alumnos esten usando la app a la vez). Intenta de nuevo en unos segundos.")
+    st.caption(f"Detalle tecnico (para reportar): {ultimo_error}")
 
 
 def _pantalla_inicio(materia_examen, curso_referencia=None):

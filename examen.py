@@ -8,7 +8,7 @@ import textwrap
 from datetime import datetime
 import streamlit as st
 
-from tutor_ai import client, MODELO_TUTOR
+from tutor_ai import client, MODELO_TUTOR, actualizar_perfil_alumno
 from materias_data import MATERIAS_DISPONIBLES
 from utils import normalizar_latex, ahora_peru
 from database import supabase, listar_cursos, obtener_muestra_estilo_curso
@@ -321,6 +321,19 @@ Responde SOLO con este JSON: {{"correcta": true/false, "parcial": true/false, "f
     st.session_state.resultado_examen = {"nota": nota, "puntaje": puntaje, "total": total, "resultados": resultados, "materia": st.session_state.get("materia_examen_actual", "")}
     st.session_state.examen_activo = False
     st.session_state.examen_terminado = True
+
+    # Conectamos el resultado del examen con el perfil del alumno (temas
+    # dificiles/dominados), igual que ya hacen el Chat y Revisa mi Solucion -
+    # asi "que repasar hoy" tambien tiene en cuenta como le fue en examenes.
+    try:
+        materia_actual = st.session_state.get("materia_examen_actual", "")
+        correctas_txt = "; ".join(r["pregunta"][:150] for r in resultados if r.get("es_correcta") is True)
+        incorrectas_txt = "; ".join(r["pregunta"][:150] for r in resultados if r.get("es_correcta") is False)
+        resumen_examen = f"Nota obtenida: {nota}/20. Preguntas que respondio BIEN: {correctas_txt or 'ninguna'}. Preguntas que respondio MAL: {incorrectas_txt or 'ninguna'}."
+        actualizar_perfil_alumno(st.session_state.usuario["id"], materia_actual, f"Examen completo de {materia_actual}", resumen_examen)
+        st.session_state.pop("temas_debiles_usuario", None)  # se recalcula en el proximo rerun, por si cambio
+    except Exception:
+        pass
 
     try:
         supabase.table("examenes").insert({

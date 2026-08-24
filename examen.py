@@ -84,7 +84,17 @@ autosuficiente: describe con palabras todos los datos necesarios (medidas,
 angulos, relaciones) directamente en el texto, en vez de asumir que hay un
 dibujo. Ejemplo MAL: "Segun la figura, halla x si el triangulo es
 rectangulo". Ejemplo BIEN: "Un triangulo rectangulo tiene catetos de 3 cm y
-4 cm. Halla la hipotenusa (x)"."""
+4 cm. Halla la hipotenusa (x)".
+
+REGLA CRITICA sobre formulas: cualquier notacion matematica (fracciones,
+raices, exponentes, letras griegas, etc.) DEBE ir envuelta entre simbolos
+de dolar, ej: $\\frac{{a}}{{b}}$, $\\sqrt{{x}}$, $x^{{2}}$. Sin los simbolos
+de dolar, la formula no se renderiza y se ve como codigo crudo. Aplica esto
+tanto en el texto de "pregunta" como en cada opcion de "opciones" y en los
+items de "columna_a"/"columna_b". Manten las formulas SIMPLES (evita
+mezclar \\; \\, \\text{{}} en una misma formula, y en \\frac siempre usa
+las dos llaves completas: $\\frac{{numerador}}{{denominador}}$, nunca sin
+llaves)."""
 
 
 def _init_estado_examen():
@@ -206,9 +216,17 @@ def _pantalla_preguntas():
 
         if tipo == "multiple":
             opciones = pregunta.get("opciones", [])
-            resp = st.radio("Selecciona tu respuesta:", opciones, key=f"preg_{i}", index=None)
+            # st.radio no puede renderizar LaTeX/markdown en sus opciones,
+            # asi que mostramos cada opcion como texto renderizado aparte,
+            # y el radio solo se usa para elegir la letra
+            letras = []
+            for opcion in opciones:
+                letra = opcion.split(")")[0].strip()
+                letras.append(letra)
+                st.markdown(normalizar_latex(opcion), unsafe_allow_html=True)
+            resp = st.radio("Selecciona tu respuesta:", letras, key=f"preg_{i}", index=None, horizontal=True)
             if resp:
-                st.session_state.respuestas_examen[i] = resp.split(")")[0].strip()
+                st.session_state.respuestas_examen[i] = resp
 
         elif tipo == "abierta":
             resp = st.text_area("Escribe tu respuesta:", key=f"preg_{i}", height=100, placeholder="Escribe aqui tu respuesta...")
@@ -228,7 +246,7 @@ def _pantalla_preguntas():
             with col1:
                 st.markdown("<p style='color:#92FE9D; font-weight:bold'>Columna A</p>", unsafe_allow_html=True)
                 for item in columna_a:
-                    st.markdown(f"<p style='color:white; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px; margin:4px 0'>📌 {item}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='color:white; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px; margin:4px 0'>📌 {normalizar_latex(item)}</div>", unsafe_allow_html=True)
             with col2:
                 st.markdown("<p style='color:#F59E0B; font-weight:bold'>Columna B</p>", unsafe_allow_html=True)
                 relaciones = {}

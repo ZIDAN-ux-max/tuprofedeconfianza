@@ -128,7 +128,7 @@ def _generar_examen(materia_examen, curso_referencia=None, instrucciones=None):
         respuesta_examen = client.chat.completions.create(
             model=MODELO_TUTOR,
             messages=[{"role": "user", "content": prompt_examen}],
-            max_tokens=2000
+            max_tokens=3500
         )
         texto_json = respuesta_examen.choices[0].message.content
         texto_json = texto_json.replace("```json", "").replace("```", "").strip()

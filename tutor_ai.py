@@ -361,12 +361,12 @@ def transcribir_procedimiento_imagen(imagenes):
     respuesta = client.chat.completions.create(
         model=MODELO_VISION,
         messages=[{"role": "user", "content": contenido}],
-        max_tokens=min(2500 * len(imagenes), 6000),  # mas margen: el modelo "piensa" antes de responder
-        # y ese pensamiento oculto tambien gasta parte de este presupuesto,
-        # asi que necesita mas de lo que parece a simple vista
-        reasoning_format="hidden"  # este modelo "piensa" antes de responder;
-        # sin esto, a veces ese pensamiento interno se filtra en la respuesta
-        # en vez de solo la transcripcion final
+        max_tokens=min(2500 * len(imagenes), 6000),
+        reasoning_effort="none"  # esta tarea es solo transcribir, no necesita
+        # "pensar" - con reasoning_format="hidden" el modelo seguia pensando
+        # por dentro y a veces se comia casi todo el presupuesto de tokens
+        # sin dejar espacio para la respuesta real (parametro oficial de
+        # Groq para desactivar el razonamiento del todo en este modelo)
     )
     return respuesta.choices[0].message.content
 

@@ -361,7 +361,9 @@ def transcribir_procedimiento_imagen(imagenes):
     respuesta = client.chat.completions.create(
         model=MODELO_VISION,
         messages=[{"role": "user", "content": contenido}],
-        max_tokens=min(1200 * len(imagenes), 3000),  # topeado para no pasarnos del limite de tokens por minuto de la cuenta
+        max_tokens=min(2500 * len(imagenes), 6000),  # mas margen: el modelo "piensa" antes de responder
+        # y ese pensamiento oculto tambien gasta parte de este presupuesto,
+        # asi que necesita mas de lo que parece a simple vista
         reasoning_format="hidden"  # este modelo "piensa" antes de responder;
         # sin esto, a veces ese pensamiento interno se filtra en la respuesta
         # en vez de solo la transcripcion final

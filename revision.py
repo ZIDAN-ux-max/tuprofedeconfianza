@@ -44,9 +44,16 @@ def mostrar_revision(usuario):
             fotos = fotos[:4]
         if fotos and st.button("👁️ Leer la(s) foto(s)", key="rev_boton_leer", use_container_width=True):
             with st.spinner("Leyendo tu procedimiento..."):
-                imagenes = [(base64.b64encode(f.getvalue()).decode(), f.type or "image/jpeg") for f in fotos]
-                texto_leido = transcribir_procedimiento_imagen(imagenes)
-                st.session_state["rev_texto_de_foto"] = texto_leido
+                try:
+                    imagenes = [(base64.b64encode(f.getvalue()).decode(), f.type or "image/jpeg") for f in fotos]
+                    texto_leido = transcribir_procedimiento_imagen(imagenes)
+                    if texto_leido and texto_leido.strip():
+                        st.session_state["rev_texto_de_foto"] = texto_leido
+                    else:
+                        st.error("La IA no pudo leer nada de la foto (respuesta vacia). Intenta con una foto mas clara, o de a una por vez.")
+                except Exception as e:
+                    st.error("No se pudo leer la foto (puede ser un corte momentaneo del servicio). Intenta de nuevo.")
+                    st.caption(f"Detalle tecnico (para reportar): {e}")
 
         if st.session_state.get("rev_texto_de_foto"):
             st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:0.9em'>Esto es lo que la IA leyó de tu foto. <strong>Corrígelo</strong> si algo está mal antes de pedir la revisión:</p>", unsafe_allow_html=True)

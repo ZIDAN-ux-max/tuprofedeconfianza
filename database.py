@@ -881,3 +881,50 @@ def obtener_mi_rango(usuario_id):
         "rango": rango_actual,
         "historial": historial
     }
+
+
+# ===================== PLAN DE ESTUDIOS: SILABO / FICHA (NUEVO) =====================
+# A diferencia de la biblioteca de documentos, esto es privado por alumno y
+# curso: guarda la fecha de inicio del ciclo (para convertir "semana N" del
+# Silabo/Ficha en una fecha real) y lo que la IA extrajo de esos documentos
+# (temas por semana, evaluaciones con su peso). Lo usan el Chat, el Calendario
+# y "que repasar hoy" para saber en que va el alumno sin que el tenga que
+# repetirlo cada vez.
+
+def guardar_plan_curso(usuario_id, materia, curso, fecha_inicio_ciclo, temas_por_semana, evaluaciones):
+    """Crea o actualiza (upsert) el plan de estudios del alumno para un
+    curso especifico."""
+    try:
+        existente = supabase.table("plan_curso").select("id").eq("usuario_id", usuario_id).eq("materia", materia).eq("curso", curso).execute()
+        payload = {
+            "usuario_id": usuario_id,
+            "materia": materia,
+            "curso": curso,
+            "fecha_inicio_ciclo": str(fecha_inicio_ciclo) if fecha_inicio_ciclo else None,
+            "temas_por_semana": temas_por_semana,
+            "evaluaciones": evaluaciones,
+            "actualizado_en": ahora_peru().isoformat()
+        }
+        if existente.data:
+            supabase.table("plan_curso").update(payload).eq("id", existente.data[0]["id"]).execute()
+        else:
+            supabase.table("plan_curso").insert(payload).execute()
+        return True
+    except Exception:
+        return False
+
+
+def obtener_plan_curso(usuario_id, materia=None, curso=None):
+    """Devuelve el/los plan(es) de curso del alumno. Si se pasa materia
+    y/o curso, filtra a ese curso especifico; si no, devuelve todos los
+    que tenga guardados."""
+    try:
+        query = supabase.table("plan_curso").select("*").eq("usuario_id", usuario_id)
+        if materia:
+            query = query.eq("materia", materia)
+        if curso:
+            query = query.eq("curso", curso)
+        result = query.execute()
+        return result.data
+    except Exception:
+        return []

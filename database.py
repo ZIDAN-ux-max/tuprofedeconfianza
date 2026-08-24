@@ -5,7 +5,6 @@ import re
 import unicodedata
 from datetime import datetime, timedelta, date
 from supabase import create_client
-
 from utils import hash_password, dividir_en_fragmentos, hash_texto, ahora_peru, hoy_peru
 from logros_data import LOGROS_DISPONIBLES
 
@@ -35,6 +34,7 @@ def registrar(nombre, email, password, edad=None, grado=None, ciclo=None, carrer
     "cupo_lleno" segun cual haya fallado."""
     try:
         limpiar_usuarios_inactivos()
+
         total = supabase.table("usuarios").select("id", count="exact").execute()
         if (total.count or 0) >= 100:
             return None, "cupo_lleno"
@@ -62,6 +62,7 @@ def registrar(nombre, email, password, edad=None, grado=None, ciclo=None, carrer
             payload["carrera"] = carrera
         if universidad:
             payload["universidad"] = universidad.strip()
+
         result = supabase.table("usuarios").insert(payload).execute()
         return result.data[0], None
     except Exception:
@@ -96,10 +97,12 @@ def registrar_asistencia(usuario_id):
         hoy = hoy_peru().isoformat()
         hora_actual = ahora_peru().hour
         existe = supabase.table("asistencia").select("*").eq("usuario_id", usuario_id).eq("fecha", hoy).execute()
+
         if not existe.data:
             usuario = supabase.table("usuarios").select("*").eq("id", usuario_id).execute().data[0]
             ultima = usuario.get("ultima_visita")
             racha_actual = usuario.get("racha") or 0
+
             if ultima:
                 ultima_date = date.fromisoformat(str(ultima).split("T")[0])
                 diferencia = (hoy_peru() - ultima_date).days
@@ -109,16 +112,19 @@ def registrar_asistencia(usuario_id):
                     racha_actual = 1
             else:
                 racha_actual = 1
+
             supabase.table("asistencia").insert({
                 "usuario_id": usuario_id,
                 "fecha": hoy,
                 "racha": racha_actual,
                 "hora": hora_actual
             }).execute()
+
             supabase.table("usuarios").update({
                 "racha": racha_actual,
                 "ultima_visita": hoy
             }).eq("id", usuario_id).execute()
+
         return supabase.table("usuarios").select("racha").eq("id", usuario_id).execute().data[0].get("racha", 0)
     except Exception:
         return 0
@@ -160,12 +166,15 @@ def obtener_estadisticas(usuario_id):
                     semana_count += 1
         except Exception:
             pass
+
     try:
         racha_result = supabase.table("usuarios").select("racha").eq("id", usuario_id).execute()
         racha_val = racha_result.data[0].get("racha", 0) if racha_result.data else 0
     except Exception:
         racha_val = 0
+
     hora_actual = ahora_peru().hour
+
     return {
         "total": total,
         "por_materia": conteo_por_materia,
@@ -184,7 +193,6 @@ def obtener_ranking(usuario_id=None, top=30):
     """Ranking combinado: puntos de tareas cumplidas + puntos de logros +
     una fraccion de los mensajes de chat (para que seguir preguntando siga
     sumando, sin que aplaste el esfuerzo de la disciplina diaria).
-
     Devuelve (lista_top, mi_posicion). 'lista_top' son los primeros 'top'
     puestos. 'mi_posicion' es None si no se paso usuario_id o si ese
     usuario ya esta dentro de 'lista_top'; si esta mas abajo, es un dict
@@ -212,13 +220,13 @@ def obtener_ranking(usuario_id=None, top=30):
             cant_logros[uid] = cant_logros.get(uid, 0) + 1
 
         todos_ids = set(conteo_chat) | set(puntos_tareas) | set(puntos_logros)
-
         calculado = []
         for uid in todos_ids:
             pc = conteo_chat.get(uid, 0) // 3
             pt = puntos_tareas.get(uid, 0)
             pl = puntos_logros.get(uid, 0)
             calculado.append((uid, pc + pt + pl, pc, pt, pl))
+
         calculado.sort(key=lambda x: x[1], reverse=True)
 
         ranking = []
@@ -267,10 +275,12 @@ def otorgar_logro(usuario_id, logro):
 def verificar_logros(usuario_id, stats):
     logros_actuales = obtener_logros_usuario(usuario_id)
     nuevos_logros = []
+
     for logro in LOGROS_DISPONIBLES:
         if logro["nombre"] not in logros_actuales:
             condicion = logro["condicion"]
             valor = logro["valor"]
+
             if condicion == "hora":
                 if valor == 7 and stats["hora"] < 7:
                     otorgar_logro(usuario_id, logro)
@@ -281,6 +291,7 @@ def verificar_logros(usuario_id, stats):
             elif condicion in stats and stats[condicion] >= valor:
                 otorgar_logro(usuario_id, logro)
                 nuevos_logros.append(logro)
+
     return nuevos_logros
 
 
@@ -359,7 +370,7 @@ def _sanear_para_storage(texto):
     return texto.strip("_") or "archivo"
 
 
-def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None, carrera=None):
+def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None, carrera=None, tipo_documento="material", visible_general=True):
     """Guarda el documento (metadata + texto), lo parte en fragmentos pequenos
     (documento_chunks) para busqueda por relevancia, y si se paso el PDF
     original en bytes, lo sube a Supabase Storage para poder descargarlo
@@ -367,7 +378,9 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
     etiquetas para filtrar en la biblioteca y en el selector de curso del
     Chat (asi no se mezclan documentos de distintas universidades/carreras
     con el mismo nombre de curso) - no afectan la busqueda del tutor en si,
-    que sigue siendo por materia+curso.
+    que sigue siendo por materia+curso. 'tipo_documento' es 'material',
+    'silabo' o 'ficha_evaluada'; 'visible_general' controla si aparece en
+    la Biblioteca general o solo en 'Mis documentos' del que lo subio.
 
     Devuelve "ok" si se guardo, "duplicado" si ya existia un documento con
     el mismo contenido (mismo texto, aunque cambie el nombre del archivo),
@@ -376,8 +389,10 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
     PDF casi en blanco), o False si fallo la subida."""
     try:
         curso = curso.strip()
+
         if len((contenido_texto or "").strip()) < MIN_CARACTERES_DOCUMENTO:
             return "vacio"
+
         storage_path = None
         contenido_hash = hash_texto(contenido_texto)
 
@@ -409,10 +424,12 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
             "contenido_texto": contenido_texto,
             "contenido_hash": contenido_hash,
             "subido_por": subido_por,
-            "storage_path": storage_path
+            "storage_path": storage_path,
+            "tipo_documento": tipo_documento,
+            "visible_general": visible_general
         }).execute()
-        documento_id = result.data[0]["id"]
 
+        documento_id = result.data[0]["id"]
         fragmentos = dividir_en_fragmentos(contenido_texto)
         filas_chunks = [
             {
@@ -426,6 +443,7 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
         ]
         if filas_chunks:
             supabase.table("documento_chunks").insert(filas_chunks).execute()
+
         return "ok"
     except Exception:
         return False
@@ -477,7 +495,7 @@ def listar_documentos(materia_general=None, ciclo=None, carrera=None):
     """Lista todos los documentos, opcionalmente filtrados por materia y/o
     ciclo y/o carrera, agrupables luego por curso en la UI."""
     try:
-        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, carrera, nombre_archivo, subido_por, fecha_subida, storage_path")
+        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, carrera, nombre_archivo, subido_por, fecha_subida, storage_path, tipo_documento, visible_general")
         if materia_general:
             query = query.eq("materia_general", materia_general)
         if ciclo:
@@ -584,6 +602,7 @@ def buscar_fragmentos_relevantes(materia_general, curso, pregunta, top_n=6):
 
         if not seleccionados:
             return ""
+
         return "\n\n---\n\n".join(seleccionados)
     except Exception:
         return ""

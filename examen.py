@@ -113,7 +113,7 @@ def _generar_examen(materia_examen, curso_referencia=None, instrucciones=None):
         )
 
     if curso_referencia:
-        muestra = obtener_muestra_estilo_curso(materia_examen, curso_referencia)
+        muestra = obtener_muestra_estilo_curso(materia_examen, curso_referencia, limite_caracteres=5000)
         if muestra:
             prompt_examen += (
                 f"\n\nIMPORTANTE: aqui abajo hay fragmentos REALES de examenes/material del curso "
@@ -124,12 +124,12 @@ def _generar_examen(materia_examen, curso_referencia=None, instrucciones=None):
                 f"{muestra}"
             )
 
-    respuesta_examen = client.chat.completions.create(
-        model=MODELO_TUTOR,
-        messages=[{"role": "user", "content": prompt_examen}],
-        max_tokens=2000
-    )
     try:
+        respuesta_examen = client.chat.completions.create(
+            model=MODELO_TUTOR,
+            messages=[{"role": "user", "content": prompt_examen}],
+            max_tokens=2000
+        )
         texto_json = respuesta_examen.choices[0].message.content
         texto_json = texto_json.replace("```json", "").replace("```", "").strip()
         datos_examen = json.loads(texto_json)
@@ -138,8 +138,9 @@ def _generar_examen(materia_examen, curso_referencia=None, instrucciones=None):
         st.session_state.respuestas_examen = {}
         st.session_state.examen_terminado = False
         st.rerun()
-    except Exception:
+    except Exception as e:
         st.error("Error generando el examen. Intenta de nuevo.")
+        st.caption(f"Detalle tecnico (para reportar): {e}")
 
 
 def _pantalla_inicio(materia_examen, curso_referencia=None):

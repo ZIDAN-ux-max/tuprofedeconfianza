@@ -17,34 +17,49 @@ LIMITE_CARACTERES_DOCUMENTO = 60000  # ~20 paginas por archivo. Ya no se manda t
 
 CSS_TARJETAS_PLAN = """
 <style>
+.plan-rapido-titulo {
+    margin: 0 0 2px 0;
+    font-size: 1.05em;
+    font-weight: 600;
+}
+.plan-rapido-sub {
+    margin: 0 0 8px 0;
+    font-size: 0.78em;
+    color: rgba(255,255,255,0.5);
+}
 .tarjeta-plan {
     background: linear-gradient(135deg, rgba(0,201,255,0.10), rgba(146,254,157,0.04));
     border: 1px solid rgba(0,201,255,0.28);
-    border-radius: 14px;
-    padding: 14px 16px 2px 16px;
-    margin-bottom: 8px;
+    border-radius: 12px;
+    padding: 10px 12px 2px 12px;
+    margin-bottom: 4px;
 }
 .tarjeta-plan.ficha {
     background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(192,132,252,0.05));
     border: 1px solid rgba(245,158,11,0.32);
 }
 .tarjeta-plan h4 {
-    margin: 0 0 2px 0;
-    font-size: 1.05em;
+    margin: 0 0 1px 0;
+    font-size: 0.92em;
 }
 .tarjeta-plan p {
-    margin: 0 0 10px 0;
-    font-size: 0.8em;
-    color: rgba(255,255,255,0.55);
+    margin: 0 0 4px 0;
+    font-size: 0.74em;
+    color: rgba(255,255,255,0.5);
 }
 div[data-testid="stFileUploaderDropzone"] {
-    border-radius: 10px !important;
+    border-radius: 8px !important;
+    min-height: 0 !important;
+    padding: 4px 8px !important;
 }
-.tarjeta-plan-wrap-silabo div[data-testid="stFileUploaderDropzone"] {
+div[data-testid="stFileUploaderDropzone"] button {
+    padding: 2px 10px !important;
+}
+.tarjeta-plan div[data-testid="stFileUploaderDropzone"] {
     border: 1.5px dashed rgba(0,201,255,0.45) !important;
     background: rgba(0,201,255,0.03) !important;
 }
-.tarjeta-plan-wrap-ficha div[data-testid="stFileUploaderDropzone"] {
+.tarjeta-plan.ficha div[data-testid="stFileUploaderDropzone"] {
     border: 1.5px dashed rgba(245,158,11,0.5) !important;
     background: rgba(245,158,11,0.03) !important;
 }
@@ -59,60 +74,54 @@ def _seccion_plan_rapido(usuario):
     son las evaluaciones)."""
     st.markdown(CSS_TARJETAS_PLAN, unsafe_allow_html=True)
 
-    with st.container(border=True):
-        st.markdown("#### 🗓️ Sílabo y Ficha de actividades evaluadas")
-        st.markdown(
-            "<p style='color:rgba(255,255,255,0.55); font-size:0.85em; margin-top:-6px'>"
-            "Documentos privados: la IA los usa para saber en qué semana y tema va tu curso, y cuándo son tus evaluaciones."
-            "</p>",
-            unsafe_allow_html=True
-        )
+    st.markdown("<p class='plan-rapido-titulo'>🗓️ Sílabo y Ficha de actividades evaluadas</p>", unsafe_allow_html=True)
+    st.markdown("<p class='plan-rapido-sub'>Documentos privados: la IA los usa para saber en qué semana/tema va tu curso y cuándo son tus evaluaciones.</p>", unsafe_allow_html=True)
 
-        col_materia, col_curso = st.columns(2)
-        with col_materia:
-            materia_pr = st.selectbox("Materia", MATERIAS_DISPONIBLES, key="plan_top_materia")
-        with col_curso:
-            cursos_existentes_pr = listar_cursos(materia_pr)
-            opciones_curso_pr = cursos_existentes_pr + ["+ Nuevo curso..."]
-            seleccion_pr = st.selectbox("Curso", opciones_curso_pr, key="plan_top_curso_select") if cursos_existentes_pr else "+ Nuevo curso..."
-            if seleccion_pr == "+ Nuevo curso...":
-                curso_pr = st.text_input("Nombre del curso", key="plan_top_curso_nuevo", placeholder="ej: Ingles ING-101")
-            else:
-                curso_pr = seleccion_pr
+    col_materia, col_curso = st.columns(2)
+    with col_materia:
+        materia_pr = st.selectbox("Materia", MATERIAS_DISPONIBLES, key="plan_top_materia")
+    with col_curso:
+        cursos_existentes_pr = listar_cursos(materia_pr)
+        opciones_curso_pr = cursos_existentes_pr + ["+ Nuevo curso..."]
+        seleccion_pr = st.selectbox("Curso", opciones_curso_pr, key="plan_top_curso_select") if cursos_existentes_pr else "+ Nuevo curso..."
+        if seleccion_pr == "+ Nuevo curso...":
+            curso_pr = st.text_input("Nombre del curso", key="plan_top_curso_nuevo", placeholder="ej: Ingles ING-101")
+        else:
+            curso_pr = seleccion_pr
 
-        col_silabo, col_ficha = st.columns(2)
-        with col_silabo:
-            st.markdown("<div class='tarjeta-plan'><h4>📘 Sílabo</h4><p>Plan de temas del curso, semana por semana</p></div>", unsafe_allow_html=True)
-            st.markdown("<div class='tarjeta-plan-wrap-silabo'>", unsafe_allow_html=True)
-            archivo_silabo = st.file_uploader("Sílabo (PDF)", type=["pdf"], key="plan_top_silabo", label_visibility="collapsed")
-            st.markdown("</div>", unsafe_allow_html=True)
-        with col_ficha:
-            st.markdown("<div class='tarjeta-plan ficha'><h4>🗓️ Ficha de actividades evaluadas</h4><p>Fechas y pesos de examenes/entregas</p></div>", unsafe_allow_html=True)
-            st.markdown("<div class='tarjeta-plan-wrap-ficha'>", unsafe_allow_html=True)
-            archivo_ficha = st.file_uploader("Ficha de actividades evaluadas (PDF)", type=["pdf"], key="plan_top_ficha", label_visibility="collapsed")
-            st.markdown("</div>", unsafe_allow_html=True)
+    col_silabo, col_ficha = st.columns(2)
+    with col_silabo:
+        st.markdown("<div class='tarjeta-plan'><h4>📘 Sílabo</h4><p>Plan de temas por semana</p>", unsafe_allow_html=True)
+        archivo_silabo = st.file_uploader("Sílabo (PDF)", type=["pdf"], key="plan_top_silabo", label_visibility="collapsed")
+        st.markdown("</div>", unsafe_allow_html=True)
+    with col_ficha:
+        st.markdown("<div class='tarjeta-plan ficha'><h4>🗓️ Ficha de actividades</h4><p>Fechas y pesos de evaluaciones</p>", unsafe_allow_html=True)
+        archivo_ficha = st.file_uploader("Ficha de actividades evaluadas (PDF)", type=["pdf"], key="plan_top_ficha", label_visibility="collapsed")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        if st.button("Guardar Sílabo / Ficha", use_container_width=True, key="plan_top_guardar"):
-            if not curso_pr or not curso_pr.strip():
-                st.warning("Escribe o elige un curso primero")
-            elif not archivo_silabo and not archivo_ficha:
-                st.warning("Sube al menos el Sílabo o la Ficha de actividades")
-            else:
-                resultados = []
-                if archivo_silabo:
-                    resultados.append(("Sílabo", _subir_uno(materia_pr, curso_pr, archivo_silabo, usuario, None, usuario.get("universidad"), usuario.get("carrera"), "silabo")))
-                if archivo_ficha:
-                    resultados.append(("Ficha de actividades", _subir_uno(materia_pr, curso_pr, archivo_ficha, usuario, None, usuario.get("universidad"), usuario.get("carrera"), "ficha_evaluada")))
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-                for nombre, resultado in resultados:
-                    if resultado == "ok":
-                        st.success(f"{nombre} guardado correctamente")
-                    elif resultado == "duplicado":
-                        st.info(f"{nombre}: ya existía un documento con el mismo contenido")
-                    elif resultado == "vacio":
-                        st.warning(f"{nombre}: tiene muy poco contenido, revisa que el PDF tenga texto seleccionable")
-                    else:
-                        st.error(f"{nombre}: no se pudo subir, intenta de nuevo")
+    if st.button("Guardar Sílabo / Ficha", use_container_width=True, key="plan_top_guardar"):
+        if not curso_pr or not curso_pr.strip():
+            st.warning("Escribe o elige un curso primero")
+        elif not archivo_silabo and not archivo_ficha:
+            st.warning("Sube al menos el Sílabo o la Ficha de actividades")
+        else:
+            resultados = []
+            if archivo_silabo:
+                resultados.append(("Sílabo", _subir_uno(materia_pr, curso_pr, archivo_silabo, usuario, None, usuario.get("universidad"), usuario.get("carrera"), "silabo")))
+            if archivo_ficha:
+                resultados.append(("Ficha de actividades", _subir_uno(materia_pr, curso_pr, archivo_ficha, usuario, None, usuario.get("universidad"), usuario.get("carrera"), "ficha_evaluada")))
+
+            for nombre, resultado in resultados:
+                if resultado == "ok":
+                    st.success(f"{nombre} guardado correctamente")
+                elif resultado == "duplicado":
+                    st.info(f"{nombre}: ya existía un documento con el mismo contenido")
+                elif resultado == "vacio":
+                    st.warning(f"{nombre}: tiene muy poco contenido, revisa que el PDF tenga texto seleccionable")
+                else:
+                    st.error(f"{nombre}: no se pudo subir, intenta de nuevo")
 
 
 def _subir_uno(materia, curso, archivo, usuario, ciclo, universidad, carrera, tipo_documento):

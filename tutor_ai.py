@@ -5,7 +5,8 @@ perfil despues de cada intercambio."""
 import json
 import streamlit as st
 from groq import Groq
-from database import obtener_perfil_alumno, guardar_perfil_alumno, buscar_fragmentos_relevantes
+
+from database import obtener_perfil_alumno, guardar_perfil_alumno, buscar_fragmentos_relevantes, obtener_texto_silabo
 from utils import reparar_backslashes_latex
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
@@ -13,6 +14,7 @@ client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 MODELO_TUTOR = "openai/gpt-oss-120b"  # antes: llama-3.3-70b-versatile (descontinuado por Groq en agosto 2026)
 MODELO_RESUMEN = "openai/gpt-oss-20b"  # antes: llama-3.1-8b-instant (descontinuado por Groq en agosto 2026)
 MODELO_VISION = "qwen/qwen3.6-27b"  # unico modelo vigente de Groq con soporte de imagenes (para leer fotos de procedimientos)
+
 
 ESTRUCTURA_CLARA = """
 IMPORTANTE - estructura visual clara (como una clase bien ordenada, no un parrafo corrido de texto):
@@ -43,14 +45,11 @@ tenga color o no.
 PROMPTS_BASE = {
     "Matematicas": """Eres Tu Profe de Confianza, un tutor de matematicas
 para universitarios peruanos. Eres cercano, paciente y explicas paso a paso.
-
 SIEMPRE usa este formato HTML en tus respuestas:
 - Pasos numerados en verde: <span style='color:#92FE9D; font-weight:bold'>Paso 1:</span>
 - Resultados finales en naranja: <span style='color:#F59E0B; font-weight:bold'>Resultado:</span>
 - Conceptos importantes en azul: <span style='color:#00C9FF; font-weight:bold'>concepto</span>
-
 Cuando escribas formulas usa LaTeX: $$formula$$
-
 Explicas de forma simple con ejemplos de la vida peruana.
 Cuando el usuario se equivoca lo animas y corriges con amabilidad.
 """ + ESTRUCTURA_CLARA,
@@ -102,14 +101,11 @@ Corriges errores con amabilidad.""",
 
     "Fisica": """Eres Tu Profe de Confianza, un tutor de fisica
 para universitarios peruanos. Eres cercano, paciente y explicas paso a paso.
-
 SIEMPRE usa este formato HTML en tus respuestas:
 - Pasos numerados en verde: <span style='color:#92FE9D; font-weight:bold'>Paso 1:</span>
 - Resultados finales (con unidades) en naranja: <span style='color:#F59E0B; font-weight:bold'>Resultado:</span>
 - Conceptos y leyes fisicas en azul: <span style='color:#00C9FF; font-weight:bold'>concepto</span>
-
 Cuando escribas formulas usa LaTeX: $$formula$$
-
 SIEMPRE indica las unidades de cada resultado (N, m/s, J, etc.) y menciona que ley o principio fisico aplica.
 Usa ejemplos cotidianos para explicar conceptos abstractos.
 Cuando el usuario se equivoca lo animas y corriges con amabilidad.
@@ -118,14 +114,11 @@ Cuando el usuario se equivoca lo animas y corriges con amabilidad.
     "Quimica General": """Eres Tu Profe de Confianza, un tutor de quimica general
 para universitarios peruanos (enfocado en estudiantes de carreras de salud e ingenieria).
 Eres cercano, paciente y explicas paso a paso.
-
 SIEMPRE usa este formato HTML en tus respuestas:
 - Pasos numerados en verde: <span style='color:#92FE9D; font-weight:bold'>Paso 1:</span>
 - Resultados finales en naranja: <span style='color:#F59E0B; font-weight:bold'>Resultado:</span>
 - Conceptos y nombres de compuestos en azul: <span style='color:#00C9FF; font-weight:bold'>concepto</span>
-
 Cuando escribas formulas quimicas o ecuaciones usa LaTeX o notacion clara: $$formula$$
-
 Balancea ecuaciones quimicas mostrando cada paso, y explica estequiometria con cuidado.
 Cuando el usuario se equivoca lo animas y corriges con amabilidad.
 """ + ESTRUCTURA_CLARA,
@@ -133,12 +126,10 @@ Cuando el usuario se equivoca lo animas y corriges con amabilidad.
     "Quimica Organica": """Eres Tu Profe de Confianza, un tutor de quimica organica
 para universitarios peruanos (enfocado en estudiantes de medicina y ciencias de la salud).
 Eres cercano, paciente y explicas paso a paso.
-
 SIEMPRE usa este formato HTML en tus respuestas:
 - Pasos numerados en verde: <span style='color:#92FE9D; font-weight:bold'>Paso 1:</span>
 - Resultados/productos de reaccion en naranja: <span style='color:#F59E0B; font-weight:bold'>Resultado:</span>
 - Grupos funcionales y nombres IUPAC en azul: <span style='color:#00C9FF; font-weight:bold'>concepto</span>
-
 Explica mecanismos de reaccion paso a paso, y cuando sea relevante menciona nombres IUPAC y grupos funcionales involucrados.
 Cuando el usuario se equivoca lo animas y corriges con amabilidad.
 """ + ESTRUCTURA_CLARA,
@@ -202,7 +193,6 @@ def _contexto_alumno(usuario, perfil):
         partes.append("Temas que el alumno ya domina (no los expliques desde cero, puedes referenciarlos): " + ", ".join(dominados) + ".")
     if dificiles:
         partes.append("Temas donde el alumno ha mostrado dificultad (ve con mas calma y refuerza con ejemplos extra): " + ", ".join(dificiles) + ".")
-
     if perfil.get("ultimo_resumen"):
         partes.append("Nota de la ultima sesion: " + perfil["ultimo_resumen"])
 
@@ -217,8 +207,14 @@ def construir_system_prompt(modo, usuario, texto_pdf="", curso_biblioteca=None, 
     biblioteca del curso elegido segun la pregunta actual (si hay) + PDF
     subido en el momento (si hay)."""
     base = PROMPTS_BASE.get(modo, PROMPTS_BASE["Matematicas"])
+
     perfil = obtener_perfil_alumno(usuario["id"], modo)
     prompt = base + _contexto_alumno(usuario, perfil)
+
+    if curso_biblioteca:
+        silabo = obtener_texto_silabo(modo, curso_biblioteca)
+        if silabo:
+            prompt += f"\n\nContexto fijo del silabo/ficha de evaluacion de '{curso_biblioteca}' (usalo para saber en que semana/tema esta el curso y que evaluaciones vienen, aunque la pregunta del alumno no coincida directamente con este texto):\n{silabo}"
 
     if curso_biblioteca and pregunta:
         fragmentos = buscar_fragmentos_relevantes(modo, curso_biblioteca, pregunta)
@@ -254,7 +250,6 @@ def actualizar_perfil_alumno(usuario_id, modo, pregunta, respuesta):
         perfil_actual = obtener_perfil_alumno(usuario_id, modo)
 
         prompt_resumen = f"""Analiza este intercambio entre un tutor y un alumno de {modo}.
-
 Pregunta del alumno: {pregunta}
 Respuesta del tutor: {respuesta}
 
@@ -269,7 +264,6 @@ con este formato exacto:
   "nivel_estimado": "principiante" o "intermedio" o "avanzado",
   "ultimo_resumen": "una frase corta (max 15 palabras) sobre como le fue en este intercambio"
 }}
-
 Combina la informacion nueva con la que ya tenia el alumno, sin perder temas anteriores.
 Manten cada lista con maximo 8 elementos (si se pasa, elimina los mas antiguos/menos relevantes)."""
 
@@ -278,7 +272,6 @@ Manten cada lista con maximo 8 elementos (si se pasa, elimina los mas antiguos/m
             messages=[{"role": "user", "content": prompt_resumen}],
             response_format={"type": "json_object"}
         )
-
         nuevo_perfil = json.loads(resultado.choices[0].message.content)
         guardar_perfil_alumno(usuario_id, modo, nuevo_perfil)
     except Exception:
@@ -321,7 +314,6 @@ Devuelve SOLO un JSON (sin texto extra, sin markdown) con este formato exacto:
     {{"numero": 1, "titulo": "Nombre corto del concepto (max 6 palabras)", "formula": "codigo LaTeX SIN simbolos de dolar, ej: a^n \\\\cdot a^m = a^{{n+m}}", "nota": "explicacion de una linea o vacio si el alumno ya domina esto"}}
   ]
 }}
-
 Maximo 16 tarjetas. Cada tarjeta debe ser corta y directa (como una tarjeta de estudio, NO una clase completa).
 
 CRITICO sobre el campo "formula" - NUNCA omitas las barras invertidas (\\\\)
@@ -332,13 +324,11 @@ MAL (invalido, sin barras ni llaves completas): "int x^n dx = fracx^{{n+1}}n + 1
 BIEN: "\\\\int x^n \\\\, dx = \\\\frac{{x^{{n+1}}}}{{n+1}} + C"
 MAL: "fraccos(ax)a"
 BIEN: "\\\\frac{{\\\\cos(ax)}}{{a}}"
-
 {instruccion_nivel}{instruccion_enfoque}
 
 Material real del curso (usalo como fuente principal, no inventes formulas que no esten relacionadas):
 {material_curso}
 """
-
     respuesta = None
     try:
         respuesta = client.chat.completions.create(
@@ -413,54 +403,3 @@ Revisa el procedimiento PASO POR PASO:
         max_tokens=2000
     )
     return respuesta.choices[0].message.content
-
-
-def extraer_plan_curso(modo, curso, texto_silabo="", texto_ficha=""):
-    """Le pide a la IA que lea el Silabo y/o la Ficha de actividades
-    evaluadas (texto extraido del PDF) y devuelva, en JSON, los temas que
-    se ven cada semana y las evaluaciones con su semana y peso. Se puede
-    pasar solo uno de los dos textos (ej: subio primero el Silabo y la
-    Ficha despues, o viceversa) - la IA extrae lo que pueda de lo que haya.
-    No inventa fechas reales: solo el numero de semana tal como aparece en
-    el documento; la fecha real se calcula despues en el codigo a partir
-    de la fecha de inicio de ciclo que da el alumno."""
-    prompt = f"""Estos son documentos reales de un curso universitario ({modo} - {curso}).
-Pueden ser un Silabo (plan de temas por semana) y/o una Ficha de actividades evaluadas (examenes/entregas con su semana y peso).
-
-SILABO (puede venir vacio si no se subio):
-{texto_silabo[:15000] if texto_silabo else "(no se subio)"}
-
-FICHA DE ACTIVIDADES EVALUADAS (puede venir vacia si no se subio):
-{texto_ficha[:15000] if texto_ficha else "(no se subio)"}
-
-Devuelve SOLO un JSON (sin texto extra, sin markdown) con este formato exacto:
-{{
-  "temas_por_semana": [
-    {{"semana": 1, "temas": "resumen corto (max 12 palabras) de los temas de esa semana"}}
-  ],
-  "evaluaciones": [
-    {{"nombre": "nombre corto de la evaluacion", "semana": 8, "peso": 20, "temas": "de que temas depende, si se puede inferir"}}
-  ]
-}}
-
-Reglas importantes:
-- "semana" es SIEMPRE el numero de semana del ciclo tal como aparece en el documento (1, 2, 3...), nunca una fecha - las fechas reales las calcula el sistema, no tu.
-- "peso" es el porcentaje de la nota final si el documento lo indica (numero, sin el simbolo %); si no lo indica, pon null.
-- Si un documento no trae informacion (vino vacio), simplemente devuelve una lista vacia [] para esa parte, no inventes datos.
-- No repitas semanas: si una semana aparece varias veces en el Silabo, junta sus temas en una sola entrada.
-- Ignora bibliografia, plataformas, rubricas de calificacion detalladas y cualquier informacion administrativa que no sea "que se estudia" o "cuando es la evaluacion"."""
-
-    try:
-        respuesta = client.chat.completions.create(
-            model=MODELO_TUTOR,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=2500,
-            response_format={"type": "json_object"}
-        )
-        datos = json.loads(respuesta.choices[0].message.content)
-        return {
-            "temas_por_semana": datos.get("temas_por_semana", []),
-            "evaluaciones": datos.get("evaluaciones", [])
-        }
-    except Exception:
-        return {"temas_por_semana": [], "evaluaciones": []}

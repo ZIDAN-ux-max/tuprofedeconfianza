@@ -4,18 +4,13 @@ organizados por materia y curso, y todos pueden verlos, descargarlos y
 usarlos como contexto extra para el tutor en el Chat."""
 import io
 import streamlit as st
+
 from database import guardar_documento, listar_cursos, listar_documentos, listar_ciclos, listar_carreras, usuario_subio_documento, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
 from utils import extraer_texto_pdf, extraer_texto_pptx
 from materias_data import MATERIAS_DISPONIBLES
 
 LIMITE_CARACTERES_DOCUMENTO = 60000  # ~20 paginas por archivo. Ya no se manda todo al tutor de una:
 # se parte en fragmentos y se busca solo lo relevante a cada pregunta (ver database.buscar_fragmentos_relevantes)
-
-TIPOS_DOCUMENTO = {
-    "Material de estudio": "material",
-    "Sílabo": "silabo",
-    "Ficha de actividades evaluadas": "ficha_evaluada",
-}
 
 
 def _seccion_subir(usuario):
@@ -37,103 +32,79 @@ def _seccion_subir(usuario):
             curso = seleccion
 
         ciclo = st.text_input("Ciclo (opcional, ej: 2026-1)", key="doc_ciclo")
-
         universidad = st.text_input(
             "Universidad o instituto (opcional)",
             value=usuario.get("universidad") or "",
             key="doc_universidad",
             help="Para que el Chat solo te muestre documentos de tu misma universidad, no mezclados con los de otras"
         )
-
         carrera = st.text_input(
             "Carrera (opcional, ej: Ing. Civil, Medicina)",
             value=usuario.get("carrera") or "",
             key="doc_carrera",
             help="Para ordenar la biblioteca y no mezclar documentos de otras carreras"
         )
-
-        tipo_documento_label = st.selectbox(
-            "Tipo de documento",
-            list(TIPOS_DOCUMENTO.keys()),
-            key="doc_tipo_documento",
-            help="El Sílabo y la Ficha de actividades evaluadas no aparecen en la Biblioteca: son privados y solo los usa la IA para conocer tu curso."
+        tipo_doc_legible = st.radio(
+            "¿Qué tipo de documento es?",
+            ["Apunte / material de clase", "Sílabo o ficha de evaluación"],
+            key="doc_tipo",
+            help="El sílabo/ficha se usa como contexto fijo para que el tutor sepa en que semana y tema va el curso"
         )
-        tipo_documento = TIPOS_DOCUMENTO[tipo_documento_label]
-
-        if tipo_documento == "material":
-            visible_general = st.checkbox(
-                "Mostrar este documento en la Biblioteca general",
-                value=True,
-                key="doc_visible_general",
-                help="Si lo desmarcas, solo tú lo verás en 'Mis documentos'."
-            )
-        else:
-            visible_general = False
-            st.caption("Este documento es privado: se usa para que la IA conozca tu curso, no aparecerá en la Biblioteca.")
+        tipo_documento = "silabo" if tipo_doc_legible.startswith("Sílabo") else "apunte"
 
     with col_archivos:
         archivos = st.file_uploader("Selecciona uno o varios PDFs o PPTX", type=["pdf", "pptx"], accept_multiple_files=True, key="doc_archivos")
 
-        if st.button("Subir a la biblioteca", use_container_width=True):
-            if not curso or not curso.strip():
-                st.warning("Escribe o elige un curso primero")
-            elif not archivos:
-                st.warning("Selecciona al menos un PDF")
-            else:
-                progreso = st.progress(0)
-                subidos = 0
-                duplicados = 0
-                vacios = 0
-                fallidos = 0
-
-                for i, archivo in enumerate(archivos):
-                    bytes_pdf = archivo.getvalue()
-                    if archivo.name.lower().endswith(".pptx"):
-                        texto = extraer_texto_pptx(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
-                    else:
-                        texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
-
-                    if texto:
-                        resultado = guardar_documento(
-                            materia, curso, archivo.name, texto, usuario["nombre"],
-                            archivo_bytes=bytes_pdf, ciclo=ciclo, universidad=universidad, carrera=carrera,
-                            tipo_documento=tipo_documento, visible_general=visible_general
-                        )
-                        if resultado == "ok":
-                            subidos += 1
-                        elif resultado == "duplicado":
-                            duplicados += 1
-                        elif resultado == "vacio":
-                            vacios += 1
-                        else:
-                            fallidos += 1
+    if st.button("Subir a la biblioteca", use_container_width=True):
+        if not curso or not curso.strip():
+            st.warning("Escribe o elige un curso primero")
+        elif not archivos:
+            st.warning("Selecciona al menos un PDF")
+        else:
+            progreso = st.progress(0)
+            subidos = 0
+            duplicados = 0
+            vacios = 0
+            fallidos = 0
+            for i, archivo in enumerate(archivos):
+                bytes_pdf = archivo.getvalue()
+                if archivo.name.lower().endswith(".pptx"):
+                    texto = extraer_texto_pptx(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
+                else:
+                    texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
+                if texto:
+                    resultado = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo, universidad=universidad, carrera=carrera, tipo_documento=tipo_documento)
+                    if resultado == "ok":
+                        subidos += 1
+                    elif resultado == "duplicado":
+                        duplicados += 1
+                    elif resultado == "vacio":
+                        vacios += 1
                     else:
                         fallidos += 1
-
-                    progreso.progress((i + 1) / len(archivos))
-
-                if subidos:
-                    st.success(f"Se subieron {subidos} documento(s) a '{curso}' correctamente")
-                if duplicados:
-                    st.info(f"{duplicados} documento(s) no se subieron porque ya existían (mismo contenido, aunque el nombre del archivo sea distinto)")
-                if vacios:
-                    st.warning(f"{vacios} documento(s) no se subieron porque tienen muy poco contenido (portada suelta, hoja casi en blanco, etc.)")
-                if fallidos:
-                    st.error(f"{fallidos} documento(s) fallaron. Verifica que el PDF tenga texto seleccionable (no solo imagenes escaneadas) o que el PPTX no este dañado.")
+                else:
+                    fallidos += 1
+                progreso.progress((i + 1) / len(archivos))
+            if subidos:
+                st.success(f"Se subieron {subidos} documento(s) a '{curso}' correctamente")
+            if duplicados:
+                st.info(f"{duplicados} documento(s) no se subieron porque ya existían (mismo contenido, aunque el nombre del archivo sea distinto)")
+            if vacios:
+                st.warning(f"{vacios} documento(s) no se subieron porque tienen muy poco contenido (portada suelta, hoja casi en blanco, etc.)")
+            if fallidos:
+                st.error(f"{fallidos} documento(s) fallaron. Verifica que el PDF tenga texto seleccionable (no solo imagenes escaneadas) o que el PPTX no este dañado.")
 
 
 def _seccion_explorar(usuario):
     st.markdown("### 📚 Biblioteca")
-
     es_admin = bool(usuario.get("es_admin"))
 
     if not es_admin and not usuario_subio_documento(usuario["nombre"]):
         st.info("📤 Sube al menos un documento tuyo (con contenido real) para desbloquear la biblioteca de todos. Ve a la pestaña 'Subir'.")
         return
 
-    alcance = st.radio("Ver", ["Todos", "Generales", "Mis documentos"], horizontal=True, key="doc_alcance")
-
     busqueda = st.text_input("🔍 Buscar por curso o nombre de archivo", key="doc_busqueda", placeholder="ej: Estática, examen parcial...")
+
     materia_filtro = st.radio("Filtrar por materia", ["Todas"] + MATERIAS_DISPONIBLES, horizontal=True, key="doc_filtro")
     materia_query = None if materia_filtro == "Todas" else materia_filtro
 
@@ -152,26 +123,12 @@ def _seccion_explorar(usuario):
             carrera_query = None if carrera_filtro == "Todas" else carrera_filtro
 
     documentos = listar_documentos(materia_query, ciclo_query, carrera_query)
-
-    # Solo material de estudio va a la Biblioteca normal; Sílabo y Ficha
-    # de actividades son privados y viven en "Mi plan de estudios".
-    documentos = [d for d in documentos if d.get("tipo_documento", "material") == "material"]
-
-    if alcance == "Mis documentos":
-        documentos = [d for d in documentos if (d.get("subido_por") or "") == usuario["nombre"]]
-    elif alcance == "Generales":
-        documentos = [
-            d for d in documentos
-            if d.get("visible_general", True) or (d.get("subido_por") or "") == usuario["nombre"]
-        ]
-
     if busqueda and busqueda.strip():
         texto_buscado = busqueda.strip().lower()
         documentos = [
             d for d in documentos
             if texto_buscado in (d.get("curso") or "").lower() or texto_buscado in (d.get("nombre_archivo") or "").lower()
         ]
-
     if not documentos:
         if busqueda and busqueda.strip():
             st.info(f"No se encontró ningún documento que coincida con '{busqueda.strip()}'.")
@@ -221,24 +178,19 @@ def _seccion_explorar(usuario):
                         marcado = st.checkbox("", key=f"sel_doc_{doc['id']}", label_visibility="collapsed")
                         if marcado:
                             seleccionados.append(doc["id"])
-
                 with col1:
                     fecha = str(doc.get("fecha_subida", ""))[:10]
                     subio = doc.get("subido_por") or "Alguien"
-                    etiqueta_privado = "" if doc.get("visible_general", True) else " 🔒"
-                    st.markdown(f"📄 **{doc['nombre_archivo']}**{etiqueta_privado} — subido por {subio} el {fecha}")
-
+                    st.markdown(f"📄 **{doc['nombre_archivo']}** — subido por {subio} el {fecha}")
                 with col2:
                     if st.button("👁️ Ver texto", key=f"ver_doc_{doc['id']}"):
                         st.session_state[f"mostrar_texto_{doc['id']}"] = not st.session_state.get(f"mostrar_texto_{doc['id']}", False)
-
                 with col3:
                     url_pdf = obtener_url_documento(doc.get("storage_path"))
                     if url_pdf:
                         st.markdown(f"[📄 Abrir archivo]({url_pdf})")
                     else:
                         st.markdown("<span style='color:rgba(255,255,255,0.4); font-size:0.85em'>Sin archivo guardado</span>", unsafe_allow_html=True)
-
                 if es_admin:
                     with col4:
                         if st.button("🗑️", key=f"del_doc_{doc['id']}", help="Eliminar este documento"):
@@ -278,7 +230,6 @@ def mostrar_documentos(usuario):
     st.divider()
 
     tab1, tab2 = st.tabs(["📤 Subir", "📁 Explorar"])
-
     with tab1:
         _seccion_subir(usuario)
     with tab2:

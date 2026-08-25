@@ -13,6 +13,18 @@ LIMITE_CARACTERES_DOCUMENTO = 60000  # ~20 paginas por archivo. Ya no se manda t
 # se parte en fragmentos y se busca solo lo relevante a cada pregunta (ver database.buscar_fragmentos_relevantes)
 
 
+def _subir_uno(materia, curso, archivo, usuario, ciclo, universidad, carrera, tipo_documento):
+    """Sube un solo archivo (usado para Sílabo y Ficha, que son de a uno)."""
+    bytes_pdf = archivo.getvalue()
+    if archivo.name.lower().endswith(".pptx"):
+        texto = extraer_texto_pptx(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
+    else:
+        texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
+    if not texto:
+        return "fallido"
+    return guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo, universidad=universidad, carrera=carrera, tipo_documento=tipo_documento)
+
+
 def _seccion_subir(usuario):
     st.markdown("### 📤 Subir documentos")
     st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:0.9em'>Puedes subir varios PDFs a la vez, todos del mismo curso.</p>", unsafe_allow_html=True)
@@ -44,36 +56,37 @@ def _seccion_subir(usuario):
             key="doc_carrera",
             help="Para ordenar la biblioteca y no mezclar documentos de otras carreras"
         )
-        tipo_doc_legible = st.radio(
-            "¿Qué tipo de documento es?",
-            ["Apunte / material de clase", "Sílabo o ficha de evaluación"],
-            key="doc_tipo",
-            help="El sílabo/ficha se usa como contexto fijo para que el tutor sepa en que semana y tema va el curso"
-        )
-        tipo_documento = "silabo" if tipo_doc_legible.startswith("Sílabo") else "apunte"
 
     with col_archivos:
-        archivos = st.file_uploader("Selecciona uno o varios PDFs o PPTX", type=["pdf", "pptx"], accept_multiple_files=True, key="doc_archivos")
+        st.markdown("**Apuntes / material de clase**")
+        archivos = st.file_uploader("Selecciona uno o varios PDFs o PPTX", type=["pdf", "pptx"], accept_multiple_files=True, key="doc_archivos", label_visibility="collapsed")
+
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+
+        col_silabo, col_ficha = st.columns(2)
+        with col_silabo:
+            st.markdown("**Sílabo**")
+            archivo_silabo = st.file_uploader("Sílabo del curso (PDF)", type=["pdf"], key="doc_silabo", label_visibility="collapsed")
+        with col_ficha:
+            st.markdown("**Ficha de actividades evaluadas**")
+            archivo_ficha = st.file_uploader("Ficha de actividades evaluadas (PDF)", type=["pdf"], key="doc_ficha", label_visibility="collapsed")
+        st.caption("El Sílabo y la Ficha se usan como contexto fijo para que el tutor sepa en qué semana y tema va el curso.")
 
     if st.button("Subir a la biblioteca", use_container_width=True):
         if not curso or not curso.strip():
             st.warning("Escribe o elige un curso primero")
-        elif not archivos:
-            st.warning("Selecciona al menos un PDF")
+        elif not archivos and not archivo_silabo and not archivo_ficha:
+            st.warning("Selecciona al menos un archivo (apunte, sílabo o ficha)")
         else:
-            progreso = st.progress(0)
             subidos = 0
             duplicados = 0
             vacios = 0
             fallidos = 0
-            for i, archivo in enumerate(archivos):
-                bytes_pdf = archivo.getvalue()
-                if archivo.name.lower().endswith(".pptx"):
-                    texto = extraer_texto_pptx(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
-                else:
-                    texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
-                if texto:
-                    resultado = guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo, universidad=universidad, carrera=carrera, tipo_documento=tipo_documento)
+
+            if archivos:
+                progreso = st.progress(0)
+                for i, archivo in enumerate(archivos):
+                    resultado = _subir_uno(materia, curso, archivo, usuario, ciclo, universidad, carrera, "apunte")
                     if resultado == "ok":
                         subidos += 1
                     elif resultado == "duplicado":
@@ -82,9 +95,30 @@ def _seccion_subir(usuario):
                         vacios += 1
                     else:
                         fallidos += 1
+                    progreso.progress((i + 1) / len(archivos))
+
+            if archivo_silabo:
+                resultado = _subir_uno(materia, curso, archivo_silabo, usuario, ciclo, universidad, carrera, "silabo")
+                if resultado == "ok":
+                    subidos += 1
+                elif resultado == "duplicado":
+                    duplicados += 1
+                elif resultado == "vacio":
+                    vacios += 1
                 else:
                     fallidos += 1
-                progreso.progress((i + 1) / len(archivos))
+
+            if archivo_ficha:
+                resultado = _subir_uno(materia, curso, archivo_ficha, usuario, ciclo, universidad, carrera, "ficha_evaluada")
+                if resultado == "ok":
+                    subidos += 1
+                elif resultado == "duplicado":
+                    duplicados += 1
+                elif resultado == "vacio":
+                    vacios += 1
+                else:
+                    fallidos += 1
+
             if subidos:
                 st.success(f"Se subieron {subidos} documento(s) a '{curso}' correctamente")
             if duplicados:

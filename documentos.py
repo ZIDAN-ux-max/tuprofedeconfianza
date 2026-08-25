@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """Biblioteca de documentos compartida: los alumnos suben PDFs (en lote),
 organizados por materia y curso, y todos pueden verlos, descargarlos y
-usarlos como contexto extra para el tutor en el Chat."""
+usarlos como contexto extra para el tutor en el Chat. Arriba de todo (fuera
+de las pestañas) hay una seccion fija para el Silabo y la Ficha de
+actividades evaluadas: son documentos privados, de a uno, que la IA usa
+como contexto fijo del curso."""
 import io
 import streamlit as st
 
@@ -11,6 +14,105 @@ from materias_data import MATERIAS_DISPONIBLES
 
 LIMITE_CARACTERES_DOCUMENTO = 60000  # ~20 paginas por archivo. Ya no se manda todo al tutor de una:
 # se parte en fragmentos y se busca solo lo relevante a cada pregunta (ver database.buscar_fragmentos_relevantes)
+
+CSS_TARJETAS_PLAN = """
+<style>
+.tarjeta-plan {
+    background: linear-gradient(135deg, rgba(0,201,255,0.10), rgba(146,254,157,0.04));
+    border: 1px solid rgba(0,201,255,0.28);
+    border-radius: 14px;
+    padding: 14px 16px 2px 16px;
+    margin-bottom: 8px;
+}
+.tarjeta-plan.ficha {
+    background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(192,132,252,0.05));
+    border: 1px solid rgba(245,158,11,0.32);
+}
+.tarjeta-plan h4 {
+    margin: 0 0 2px 0;
+    font-size: 1.05em;
+}
+.tarjeta-plan p {
+    margin: 0 0 10px 0;
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.55);
+}
+div[data-testid="stFileUploaderDropzone"] {
+    border-radius: 10px !important;
+}
+.tarjeta-plan-wrap-silabo div[data-testid="stFileUploaderDropzone"] {
+    border: 1.5px dashed rgba(0,201,255,0.45) !important;
+    background: rgba(0,201,255,0.03) !important;
+}
+.tarjeta-plan-wrap-ficha div[data-testid="stFileUploaderDropzone"] {
+    border: 1.5px dashed rgba(245,158,11,0.5) !important;
+    background: rgba(245,158,11,0.03) !important;
+}
+</style>
+"""
+
+
+def _seccion_plan_rapido(usuario):
+    """Seccion fija (fuera de las pestañas) para subir el Silabo y la Ficha
+    de actividades evaluadas: son documentos privados, de a uno por curso,
+    que le dan a la IA contexto fijo (en que semana/tema va el curso, cuando
+    son las evaluaciones)."""
+    st.markdown(CSS_TARJETAS_PLAN, unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown("#### 🗓️ Sílabo y Ficha de actividades evaluadas")
+        st.markdown(
+            "<p style='color:rgba(255,255,255,0.55); font-size:0.85em; margin-top:-6px'>"
+            "Documentos privados: la IA los usa para saber en qué semana y tema va tu curso, y cuándo son tus evaluaciones."
+            "</p>",
+            unsafe_allow_html=True
+        )
+
+        col_materia, col_curso = st.columns(2)
+        with col_materia:
+            materia_pr = st.selectbox("Materia", MATERIAS_DISPONIBLES, key="plan_top_materia")
+        with col_curso:
+            cursos_existentes_pr = listar_cursos(materia_pr)
+            opciones_curso_pr = cursos_existentes_pr + ["+ Nuevo curso..."]
+            seleccion_pr = st.selectbox("Curso", opciones_curso_pr, key="plan_top_curso_select") if cursos_existentes_pr else "+ Nuevo curso..."
+            if seleccion_pr == "+ Nuevo curso...":
+                curso_pr = st.text_input("Nombre del curso", key="plan_top_curso_nuevo", placeholder="ej: Ingles ING-101")
+            else:
+                curso_pr = seleccion_pr
+
+        col_silabo, col_ficha = st.columns(2)
+        with col_silabo:
+            st.markdown("<div class='tarjeta-plan'><h4>📘 Sílabo</h4><p>Plan de temas del curso, semana por semana</p></div>", unsafe_allow_html=True)
+            st.markdown("<div class='tarjeta-plan-wrap-silabo'>", unsafe_allow_html=True)
+            archivo_silabo = st.file_uploader("Sílabo (PDF)", type=["pdf"], key="plan_top_silabo", label_visibility="collapsed")
+            st.markdown("</div>", unsafe_allow_html=True)
+        with col_ficha:
+            st.markdown("<div class='tarjeta-plan ficha'><h4>🗓️ Ficha de actividades evaluadas</h4><p>Fechas y pesos de examenes/entregas</p></div>", unsafe_allow_html=True)
+            st.markdown("<div class='tarjeta-plan-wrap-ficha'>", unsafe_allow_html=True)
+            archivo_ficha = st.file_uploader("Ficha de actividades evaluadas (PDF)", type=["pdf"], key="plan_top_ficha", label_visibility="collapsed")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        if st.button("Guardar Sílabo / Ficha", use_container_width=True, key="plan_top_guardar"):
+            if not curso_pr or not curso_pr.strip():
+                st.warning("Escribe o elige un curso primero")
+            elif not archivo_silabo and not archivo_ficha:
+                st.warning("Sube al menos el Sílabo o la Ficha de actividades")
+            else:
+                resultados = []
+                if archivo_silabo:
+                    resultados.append(("Sílabo", _subir_uno(materia_pr, curso_pr, archivo_silabo, usuario, None, usuario.get("universidad"), usuario.get("carrera"), "silabo")))
+                if archivo_ficha:
+                    resultados.append(("Ficha de actividades", _subir_uno(materia_pr, curso_pr, archivo_ficha, usuario, None, usuario.get("universidad"), usuario.get("carrera"), "ficha_evaluada")))
+
+                for nombre, resultado in resultados:
+                    if resultado == "ok":
+                        st.success(f"{nombre} guardado correctamente")
+                    elif resultado == "duplicado":
+                        st.info(f"{nombre}: ya existía un documento con el mismo contenido")
+                    elif resultado == "vacio":
+                        st.warning(f"{nombre}: tiene muy poco contenido, revisa que el PDF tenga texto seleccionable")
+                    else:
+                        st.error(f"{nombre}: no se pudo subir, intenta de nuevo")
 
 
 def _subir_uno(materia, curso, archivo, usuario, ciclo, universidad, carrera, tipo_documento):
@@ -26,7 +128,7 @@ def _subir_uno(materia, curso, archivo, usuario, ciclo, universidad, carrera, ti
 
 
 def _seccion_subir(usuario):
-    st.markdown("### 📤 Subir documentos")
+    st.markdown("### 📤 Subir apuntes")
     st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:0.9em'>Puedes subir varios PDFs a la vez, todos del mismo curso.</p>", unsafe_allow_html=True)
 
     col_datos, col_archivos = st.columns([1, 2])
@@ -58,47 +160,21 @@ def _seccion_subir(usuario):
         )
 
     with col_archivos:
-        st.markdown("**Apuntes / material de clase**")
-        archivos = st.file_uploader("Selecciona uno o varios PDFs o PPTX", type=["pdf", "pptx"], accept_multiple_files=True, key="doc_archivos", label_visibility="collapsed")
-
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-
-        col_silabo, col_ficha = st.columns(2)
-        with col_silabo:
-            st.markdown("**Sílabo**")
-            archivo_silabo = st.file_uploader("Sílabo del curso (PDF)", type=["pdf"], key="doc_silabo", label_visibility="collapsed")
-        with col_ficha:
-            st.markdown("**Ficha de actividades evaluadas**")
-            archivo_ficha = st.file_uploader("Ficha de actividades evaluadas (PDF)", type=["pdf"], key="doc_ficha", label_visibility="collapsed")
-        st.caption("El Sílabo y la Ficha se usan como contexto fijo para que el tutor sepa en qué semana y tema va el curso.")
+        archivos = st.file_uploader("Selecciona uno o varios PDFs o PPTX", type=["pdf", "pptx"], accept_multiple_files=True, key="doc_archivos")
 
     if st.button("Subir a la biblioteca", use_container_width=True):
         if not curso or not curso.strip():
             st.warning("Escribe o elige un curso primero")
-        elif not archivos and not archivo_silabo and not archivo_ficha:
-            st.warning("Selecciona al menos un archivo (apunte, sílabo o ficha)")
+        elif not archivos:
+            st.warning("Selecciona al menos un PDF")
         else:
+            progreso = st.progress(0)
             subidos = 0
             duplicados = 0
             vacios = 0
             fallidos = 0
-
-            if archivos:
-                progreso = st.progress(0)
-                for i, archivo in enumerate(archivos):
-                    resultado = _subir_uno(materia, curso, archivo, usuario, ciclo, universidad, carrera, "apunte")
-                    if resultado == "ok":
-                        subidos += 1
-                    elif resultado == "duplicado":
-                        duplicados += 1
-                    elif resultado == "vacio":
-                        vacios += 1
-                    else:
-                        fallidos += 1
-                    progreso.progress((i + 1) / len(archivos))
-
-            if archivo_silabo:
-                resultado = _subir_uno(materia, curso, archivo_silabo, usuario, ciclo, universidad, carrera, "silabo")
+            for i, archivo in enumerate(archivos):
+                resultado = _subir_uno(materia, curso, archivo, usuario, ciclo, universidad, carrera, "apunte")
                 if resultado == "ok":
                     subidos += 1
                 elif resultado == "duplicado":
@@ -107,18 +183,7 @@ def _seccion_subir(usuario):
                     vacios += 1
                 else:
                     fallidos += 1
-
-            if archivo_ficha:
-                resultado = _subir_uno(materia, curso, archivo_ficha, usuario, ciclo, universidad, carrera, "ficha_evaluada")
-                if resultado == "ok":
-                    subidos += 1
-                elif resultado == "duplicado":
-                    duplicados += 1
-                elif resultado == "vacio":
-                    vacios += 1
-                else:
-                    fallidos += 1
-
+                progreso.progress((i + 1) / len(archivos))
             if subidos:
                 st.success(f"Se subieron {subidos} documento(s) a '{curso}' correctamente")
             if duplicados:
@@ -261,6 +326,10 @@ def _seccion_explorar(usuario):
 def mostrar_documentos(usuario):
     st.markdown("<h1 style='text-align:center;'>📚 Documentos</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.6)'>Sube tus resumenes y apuntes - el tutor los usara como contexto cuando elijas el curso en el Chat</p>", unsafe_allow_html=True)
+    st.divider()
+
+    _seccion_plan_rapido(usuario)
+
     st.divider()
 
     tab1, tab2 = st.tabs(["📤 Subir", "📁 Explorar"])

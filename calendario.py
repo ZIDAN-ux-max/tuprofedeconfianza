@@ -152,7 +152,7 @@ def _seccion_calendario_mensual(usuario):
     anio = st.session_state["cal_anio_actual"]
     mes = st.session_state["cal_mes_actual"]
 
-    col_calendario, col_detalle = st.columns([2, 1])
+    col_calendario, col_detalle = st.columns([5, 2])
 
     with col_calendario:
         col_fondo, _ = st.columns([2, 1])
@@ -199,17 +199,16 @@ def _seccion_calendario_mensual(usuario):
 
         st.markdown(
             f"""<style>
-            div[data-testid="stVerticalBlock"]:has(> div .cal-fondo-marker) {{
-                background:{TEMAS_FONDO[fondo_elegido]};
-                border-radius:14px;
-                padding:14px 10px;
-                margin-top:6px;
+            div[data-testid="stVerticalBlockBorderWrapper"]:has(.cal-fondo-marker) {{
+                background:{TEMAS_FONDO[fondo_elegido]} !important;
+                border-radius:14px !important;
+                border-color:transparent !important;
             }}
             </style>""",
             unsafe_allow_html=True
         )
 
-        with st.container():
+        with st.container(border=True):
             st.markdown("<div class='cal-fondo-marker'></div>", unsafe_allow_html=True)
 
             cols_header = st.columns(7)

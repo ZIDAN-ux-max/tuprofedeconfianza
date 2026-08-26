@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """Calendario personal: cada alumno guarda sus propias fechas de examenes
 y entregas por materia. No se comparte entre alumnos (a diferencia de la
-biblioteca de Documentos). Incluye una vista de mes tipo calendario real,
-que tambien muestra las tareas de "Mi Dia" ademas de examenes/entregas."""
+biblioteca de Documentos). Incluye una vista de mes tipo calendario real
+(componente HTML con tarjetas por dia, no los botones-pildora nativos de
+Streamlit), que tambien muestra las tareas de "Mi Dia" ademas de
+examenes/entregas."""
 import calendar as calendar_mod
-from datetime import date, timedelta
+from datetime import date
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea
 from materias_data import materias_de_carrera
@@ -28,19 +31,11 @@ TEMAS_FONDO = {
     "🌸 Suave": "linear-gradient(135deg, rgba(192,132,252,0.15) 0%, rgba(0,201,255,0.06) 100%)",
 }
 
-CSS_CALENDARIO = """
-<style>
-.cal-header-dia {
-    text-align:center;
-    font-size:0.78em;
-    color:rgba(255,255,255,0.55);
-    font-weight:600;
-    padding-bottom:4px;
-}
-.cal-celda-vacia { height:44px; }
-.cal-marcas { text-align:center; font-size:0.65em; margin-top:-4px; line-height:1; min-height:12px; }
-</style>
-"""
+COLOR_EXAMEN = "#EF4444"
+COLOR_ENTREGA = "#F59E0B"
+COLOR_OTRO = "#C084FC"
+COLOR_TAREA = "#92FE9D"
+COLOR_ACENTO = "#00C9FF"
 
 
 def _color_urgencia(dias_faltantes):
@@ -131,14 +126,86 @@ def _seccion_lista(usuario):
                 st.rerun()
 
 
-def _seccion_calendario_mensual(usuario):
-    st.markdown(CSS_CALENDARIO, unsafe_allow_html=True)
+def _construir_html_calendario(anio, mes, semanas, hoy, eventos_por_dia, tareas_por_dia, dia_seleccionado, fondo_css):
+    """Arma el HTML del calendario: cada dia es una tarjeta (no un boton-pildora
+    nativo de Streamlit), envuelta en un link invisible que al hacer click
+    manda la fecha por la URL (?dia=YYYY-MM-DD, target=_top para que afecte
+    a la pagina real y no solo al iframe del componente). Python la lee
+    despues con st.query_params."""
+    header_html = "".join(
+        f"<div style='text-align:center; font-size:11px; color:rgba(255,255,255,0.5); font-weight:600'>{d}</div>"
+        for d in DIAS_SEMANA_ES
+    )
 
+    filas_html = ""
+    for semana in semanas:
+        celdas_html = ""
+        for dia in semana:
+            if dia == 0:
+                celdas_html += "<div style='min-height:54px'></div>"
+                continue
+
+            fecha_celda = date(anio, mes, dia)
+            es_hoy = fecha_celda == hoy
+            es_sel = fecha_celda == dia_seleccionado
+
+            dots = ""
+            if fecha_celda in eventos_por_dia:
+                tipos_del_dia = {e.get("tipo") for e in eventos_por_dia[fecha_celda]}
+                if "Examen" in tipos_del_dia:
+                    dots += f"<span style='width:6px;height:6px;border-radius:50%;background:{COLOR_EXAMEN};display:inline-block;margin-right:3px'></span>"
+                if "Entrega" in tipos_del_dia:
+                    dots += f"<span style='width:6px;height:6px;border-radius:50%;background:{COLOR_ENTREGA};display:inline-block;margin-right:3px'></span>"
+                if "Otro" in tipos_del_dia:
+                    dots += f"<span style='width:6px;height:6px;border-radius:50%;background:{COLOR_OTRO};display:inline-block;margin-right:3px'></span>"
+            if fecha_celda in tareas_por_dia:
+                dots += f"<span style='width:6px;height:6px;border-radius:50%;background:{COLOR_TAREA};display:inline-block'></span>"
+
+            if es_sel:
+                borde = f"1.5px solid {COLOR_ACENTO}"
+                fondo_celda = "rgba(0,201,255,0.18)"
+            elif es_hoy:
+                borde = f"1.5px solid {COLOR_ENTREGA}"
+                fondo_celda = "rgba(245,158,11,0.08)"
+            else:
+                borde = "0.5px solid rgba(255,255,255,0.15)"
+                fondo_celda = "rgba(255,255,255,0.03)"
+
+            celdas_html += f"""<a href="?dia={fecha_celda.isoformat()}" target="_top" style="text-decoration:none">
+<div style="min-height:54px; border-radius:10px; border:{borde}; background:{fondo_celda}; padding:6px 8px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; cursor:pointer">
+<span style="font-size:13px; color:#ffffff; font-family:sans-serif">{dia}</span>
+<span>{dots}</span>
+</div>
+</a>"""
+
+        filas_html += f"<div style='display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px'>{celdas_html}</div>"
+
+    return f"""<div style="font-family:sans-serif; background:{fondo_css}; border-radius:14px; padding:14px 10px; box-sizing:border-box">
+<div style="display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px">{header_html}</div>
+{filas_html}
+</div>"""
+
+
+def _seccion_calendario_mensual(usuario):
     hoy = hoy_peru()
     if "cal_anio_actual" not in st.session_state:
         st.session_state["cal_anio_actual"] = hoy.year
     if "cal_mes_actual" not in st.session_state:
         st.session_state["cal_mes_actual"] = hoy.month
+
+    # Si vinimos de un click en una tarjeta (?dia=YYYY-MM-DD en la URL),
+    # actualizamos la seleccion y saltamos al mes de esa fecha.
+    query_dia = st.query_params.get("dia")
+    if query_dia:
+        try:
+            fecha_query = date.fromisoformat(query_dia)
+            if st.session_state.get("cal_dia_seleccionado") != fecha_query:
+                st.session_state["cal_dia_seleccionado"] = fecha_query
+                st.session_state["cal_mes_actual"] = fecha_query.month
+                st.session_state["cal_anio_actual"] = fecha_query.year
+            st.query_params.clear()
+        except ValueError:
+            st.query_params.clear()
 
     anio = st.session_state["cal_anio_actual"]
     mes = st.session_state["cal_mes_actual"]
@@ -182,57 +249,21 @@ def _seccion_calendario_mensual(usuario):
         f = date.fromisoformat(str(tarea["fecha"]))
         tareas_por_dia.setdefault(f, []).append(tarea)
 
-    cal = calendar_mod.Calendar(firstweekday=6)  # empieza en Domingo, como el ejemplo
-    semanas = cal.monthdayscalendar(anio, mes)
-
-    st.markdown(
-        f"<div style='background:{TEMAS_FONDO[fondo_elegido]}; border-radius:14px; padding:14px 10px; margin-top:6px'>",
-        unsafe_allow_html=True
-    )
-
-    cols_header = st.columns(7)
-    for i, nombre_dia in enumerate(DIAS_SEMANA_ES):
-        with cols_header[i]:
-            st.markdown(f"<div class='cal-header-dia'>{nombre_dia}</div>", unsafe_allow_html=True)
-
+    semanas = calendar_mod.Calendar(firstweekday=6).monthdayscalendar(anio, mes)  # empieza en Domingo
     dia_seleccionado = st.session_state.get("cal_dia_seleccionado")
 
-    for semana in semanas:
-        cols_semana = st.columns(7)
-        for i, dia in enumerate(semana):
-            with cols_semana[i]:
-                if dia == 0:
-                    st.markdown("<div class='cal-celda-vacia'></div>", unsafe_allow_html=True)
-                    continue
-
-                fecha_celda = date(anio, mes, dia)
-                marcas = ""
-                if fecha_celda in eventos_por_dia:
-                    tipos_del_dia = {e.get("tipo") for e in eventos_por_dia[fecha_celda]}
-                    if "Examen" in tipos_del_dia:
-                        marcas += "🔴"
-                    if "Entrega" in tipos_del_dia:
-                        marcas += "🟠"
-                    if "Otro" in tipos_del_dia:
-                        marcas += "📌"
-                if fecha_celda in tareas_por_dia:
-                    marcas += "🟢"
-
-                es_hoy = fecha_celda == hoy
-                etiqueta_dia = f"**{dia}**" if es_hoy else str(dia)
-
-                tipo_boton = "primary" if fecha_celda == dia_seleccionado else "secondary"
-                if st.button(etiqueta_dia, key=f"cal_dia_{fecha_celda}", use_container_width=True, type=tipo_boton):
-                    st.session_state["cal_dia_seleccionado"] = fecha_celda
-                    st.rerun()
-
-                st.markdown(f"<div class='cal-marcas'>{marcas}</div>", unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    html_calendario = _construir_html_calendario(
+        anio, mes, semanas, hoy, eventos_por_dia, tareas_por_dia, dia_seleccionado, TEMAS_FONDO[fondo_elegido]
+    )
+    altura_calendario = 46 + len(semanas) * 62 + 30
+    components.html(html_calendario, height=altura_calendario, scrolling=False)
 
     st.markdown(
-        "<p style='font-size:0.78em; color:rgba(255,255,255,0.45); margin-top:8px'>"
-        "🔴 Examen &nbsp; 🟠 Entrega &nbsp; 📌 Otro &nbsp; 🟢 Tarea de Mi Día</p>",
+        f"<p style='font-size:0.78em; color:rgba(255,255,255,0.45); margin-top:8px'>"
+        f"<span style='color:{COLOR_EXAMEN}'>●</span> Examen &nbsp; "
+        f"<span style='color:{COLOR_ENTREGA}'>●</span> Entrega &nbsp; "
+        f"<span style='color:{COLOR_OTRO}'>●</span> Otro &nbsp; "
+        f"<span style='color:{COLOR_TAREA}'>●</span> Tarea de Mi Día</p>",
         unsafe_allow_html=True
     )
 
@@ -273,7 +304,6 @@ def _seccion_calendario_mensual(usuario):
 
         if st.button("➕ Agregar fecha para este día", key="cal_agregar_desde_dia"):
             st.session_state["cal_fecha_prellenada"] = dia_seleccionado
-            st.session_state["cal_tab_forzar"] = "Agregar"
             st.rerun()
 
 

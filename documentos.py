@@ -27,41 +27,43 @@ CSS_TARJETAS_PLAN = """
     font-size: 0.78em;
     color: rgba(255,255,255,0.5);
 }
-.tarjeta-plan {
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.marca-silabo) {
     background: linear-gradient(135deg, rgba(0,201,255,0.10), rgba(146,254,157,0.04));
-    border: 1px solid rgba(0,201,255,0.28);
-    border-radius: 12px;
-    padding: 10px 12px 2px 12px;
-    margin-bottom: 4px;
+    border: 1px solid rgba(0,201,255,0.35) !important;
+    border-radius: 12px !important;
 }
-.tarjeta-plan.ficha {
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.marca-ficha) {
     background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(192,132,252,0.05));
-    border: 1px solid rgba(245,158,11,0.32);
+    border: 1px solid rgba(245,158,11,0.4) !important;
+    border-radius: 12px !important;
 }
-.tarjeta-plan h4 {
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.marca-silabo) [data-testid="stElementContainer"],
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.marca-ficha) [data-testid="stElementContainer"] {
+    margin-bottom: 2px !important;
+}
+.tarjeta-titulo {
     margin: 0 0 1px 0;
     font-size: 0.92em;
+    font-weight: 600;
 }
-.tarjeta-plan p {
+.tarjeta-sub {
     margin: 0 0 4px 0;
     font-size: 0.74em;
     color: rgba(255,255,255,0.5);
 }
-div[data-testid="stFileUploaderDropzone"] {
-    border-radius: 8px !important;
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.marca-silabo) div[data-testid="stFileUploaderDropzone"] {
+    border: 1.5px dashed rgba(0,201,255,0.5) !important;
+    background: rgba(0,201,255,0.04) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.marca-ficha) div[data-testid="stFileUploaderDropzone"] {
+    border: 1.5px dashed rgba(245,158,11,0.55) !important;
+    background: rgba(245,158,11,0.04) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.marca-silabo) div[data-testid="stFileUploaderDropzone"],
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.marca-ficha) div[data-testid="stFileUploaderDropzone"] {
     min-height: 0 !important;
-    padding: 4px 8px !important;
-}
-div[data-testid="stFileUploaderDropzone"] button {
-    padding: 2px 10px !important;
-}
-.tarjeta-plan div[data-testid="stFileUploaderDropzone"] {
-    border: 1.5px dashed rgba(0,201,255,0.45) !important;
-    background: rgba(0,201,255,0.03) !important;
-}
-.tarjeta-plan.ficha div[data-testid="stFileUploaderDropzone"] {
-    border: 1.5px dashed rgba(245,158,11,0.5) !important;
-    background: rgba(245,158,11,0.03) !important;
+    padding: 6px 8px !important;
+    border-radius: 8px !important;
 }
 </style>
 """
@@ -91,13 +93,13 @@ def _seccion_plan_rapido(usuario):
 
     col_silabo, col_ficha = st.columns(2)
     with col_silabo:
-        st.markdown("<div class='tarjeta-plan'><h4>📘 Sílabo</h4><p>Plan de temas por semana</p>", unsafe_allow_html=True)
-        archivo_silabo = st.file_uploader("Sílabo (PDF)", type=["pdf"], key="plan_top_silabo", label_visibility="collapsed")
-        st.markdown("</div>", unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("<div class='marca-silabo'></div><p class='tarjeta-titulo'>📘 Sílabo</p><p class='tarjeta-sub'>Plan de temas por semana</p>", unsafe_allow_html=True)
+            archivo_silabo = st.file_uploader("Sílabo (PDF)", type=["pdf"], key="plan_top_silabo", label_visibility="collapsed")
     with col_ficha:
-        st.markdown("<div class='tarjeta-plan ficha'><h4>🗓️ Ficha de actividades</h4><p>Fechas y pesos de evaluaciones</p>", unsafe_allow_html=True)
-        archivo_ficha = st.file_uploader("Ficha de actividades evaluadas (PDF)", type=["pdf"], key="plan_top_ficha", label_visibility="collapsed")
-        st.markdown("</div>", unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("<div class='marca-ficha'></div><p class='tarjeta-titulo'>🗓️ Ficha de actividades</p><p class='tarjeta-sub'>Fechas y pesos de evaluaciones</p>", unsafe_allow_html=True)
+            archivo_ficha = st.file_uploader("Ficha de actividades evaluadas (PDF)", type=["pdf"], key="plan_top_ficha", label_visibility="collapsed")
 
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 

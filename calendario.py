@@ -6,7 +6,7 @@ biblioteca de Documentos). Incluye una vista de mes tipo calendario real
 tarjeta), que tambien muestra las tareas de "Mi Dia" ademas de
 examenes/entregas."""
 import calendar as calendar_mod
-from datetime import date
+from datetime import date, timedelta
 
 import streamlit as st
 
@@ -56,18 +56,55 @@ def _seccion_agregar(usuario):
 
     notas = st.text_area("Notas (opcional)", key="cal_notas", height=70)
 
+    repetir = st.checkbox("🔁 Repetir cada semana hasta que terminen las clases", key="cal_repetir")
+
+    fecha_inicio_clases = None
+    num_semanas = None
+    if repetir:
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            fecha_inicio_clases = st.date_input(
+                "¿Cuándo empiezan las clases?",
+                value=fecha,
+                key="cal_fecha_inicio_clases",
+                help="Se repite el mismo día de la semana que elegiste arriba, empezando desde esta fecha."
+            )
+        with col_r2:
+            num_semanas = st.number_input("Número de semanas del ciclo", min_value=1, max_value=20, value=16, key="cal_num_semanas")
+
     if st.button("Guardar en mi calendario", use_container_width=True):
         if not titulo or not titulo.strip():
             st.warning("Escribe un titulo primero")
         else:
             materia_final = None if materia == "Sin materia especifica" else materia
-            ok = guardar_evento(usuario["id"], titulo, fecha, tipo=tipo, materia=materia_final, notas=notas)
-            if ok:
-                st.success("Guardado")
-                st.session_state.pop("cal_fecha_prellenada", None)
-                st.rerun()
+
+            if repetir:
+                dia_semana_objetivo = fecha.weekday()
+                primera_fecha = fecha_inicio_clases
+                # ajusta al primer dia que coincida con el dia de la semana elegido, sin quedar antes del inicio de clases
+                diferencia = (dia_semana_objetivo - primera_fecha.weekday()) % 7
+                primera_fecha = primera_fecha + timedelta(days=diferencia)
+
+                guardadas = 0
+                for i in range(int(num_semanas)):
+                    fecha_ocurrencia = primera_fecha + timedelta(weeks=i)
+                    if guardar_evento(usuario["id"], titulo, fecha_ocurrencia, tipo=tipo, materia=materia_final, notas=notas):
+                        guardadas += 1
+
+                if guardadas:
+                    st.success(f"Guardado: {guardadas} fechas repetidas cada semana")
+                    st.session_state.pop("cal_fecha_prellenada", None)
+                    st.rerun()
+                else:
+                    st.error("No se pudo guardar, intenta de nuevo")
             else:
-                st.error("No se pudo guardar, intenta de nuevo")
+                ok = guardar_evento(usuario["id"], titulo, fecha, tipo=tipo, materia=materia_final, notas=notas)
+                if ok:
+                    st.success("Guardado")
+                    st.session_state.pop("cal_fecha_prellenada", None)
+                    st.rerun()
+                else:
+                    st.error("No se pudo guardar, intenta de nuevo")
 
 
 def _seccion_lista(usuario):
@@ -129,15 +166,17 @@ def _seccion_calendario_mensual(usuario):
     anio = st.session_state["cal_anio_actual"]
     mes = st.session_state["cal_mes_actual"]
 
+    fondo_elegido = st.session_state.get("cal_fondo_tema", list(TEMAS_FONDO.keys())[0])
+
     st.markdown(
-        """
+        f"""
         <style>
-        .st-key-cal_outer_box {
-            background: rgba(255,255,255,0.03);
+        .st-key-cal_outer_box {{
+            background:{TEMAS_FONDO[fondo_elegido]} !important;
             border-radius: 16px !important;
-            border-color: rgba(255,255,255,0.08) !important;
+            border-color: transparent !important;
             padding: 4px 6px !important;
-        }
+        }}
         </style>
         """,
         unsafe_allow_html=True
@@ -187,13 +226,14 @@ def _seccion_calendario_mensual(usuario):
         dia_seleccionado = st.session_state.get("cal_dia_seleccionado")
 
         st.markdown(
-            f"""<style>
-            .st-key-cal_calendario_box {{
-                background:{TEMAS_FONDO[fondo_elegido]} !important;
+            """<style>
+            .st-key-cal_calendario_box {
+                background: transparent !important;
                 border-radius:14px !important;
                 border-color:transparent !important;
-            }}
-            .st-key-cal_dias_box div[data-testid="stButton"] button {{
+                box-shadow:none !important;
+            }
+            .st-key-cal_dias_box div[data-testid="stButton"] button {
                 padding: 0px !important;
                 min-height: 30px !important;
                 height: 30px !important;
@@ -207,7 +247,7 @@ def _seccion_calendario_mensual(usuario):
                 background-image: none !important;
                 border: 1px solid rgba(255,255,255,0.18) !important;
                 box-shadow: none !important;
-            }}
+            }
             </style>""",
             unsafe_allow_html=True
         )
@@ -296,10 +336,6 @@ def _seccion_calendario_mensual(usuario):
                     if st.button("🗑️", key=f"cal_del_tarea_{tarea['id']}"):
                         eliminar_tarea(tarea["id"])
                         st.rerun()
-
-        if st.button("➕ Agregar fecha para este día", key="cal_agregar_desde_dia"):
-            st.session_state["cal_fecha_prellenada"] = dia_seleccionado
-            st.rerun()
 
 
 def mostrar_calendario(usuario):

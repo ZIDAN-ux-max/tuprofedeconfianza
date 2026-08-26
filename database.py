@@ -360,18 +360,27 @@ def _sanear_para_storage(texto):
 
 
 def obtener_texto_silabo(materia_general, curso, limite_caracteres=1800):
-    """Trae el texto de los documentos marcados como 'silabo' (sílabo o
-    ficha de evaluacion) de este curso, para dárselo siempre al tutor como
-    contexto fijo (en que semana/tema esta el curso, fechas de evaluacion),
-    sin depender de que la pregunta del alumno coincida con ese texto por
-    similitud. Limitado en tamaño para no gastar de mas el presupuesto de
-    tokens de la IA."""
+    """Trae el texto de los documentos marcados como 'silabo' o
+    'ficha_evaluada' de este curso, para dárselo siempre al tutor como
+    contexto fijo (en que semana/tema esta el curso, fechas y pesos de
+    evaluacion), sin depender de que la pregunta del alumno coincida con
+    ese texto por similitud. Limitado en tamaño para no gastar de mas el
+    presupuesto de tokens de la IA. Devuelve las dos partes etiquetadas
+    por separado, para que la IA sepa distinguir una de la otra."""
     try:
-        result = supabase.table("documentos").select("contenido_texto").eq("materia_general", materia_general).eq("curso", curso).eq("tipo_documento", "silabo").execute()
+        result = supabase.table("documentos").select("contenido_texto, tipo_documento").eq("materia_general", materia_general).eq("curso", curso).in_("tipo_documento", ["silabo", "ficha_evaluada"]).execute()
         if not result.data:
             return ""
-        texto_completo = "\n\n---\n\n".join(d["contenido_texto"] for d in result.data if d.get("contenido_texto"))
-        return texto_completo[:limite_caracteres]
+        textos_silabo = [d["contenido_texto"] for d in result.data if d.get("tipo_documento") == "silabo" and d.get("contenido_texto")]
+        textos_ficha = [d["contenido_texto"] for d in result.data if d.get("tipo_documento") == "ficha_evaluada" and d.get("contenido_texto")]
+
+        limite_por_parte = limite_caracteres // 2 if (textos_silabo and textos_ficha) else limite_caracteres
+        partes = []
+        if textos_silabo:
+            partes.append("--- SILABO (cronograma, temas por semana) ---\n" + "\n\n".join(textos_silabo)[:limite_por_parte])
+        if textos_ficha:
+            partes.append("--- FICHA DE EVALUACION (rubricas, fechas y pesos) ---\n" + "\n\n".join(textos_ficha)[:limite_por_parte])
+        return "\n\n".join(partes)
     except Exception:
         return ""
 

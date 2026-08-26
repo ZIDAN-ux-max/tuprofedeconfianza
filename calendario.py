@@ -125,14 +125,18 @@ def _seccion_calendario_mensual(usuario):
         <style>
         div[data-testid="stVerticalBlock"]:has(> div .cal-dias-marker) div[data-testid="stButton"] button {
             padding: 0px !important;
-            min-height: 22px !important;
-            height: 22px !important;
-            width: 22px !important;
+            min-height: 26px !important;
+            height: 26px !important;
+            width: 26px !important;
             border-radius: 50% !important;
-            font-size: 11px !important;
+            font-size: 15px !important;
             line-height: 1 !important;
-            margin: 0 auto !important;
+            margin: 2px auto 0 auto !important;
             display: block !important;
+            background: rgba(255,255,255,0.08) !important;
+            background-image: none !important;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            box-shadow: none !important;
         }
         </style>
         """,
@@ -148,7 +152,7 @@ def _seccion_calendario_mensual(usuario):
     anio = st.session_state["cal_anio_actual"]
     mes = st.session_state["cal_mes_actual"]
 
-    col_calendario, col_detalle = st.columns([3, 2])
+    col_calendario, col_detalle = st.columns([2, 1])
 
     with col_calendario:
         col_fondo, _ = st.columns([2, 1])
@@ -286,7 +290,7 @@ def _seccion_calendario_mensual(usuario):
                             eliminar_tarea(tarea["id"])
                             st.rerun()
 
-            if st.button("➕ Agregar fecha para este día", key="cal_agregar_desde_dia"):
+            if st.button("➕ Agregar", key="cal_agregar_desde_dia"):
                 st.session_state["cal_fecha_prellenada"] = dia_seleccionado
                 st.rerun()
         else:

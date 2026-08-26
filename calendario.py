@@ -120,6 +120,25 @@ def _seccion_lista(usuario):
 
 
 def _seccion_calendario_mensual(usuario):
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stVerticalBlock"]:has(> div .cal-dias-marker) div[data-testid="stButton"] button {
+            padding: 0px !important;
+            min-height: 22px !important;
+            height: 22px !important;
+            width: 22px !important;
+            border-radius: 50% !important;
+            font-size: 11px !important;
+            line-height: 1 !important;
+            margin: 0 auto !important;
+            display: block !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
     hoy = hoy_peru()
     if "cal_anio_actual" not in st.session_state:
         st.session_state["cal_anio_actual"] = hoy.year
@@ -129,133 +148,149 @@ def _seccion_calendario_mensual(usuario):
     anio = st.session_state["cal_anio_actual"]
     mes = st.session_state["cal_mes_actual"]
 
-    col_fondo, col_espacio = st.columns([2, 3])
-    with col_fondo:
-        fondo_elegido = st.selectbox("🎨 Fondo del calendario", list(TEMAS_FONDO.keys()), key="cal_fondo_tema")
+    col_calendario, col_detalle = st.columns([3, 2])
 
-    col_prev, col_titulo, col_next = st.columns([1, 3, 1])
-    with col_prev:
-        if st.button("◀", key="cal_mes_prev", use_container_width=True):
-            if mes == 1:
-                st.session_state["cal_mes_actual"] = 12
-                st.session_state["cal_anio_actual"] = anio - 1
+    with col_calendario:
+        col_fondo, _ = st.columns([2, 1])
+        with col_fondo:
+            fondo_elegido = st.selectbox("🎨 Fondo del calendario", list(TEMAS_FONDO.keys()), key="cal_fondo_tema")
+
+        col_prev, col_titulo, col_next = st.columns([1, 3, 1])
+        with col_prev:
+            if st.button("◀", key="cal_mes_prev", use_container_width=True):
+                if mes == 1:
+                    st.session_state["cal_mes_actual"] = 12
+                    st.session_state["cal_anio_actual"] = anio - 1
+                else:
+                    st.session_state["cal_mes_actual"] = mes - 1
+                st.rerun()
+        with col_titulo:
+            st.markdown(f"<h3 style='text-align:center; margin:0'>{MESES_ES[mes]} {anio}</h3>", unsafe_allow_html=True)
+        with col_next:
+            if st.button("▶", key="cal_mes_next", use_container_width=True):
+                if mes == 12:
+                    st.session_state["cal_mes_actual"] = 1
+                    st.session_state["cal_anio_actual"] = anio + 1
+                else:
+                    st.session_state["cal_mes_actual"] = mes + 1
+                st.rerun()
+
+        primer_dia_mes = date(anio, mes, 1)
+        ultimo_dia_mes = date(anio, mes, calendar_mod.monthrange(anio, mes)[1])
+
+        eventos = listar_eventos(usuario["id"])
+        eventos_por_dia = {}
+        for evento in eventos:
+            f = date.fromisoformat(str(evento["fecha"]))
+            eventos_por_dia.setdefault(f, []).append(evento)
+
+        tareas = listar_tareas_rango(usuario["id"], primer_dia_mes, ultimo_dia_mes)
+        tareas_por_dia = {}
+        for tarea in tareas:
+            f = date.fromisoformat(str(tarea["fecha"]))
+            tareas_por_dia.setdefault(f, []).append(tarea)
+
+        semanas = calendar_mod.Calendar(firstweekday=6).monthdayscalendar(anio, mes)  # empieza en Domingo
+        dia_seleccionado = st.session_state.get("cal_dia_seleccionado")
+
+        st.markdown(
+            f"<div style='background:{TEMAS_FONDO[fondo_elegido]}; border-radius:14px; padding:14px 10px; margin-top:6px'>",
+            unsafe_allow_html=True
+        )
+
+        cols_header = st.columns(7)
+        for i, nombre_dia in enumerate(DIAS_SEMANA_ES):
+            with cols_header[i]:
+                st.markdown(f"<p style='text-align:center; font-size:11px; color:rgba(255,255,255,0.5); font-weight:600; margin:0'>{nombre_dia}</p>", unsafe_allow_html=True)
+
+        st.markdown("<div class='cal-dias-marker'></div>", unsafe_allow_html=True)
+
+        with st.container():
+            for semana in semanas:
+                cols_semana = st.columns(7)
+                for i, dia in enumerate(semana):
+                    with cols_semana[i]:
+                        if dia == 0:
+                            st.markdown("<div style='min-height:54px'></div>", unsafe_allow_html=True)
+                            continue
+
+                        fecha_celda = date(anio, mes, dia)
+
+                        color_punto = None
+                        if fecha_celda in eventos_por_dia:
+                            tipos_del_dia = {e.get("tipo") for e in eventos_por_dia[fecha_celda]}
+                            if "Examen" in tipos_del_dia:
+                                color_punto = "🔴"
+                            elif "Entrega" in tipos_del_dia:
+                                color_punto = "🟠"
+                            elif "Otro" in tipos_del_dia:
+                                color_punto = "🟣"
+                        if not color_punto and fecha_celda in tareas_por_dia:
+                            color_punto = "🟢"
+
+                        es_hoy = fecha_celda == hoy
+                        es_sel = fecha_celda == dia_seleccionado
+                        borde = "1.5px solid #00C9FF" if es_sel else ("1.5px solid #F59E0B" if es_hoy else "1px solid rgba(255,255,255,0.18)")
+                        fondo_celda = "rgba(0,201,255,0.15)" if es_sel else ("rgba(245,158,11,0.08)" if es_hoy else "rgba(255,255,255,0.03)")
+
+                        st.markdown(
+                            f"<div style='border:{borde}; background:{fondo_celda}; border-radius:8px; "
+                            f"text-align:center; padding:6px 0 2px 0; font-size:13px; color:white; margin-bottom:2px'>{dia}</div>",
+                            unsafe_allow_html=True
+                        )
+
+                        if st.button(color_punto or "·", key=f"cal_dia_{fecha_celda}"):
+                            st.session_state["cal_dia_seleccionado"] = fecha_celda
+                            st.rerun()
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown(
+            "<p style='font-size:0.78em; color:rgba(255,255,255,0.45); margin-top:8px'>"
+            "🔴 Examen &nbsp; 🟠 Entrega &nbsp; 🟣 Otro &nbsp; 🟢 Tarea de Mi Día</p>",
+            unsafe_allow_html=True
+        )
+
+    with col_detalle:
+        if dia_seleccionado:
+            st.markdown(f"#### {dia_seleccionado.strftime('%A %d de %B, %Y')}")
+
+            eventos_dia = eventos_por_dia.get(dia_seleccionado, [])
+            tareas_dia = tareas_por_dia.get(dia_seleccionado, [])
+
+            if not eventos_dia and not tareas_dia:
+                st.caption("No tienes nada guardado para este día.")
             else:
-                st.session_state["cal_mes_actual"] = mes - 1
-            st.rerun()
-    with col_titulo:
-        st.markdown(f"<h3 style='text-align:center; margin:0'>{MESES_ES[mes]} {anio}</h3>", unsafe_allow_html=True)
-    with col_next:
-        if st.button("▶", key="cal_mes_next", use_container_width=True):
-            if mes == 12:
-                st.session_state["cal_mes_actual"] = 1
-                st.session_state["cal_anio_actual"] = anio + 1
-            else:
-                st.session_state["cal_mes_actual"] = mes + 1
-            st.rerun()
+                for evento in eventos_dia:
+                    emoji_tipo = EMOJI_TIPO.get(evento.get("tipo"), "📌")
+                    materia_txt = f" · {evento['materia']}" if evento.get("materia") else ""
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        st.markdown(f"{emoji_tipo} **{evento['titulo']}**{materia_txt}")
+                        if evento.get("notas"):
+                            st.caption(evento["notas"])
+                    with col2:
+                        if st.button("🗑️", key=f"cal_del_ev_{evento['id']}"):
+                            eliminar_evento(evento["id"])
+                            st.rerun()
 
-    primer_dia_mes = date(anio, mes, 1)
-    ultimo_dia_mes = date(anio, mes, calendar_mod.monthrange(anio, mes)[1])
+                for tarea in tareas_dia:
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        completado = st.checkbox(tarea["texto"], value=bool(tarea.get("completado")), key=f"cal_tarea_{tarea['id']}")
+                        if completado != bool(tarea.get("completado")):
+                            marcar_tarea(tarea["id"], completado)
+                            st.rerun()
+                    with col2:
+                        if st.button("🗑️", key=f"cal_del_tarea_{tarea['id']}"):
+                            eliminar_tarea(tarea["id"])
+                            st.rerun()
 
-    eventos = listar_eventos(usuario["id"])
-    eventos_por_dia = {}
-    for evento in eventos:
-        f = date.fromisoformat(str(evento["fecha"]))
-        eventos_por_dia.setdefault(f, []).append(evento)
-
-    tareas = listar_tareas_rango(usuario["id"], primer_dia_mes, ultimo_dia_mes)
-    tareas_por_dia = {}
-    for tarea in tareas:
-        f = date.fromisoformat(str(tarea["fecha"]))
-        tareas_por_dia.setdefault(f, []).append(tarea)
-
-    semanas = calendar_mod.Calendar(firstweekday=6).monthdayscalendar(anio, mes)  # empieza en Domingo
-    dia_seleccionado = st.session_state.get("cal_dia_seleccionado")
-
-    st.markdown(
-        f"<div style='background:{TEMAS_FONDO[fondo_elegido]}; border-radius:14px; padding:14px 10px; margin-top:6px'>",
-        unsafe_allow_html=True
-    )
-
-    cols_header = st.columns(7)
-    for i, nombre_dia in enumerate(DIAS_SEMANA_ES):
-        with cols_header[i]:
-            st.markdown(f"<p style='text-align:center; font-size:11px; color:rgba(255,255,255,0.5); font-weight:600; margin:0'>{nombre_dia}</p>", unsafe_allow_html=True)
-
-    for semana in semanas:
-        cols_semana = st.columns(7)
-        for i, dia in enumerate(semana):
-            with cols_semana[i]:
-                if dia == 0:
-                    st.markdown("<div style='min-height:54px'></div>", unsafe_allow_html=True)
-                    continue
-
-                fecha_celda = date(anio, mes, dia)
-                marca = ""
-                if fecha_celda in eventos_por_dia:
-                    tipos_del_dia = {e.get("tipo") for e in eventos_por_dia[fecha_celda]}
-                    if "Examen" in tipos_del_dia:
-                        marca = " 🔴"
-                    elif "Entrega" in tipos_del_dia:
-                        marca = " 🟠"
-                    elif "Otro" in tipos_del_dia:
-                        marca = " 🟣"
-                if not marca and fecha_celda in tareas_por_dia:
-                    marca = " 🟢"
-
-                es_hoy = fecha_celda == hoy
-                etiqueta_dia = f"📍{dia}{marca}" if es_hoy else f"{dia}{marca}"
-                tipo_boton = "primary" if fecha_celda == dia_seleccionado else "secondary"
-
-                if st.button(etiqueta_dia, key=f"cal_dia_{fecha_celda}", use_container_width=True, type=tipo_boton):
-                    st.session_state["cal_dia_seleccionado"] = fecha_celda
-                    st.rerun()
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown(
-        "<p style='font-size:0.78em; color:rgba(255,255,255,0.45); margin-top:8px'>"
-        "🔴 Examen &nbsp; 🟠 Entrega &nbsp; 🟣 Otro &nbsp; 🟢 Tarea de Mi Día</p>",
-        unsafe_allow_html=True
-    )
-
-    if dia_seleccionado:
-        st.divider()
-        st.markdown(f"#### {dia_seleccionado.strftime('%A %d de %B, %Y')}")
-
-        eventos_dia = eventos_por_dia.get(dia_seleccionado, [])
-        tareas_dia = tareas_por_dia.get(dia_seleccionado, [])
-
-        if not eventos_dia and not tareas_dia:
-            st.caption("No tienes nada guardado para este día.")
+            if st.button("➕ Agregar fecha para este día", key="cal_agregar_desde_dia"):
+                st.session_state["cal_fecha_prellenada"] = dia_seleccionado
+                st.rerun()
         else:
-            for evento in eventos_dia:
-                emoji_tipo = EMOJI_TIPO.get(evento.get("tipo"), "📌")
-                materia_txt = f" · {evento['materia']}" if evento.get("materia") else ""
-                col1, col2 = st.columns([5, 1])
-                with col1:
-                    st.markdown(f"{emoji_tipo} **{evento['titulo']}**{materia_txt}")
-                    if evento.get("notas"):
-                        st.caption(evento["notas"])
-                with col2:
-                    if st.button("🗑️", key=f"cal_del_ev_{evento['id']}"):
-                        eliminar_evento(evento["id"])
-                        st.rerun()
-
-            for tarea in tareas_dia:
-                col1, col2 = st.columns([5, 1])
-                with col1:
-                    completado = st.checkbox(tarea["texto"], value=bool(tarea.get("completado")), key=f"cal_tarea_{tarea['id']}")
-                    if completado != bool(tarea.get("completado")):
-                        marcar_tarea(tarea["id"], completado)
-                        st.rerun()
-                with col2:
-                    if st.button("🗑️", key=f"cal_del_tarea_{tarea['id']}"):
-                        eliminar_tarea(tarea["id"])
-                        st.rerun()
-
-        if st.button("➕ Agregar fecha para este día", key="cal_agregar_desde_dia"):
-            st.session_state["cal_fecha_prellenada"] = dia_seleccionado
-            st.rerun()
+            st.info("👈 Toca el puntito debajo de un día para ver qué tienes.")
 
 
 def mostrar_calendario(usuario):

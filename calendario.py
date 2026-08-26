@@ -125,11 +125,11 @@ def _seccion_calendario_mensual(usuario):
         <style>
         div[data-testid="stVerticalBlock"]:has(> div .cal-dias-marker) div[data-testid="stButton"] button {
             padding: 0px !important;
-            min-height: 26px !important;
-            height: 26px !important;
-            width: 26px !important;
+            min-height: 30px !important;
+            height: 30px !important;
+            width: 30px !important;
             border-radius: 50% !important;
-            font-size: 15px !important;
+            font-size: 16px !important;
             line-height: 1 !important;
             margin: 2px auto 0 auto !important;
             display: block !important;
@@ -198,56 +198,64 @@ def _seccion_calendario_mensual(usuario):
         dia_seleccionado = st.session_state.get("cal_dia_seleccionado")
 
         st.markdown(
-            f"<div style='background:{TEMAS_FONDO[fondo_elegido]}; border-radius:14px; padding:14px 10px; margin-top:6px'>",
+            f"""<style>
+            div[data-testid="stVerticalBlock"]:has(> div .cal-fondo-marker) {{
+                background:{TEMAS_FONDO[fondo_elegido]};
+                border-radius:14px;
+                padding:14px 10px;
+                margin-top:6px;
+            }}
+            </style>""",
             unsafe_allow_html=True
         )
 
-        cols_header = st.columns(7)
-        for i, nombre_dia in enumerate(DIAS_SEMANA_ES):
-            with cols_header[i]:
-                st.markdown(f"<p style='text-align:center; font-size:11px; color:rgba(255,255,255,0.5); font-weight:600; margin:0'>{nombre_dia}</p>", unsafe_allow_html=True)
-
-        st.markdown("<div class='cal-dias-marker'></div>", unsafe_allow_html=True)
-
         with st.container():
-            for semana in semanas:
-                cols_semana = st.columns(7)
-                for i, dia in enumerate(semana):
-                    with cols_semana[i]:
-                        if dia == 0:
-                            st.markdown("<div style='min-height:54px'></div>", unsafe_allow_html=True)
-                            continue
+            st.markdown("<div class='cal-fondo-marker'></div>", unsafe_allow_html=True)
 
-                        fecha_celda = date(anio, mes, dia)
+            cols_header = st.columns(7)
+            for i, nombre_dia in enumerate(DIAS_SEMANA_ES):
+                with cols_header[i]:
+                    st.markdown(f"<p style='text-align:center; font-size:12px; color:rgba(255,255,255,0.55); font-weight:600; margin:0'>{nombre_dia}</p>", unsafe_allow_html=True)
 
-                        color_punto = None
-                        if fecha_celda in eventos_por_dia:
-                            tipos_del_dia = {e.get("tipo") for e in eventos_por_dia[fecha_celda]}
-                            if "Examen" in tipos_del_dia:
-                                color_punto = "🔴"
-                            elif "Entrega" in tipos_del_dia:
-                                color_punto = "🟠"
-                            elif "Otro" in tipos_del_dia:
-                                color_punto = "🟣"
-                        if not color_punto and fecha_celda in tareas_por_dia:
-                            color_punto = "🟢"
+            st.markdown("<div class='cal-dias-marker'></div>", unsafe_allow_html=True)
 
-                        es_hoy = fecha_celda == hoy
-                        es_sel = fecha_celda == dia_seleccionado
-                        borde = "1.5px solid #00C9FF" if es_sel else ("1.5px solid #F59E0B" if es_hoy else "1px solid rgba(255,255,255,0.18)")
-                        fondo_celda = "rgba(0,201,255,0.15)" if es_sel else ("rgba(245,158,11,0.08)" if es_hoy else "rgba(255,255,255,0.03)")
+            with st.container():
+                for semana in semanas:
+                    cols_semana = st.columns(7)
+                    for i, dia in enumerate(semana):
+                        with cols_semana[i]:
+                            if dia == 0:
+                                st.markdown("<div style='min-height:72px'></div>", unsafe_allow_html=True)
+                                continue
 
-                        st.markdown(
-                            f"<div style='border:{borde}; background:{fondo_celda}; border-radius:8px; "
-                            f"text-align:center; padding:6px 0 2px 0; font-size:13px; color:white; margin-bottom:2px'>{dia}</div>",
-                            unsafe_allow_html=True
-                        )
+                            fecha_celda = date(anio, mes, dia)
 
-                        if st.button(color_punto or "·", key=f"cal_dia_{fecha_celda}"):
-                            st.session_state["cal_dia_seleccionado"] = fecha_celda
-                            st.rerun()
+                            color_punto = None
+                            if fecha_celda in eventos_por_dia:
+                                tipos_del_dia = {e.get("tipo") for e in eventos_por_dia[fecha_celda]}
+                                if "Examen" in tipos_del_dia:
+                                    color_punto = "🔴"
+                                elif "Entrega" in tipos_del_dia:
+                                    color_punto = "🟠"
+                                elif "Otro" in tipos_del_dia:
+                                    color_punto = "🟣"
+                            if not color_punto and fecha_celda in tareas_por_dia:
+                                color_punto = "🟢"
 
-        st.markdown("</div>", unsafe_allow_html=True)
+                            es_hoy = fecha_celda == hoy
+                            es_sel = fecha_celda == dia_seleccionado
+                            borde = "1.5px solid #00C9FF" if es_sel else ("1.5px solid #F59E0B" if es_hoy else "1px solid rgba(255,255,255,0.18)")
+                            fondo_celda = "rgba(0,201,255,0.15)" if es_sel else ("rgba(245,158,11,0.08)" if es_hoy else "rgba(255,255,255,0.03)")
+
+                            st.markdown(
+                                f"<div style='border:{borde}; background:{fondo_celda}; border-radius:9px; "
+                                f"text-align:center; padding:12px 0 4px 0; min-height:44px; font-size:16px; color:white; margin-bottom:2px'>{dia}</div>",
+                                unsafe_allow_html=True
+                            )
+
+                            if st.button(color_punto or "·", key=f"cal_dia_{fecha_celda}"):
+                                st.session_state["cal_dia_seleccionado"] = fecha_celda
+                                st.rerun()
 
         st.markdown(
             "<p style='font-size:0.78em; color:rgba(255,255,255,0.45); margin-top:8px'>"

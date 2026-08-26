@@ -120,20 +120,6 @@ def _seccion_lista(usuario):
 
 
 def _seccion_calendario_mensual(usuario):
-    st.markdown(
-        """
-        <style>
-        div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
-            aspect-ratio: 1 / 0.85;
-            border-radius: 10px !important;
-            font-size: 13px !important;
-            padding: 4px !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
     hoy = hoy_peru()
     if "cal_anio_actual" not in st.session_state:
         st.session_state["cal_anio_actual"] = hoy.year
@@ -204,27 +190,25 @@ def _seccion_calendario_mensual(usuario):
                     continue
 
                 fecha_celda = date(anio, mes, dia)
-                marcas = ""
+                marca = ""
                 if fecha_celda in eventos_por_dia:
                     tipos_del_dia = {e.get("tipo") for e in eventos_por_dia[fecha_celda]}
                     if "Examen" in tipos_del_dia:
-                        marcas += "🔴"
-                    if "Entrega" in tipos_del_dia:
-                        marcas += "🟠"
-                    if "Otro" in tipos_del_dia:
-                        marcas += "🟣"
-                if fecha_celda in tareas_por_dia:
-                    marcas += "🟢"
+                        marca = " 🔴"
+                    elif "Entrega" in tipos_del_dia:
+                        marca = " 🟠"
+                    elif "Otro" in tipos_del_dia:
+                        marca = " 🟣"
+                if not marca and fecha_celda in tareas_por_dia:
+                    marca = " 🟢"
 
                 es_hoy = fecha_celda == hoy
-                etiqueta_dia = f"📍{dia}" if es_hoy else str(dia)
+                etiqueta_dia = f"📍{dia}{marca}" if es_hoy else f"{dia}{marca}"
                 tipo_boton = "primary" if fecha_celda == dia_seleccionado else "secondary"
 
                 if st.button(etiqueta_dia, key=f"cal_dia_{fecha_celda}", use_container_width=True, type=tipo_boton):
                     st.session_state["cal_dia_seleccionado"] = fecha_celda
                     st.rerun()
-
-                st.markdown(f"<p style='text-align:center; font-size:0.65em; margin:-2px 0 0 0'>{marcas}</p>", unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
 

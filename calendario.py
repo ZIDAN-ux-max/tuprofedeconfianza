@@ -23,24 +23,26 @@ MESES_ES = [
 ]
 DIAS_SEMANA_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
 
-TEMAS_FONDO = {
-    "🎓 Año académico 2026": {
-        "tenue": "linear-gradient(135deg, rgba(0,201,255,0.06) 0%, rgba(146,254,157,0.03) 100%)",
-        "fuerte": "linear-gradient(135deg, rgba(0,201,255,0.28) 0%, rgba(146,254,157,0.14) 100%)",
-    },
-    "🌙 Oscuro clásico": {
-        "tenue": "rgba(255,255,255,0.015)",
-        "fuerte": "rgba(255,255,255,0.10)",
-    },
-    "🍂 Cálido": {
-        "tenue": "linear-gradient(135deg, rgba(245,158,11,0.07) 0%, rgba(239,68,68,0.03) 100%)",
-        "fuerte": "linear-gradient(135deg, rgba(245,158,11,0.32) 0%, rgba(239,68,68,0.16) 100%)",
-    },
-    "🌸 Suave": {
-        "tenue": "linear-gradient(135deg, rgba(192,132,252,0.07) 0%, rgba(0,201,255,0.03) 100%)",
-        "fuerte": "linear-gradient(135deg, rgba(192,132,252,0.30) 0%, rgba(0,201,255,0.14) 100%)",
-    },
+TEMAS_COLORES = {
+    "🎓 Año académico 2026": [(0, 201, 255), (146, 254, 157)],
+    "🌙 Oscuro clásico": [(255, 255, 255)],
+    "🍂 Cálido": [(245, 158, 11), (239, 68, 68)],
+    "🌸 Suave": [(192, 132, 252), (0, 201, 255)],
 }
+
+
+def _construir_fondo(colores, opacidad):
+    """Arma un color o degradado CSS a partir de 1 o 2 colores base (r,g,b)
+    y una opacidad (0.0 a 1.0). El segundo color, si existe, va a la mitad
+    de opacidad para que el degradado se vea suave."""
+    if len(colores) == 1:
+        r, g, b = colores[0]
+        return f"rgba({r},{g},{b},{opacidad:.3f})"
+    (r1, g1, b1), (r2, g2, b2) = colores
+    return (
+        f"linear-gradient(135deg, rgba({r1},{g1},{b1},{opacidad:.3f}) 0%, "
+        f"rgba({r2},{g2},{b2},{opacidad * 0.5:.3f}) 100%)"
+    )
 
 
 def _color_urgencia(dias_faltantes):
@@ -178,13 +180,17 @@ def _seccion_calendario_mensual(usuario):
     anio = st.session_state["cal_anio_actual"]
     mes = st.session_state["cal_mes_actual"]
 
-    fondo_elegido = st.session_state.get("cal_fondo_tema", list(TEMAS_FONDO.keys())[0])
+    fondo_elegido = st.session_state.get("cal_fondo_tema", list(TEMAS_COLORES.keys())[0])
+    intensidad = st.session_state.get("cal_intensidad", 50)
+
+    opacidad_fuerte = 0.06 + (intensidad / 100) * 0.44
+    opacidad_tenue = max(0.04, opacidad_fuerte * 0.3)
 
     st.markdown(
         f"""
         <style>
         .st-key-cal_outer_box {{
-            background:{TEMAS_FONDO[fondo_elegido]['tenue']} !important;
+            background:{_construir_fondo(TEMAS_COLORES[fondo_elegido], opacidad_tenue)} !important;
             border-radius: 16px !important;
             border-color: transparent !important;
             padding: 4px 6px !important;
@@ -195,9 +201,11 @@ def _seccion_calendario_mensual(usuario):
     )
 
     with st.container(border=True, key="cal_outer_box"):
-        col_fondo, _ = st.columns([2, 3])
+        col_fondo, col_intensidad = st.columns([2, 2])
         with col_fondo:
-            fondo_elegido = st.selectbox("🎨 Fondo del calendario", list(TEMAS_FONDO.keys()), key="cal_fondo_tema")
+            fondo_elegido = st.selectbox("🎨 Fondo del calendario", list(TEMAS_COLORES.keys()), key="cal_fondo_tema")
+        with col_intensidad:
+            intensidad = st.slider("🎚️ Intensidad del color", 0, 100, 50, key="cal_intensidad")
 
         col_prev, col_titulo, col_next = st.columns([1, 3, 1])
         with col_prev:
@@ -240,7 +248,7 @@ def _seccion_calendario_mensual(usuario):
         st.markdown(
             f"""<style>
             .st-key-cal_calendario_box {{
-                background:{TEMAS_FONDO[fondo_elegido]['fuerte']} !important;
+                background:{_construir_fondo(TEMAS_COLORES[fondo_elegido], opacidad_fuerte)} !important;
                 border-radius:14px !important;
                 border-color:transparent !important;
                 box-shadow:none !important;

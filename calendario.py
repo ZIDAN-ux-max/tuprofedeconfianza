@@ -24,10 +24,22 @@ MESES_ES = [
 DIAS_SEMANA_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
 
 TEMAS_FONDO = {
-    "🎓 Año académico 2026": "linear-gradient(135deg, rgba(0,201,255,0.07) 0%, rgba(146,254,157,0.03) 100%)",
-    "🌙 Oscuro clásico": "rgba(255,255,255,0.015)",
-    "🍂 Cálido": "linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(239,68,68,0.03) 100%)",
-    "🌸 Suave": "linear-gradient(135deg, rgba(192,132,252,0.08) 0%, rgba(0,201,255,0.03) 100%)",
+    "🎓 Año académico 2026": {
+        "tenue": "linear-gradient(135deg, rgba(0,201,255,0.06) 0%, rgba(146,254,157,0.03) 100%)",
+        "fuerte": "linear-gradient(135deg, rgba(0,201,255,0.28) 0%, rgba(146,254,157,0.14) 100%)",
+    },
+    "🌙 Oscuro clásico": {
+        "tenue": "rgba(255,255,255,0.015)",
+        "fuerte": "rgba(255,255,255,0.10)",
+    },
+    "🍂 Cálido": {
+        "tenue": "linear-gradient(135deg, rgba(245,158,11,0.07) 0%, rgba(239,68,68,0.03) 100%)",
+        "fuerte": "linear-gradient(135deg, rgba(245,158,11,0.32) 0%, rgba(239,68,68,0.16) 100%)",
+    },
+    "🌸 Suave": {
+        "tenue": "linear-gradient(135deg, rgba(192,132,252,0.07) 0%, rgba(0,201,255,0.03) 100%)",
+        "fuerte": "linear-gradient(135deg, rgba(192,132,252,0.30) 0%, rgba(0,201,255,0.14) 100%)",
+    },
 }
 
 
@@ -172,7 +184,7 @@ def _seccion_calendario_mensual(usuario):
         f"""
         <style>
         .st-key-cal_outer_box {{
-            background:{TEMAS_FONDO[fondo_elegido]} !important;
+            background:{TEMAS_FONDO[fondo_elegido]['tenue']} !important;
             border-radius: 16px !important;
             border-color: transparent !important;
             padding: 4px 6px !important;
@@ -226,14 +238,14 @@ def _seccion_calendario_mensual(usuario):
         dia_seleccionado = st.session_state.get("cal_dia_seleccionado")
 
         st.markdown(
-            """<style>
-            .st-key-cal_calendario_box {
-                background: transparent !important;
+            f"""<style>
+            .st-key-cal_calendario_box {{
+                background:{TEMAS_FONDO[fondo_elegido]['fuerte']} !important;
                 border-radius:14px !important;
                 border-color:transparent !important;
                 box-shadow:none !important;
-            }
-            .st-key-cal_dias_box div[data-testid="stButton"] button {
+            }}
+            .st-key-cal_dias_box div[data-testid="stButton"] button {{
                 padding: 0px !important;
                 min-height: 30px !important;
                 height: 30px !important;
@@ -247,7 +259,7 @@ def _seccion_calendario_mensual(usuario):
                 background-image: none !important;
                 border: 1px solid rgba(255,255,255,0.18) !important;
                 box-shadow: none !important;
-            }
+            }}
             </style>""",
             unsafe_allow_html=True
         )

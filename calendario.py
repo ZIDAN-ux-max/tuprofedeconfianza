@@ -255,18 +255,20 @@ def _seccion_calendario_mensual(usuario):
             }}
             .st-key-cal_dias_box div[data-testid="stButton"] button {{
                 padding: 0px !important;
-                min-height: 30px !important;
-                height: 30px !important;
-                width: 30px !important;
+                min-height: 22px !important;
+                height: 22px !important;
+                width: 22px !important;
                 border-radius: 50% !important;
-                font-size: 16px !important;
+                font-size: 12px !important;
                 line-height: 1 !important;
-                margin: 2px auto 0 auto !important;
+                margin: -26px auto 0 auto !important;
                 display: block !important;
-                background: rgba(255,255,255,0.10) !important;
+                background: rgba(255,255,255,0.14) !important;
                 background-image: none !important;
-                border: 1px solid rgba(255,255,255,0.18) !important;
+                border: 1px solid rgba(255,255,255,0.22) !important;
                 box-shadow: none !important;
+                position: relative !important;
+                z-index: 2 !important;
             }}
             </style>""",
             unsafe_allow_html=True
@@ -308,7 +310,7 @@ def _seccion_calendario_mensual(usuario):
 
                             st.markdown(
                                 f"<div style='border:{borde}; background:{fondo_celda}; border-radius:9px; "
-                                f"text-align:center; padding:12px 0 4px 0; min-height:44px; font-size:16px; color:white; margin-bottom:2px'>{dia}</div>",
+                                f"text-align:center; padding:10px 0 22px 0; min-height:48px; font-size:16px; color:white; margin-bottom:0'>{dia}</div>",
                                 unsafe_allow_html=True
                             )
 

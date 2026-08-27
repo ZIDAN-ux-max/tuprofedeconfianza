@@ -24,10 +24,10 @@ MESES_ES = [
 DIAS_SEMANA_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
 
 TEMAS_FONDO = {
-    "🎓 Año académico 2026": "linear-gradient(135deg, rgba(0,201,255,0.32) 0%, rgba(146,254,157,0.16) 100%)",
-    "🌙 Oscuro clásico": "rgba(255,255,255,0.04)",
-    "🍂 Cálido": "linear-gradient(135deg, rgba(245,158,11,0.38) 0%, rgba(239,68,68,0.18) 100%)",
-    "🌸 Suave": "linear-gradient(135deg, rgba(192,132,252,0.36) 0%, rgba(0,201,255,0.16) 100%)",
+    "🎓 Año académico 2026": "linear-gradient(135deg, rgba(0,201,255,0.14) 0%, rgba(146,254,157,0.07) 100%)",
+    "🌙 Oscuro clásico": "rgba(255,255,255,0.02)",
+    "🍂 Cálido": "linear-gradient(135deg, rgba(245,158,11,0.16) 0%, rgba(239,68,68,0.08) 100%)",
+    "🌸 Suave": "linear-gradient(135deg, rgba(192,132,252,0.15) 0%, rgba(0,201,255,0.07) 100%)",
 }
 
 
@@ -283,8 +283,8 @@ def _seccion_calendario_mensual(usuario):
 
                             es_hoy = fecha_celda == hoy
                             es_sel = fecha_celda == dia_seleccionado
-                            borde = "1.5px solid #00C9FF" if es_sel else ("1.5px solid #F59E0B" if es_hoy else "1px solid rgba(255,255,255,0.18)")
-                            fondo_celda = "rgba(0,201,255,0.15)" if es_sel else ("rgba(245,158,11,0.08)" if es_hoy else "rgba(255,255,255,0.03)")
+                            borde = "1.5px solid #00C9FF" if es_sel else ("1.5px solid #F59E0B" if es_hoy else "1px solid rgba(255,255,255,0.35)")
+                            fondo_celda = "rgba(0,201,255,0.22)" if es_sel else ("rgba(245,158,11,0.14)" if es_hoy else "rgba(255,255,255,0.16)")
 
                             st.markdown(
                                 f"<div style='border:{borde}; background:{fondo_celda}; border-radius:9px; "

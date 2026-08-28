@@ -3,7 +3,7 @@
 import streamlit as st
 import textwrap
 
-from database import obtener_ranking, obtener_logros_usuario, obtener_mi_rango, progreso_siguiente_rango, RANGOS
+from database import obtener_ranking, obtener_logros_usuario, obtener_mi_rango, progreso_siguiente_rango, RANGOS, obtener_insignia_por_puntos
 from logros_data import LOGROS_DISPONIBLES
 from materias_data import EMOJI_MATERIA
 
@@ -20,19 +20,26 @@ def mostrar_ranking(usuario):
         color = "rgba(0,201,255,0.1)" if es_yo else "rgba(255,255,255,0.05)"
         borde = "1px solid rgba(0,201,255,0.5)" if es_yo else "1px solid rgba(255,255,255,0.1)"
         etiqueta_tu = '<span style="color:#00C9FF; font-size:0.8em"> (Tu)</span>' if es_yo else ''
-        html_fila = (
-            f"<div style='background:{color}; border:{borde}; border-radius:16px; padding:15px; margin-bottom:8px;'>"
-            f"<span style='font-size:1.5em'>{medalla}</span>"
-            f"<strong style='color:white; margin-left:10px'>{est['nombre']}</strong>"
-            f"{etiqueta_tu}"
-            f"<span style='float:right; color:#00C9FF; font-weight:bold;'>⭐ {est['puntos']} pts</span>"
-            f"<br>"
-            f"<span style='color:rgba(255,255,255,0.6); font-size:0.85em;'>"
-            f"💬 {est['total']} mensajes &nbsp; ✅ {est['puntos_tareas']}pts tareas &nbsp; 🏅 {est['puntos_logros']}pts logros &nbsp; 🔥 {est['racha']} dias"
-            f"</span>"
-            f"</div>"
-        )
-        st.markdown(html_fila, unsafe_allow_html=True)
+        nombre_insignia, imagen_insignia = obtener_insignia_por_puntos(est["puntos"])
+
+        col_badge, col_info = st.columns([1, 8])
+        with col_badge:
+            st.image(f"rangos_img/{imagen_insignia}", use_container_width=True)
+        with col_info:
+            html_fila = (
+                f"<div style='background:{color}; border:{borde}; border-radius:16px; padding:15px; margin-bottom:8px;'>"
+                f"<span style='font-size:1.5em'>{medalla}</span>"
+                f"<strong style='color:white; margin-left:10px'>{est['nombre']}</strong>"
+                f"{etiqueta_tu}"
+                f"<span style='color:#00C9FF; font-size:0.75em; margin-left:8px'>{nombre_insignia}</span>"
+                f"<span style='float:right; color:#00C9FF; font-weight:bold;'>⭐ {est['puntos']} pts</span>"
+                f"<br>"
+                f"<span style='color:rgba(255,255,255,0.6); font-size:0.85em;'>"
+                f"💬 {est['total']} mensajes &nbsp; ✅ {est['puntos_tareas']}pts tareas &nbsp; 🏅 {est['puntos_logros']}pts logros &nbsp; 🔥 {est['racha']} dias"
+                f"</span>"
+                f"</div>"
+            )
+            st.markdown(html_fila, unsafe_allow_html=True)
 
     if mi_posicion:
         st.markdown(

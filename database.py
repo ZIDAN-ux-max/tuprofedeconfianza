@@ -814,6 +814,14 @@ def calcular_rango(puntos):
     return RANGOS[_indice_tier(puntos)][1]
 
 
+def obtener_insignia_por_puntos(puntos):
+    """Devuelve (nombre, imagen) del tier que corresponde a estos puntos,
+    para mostrar la insignia en pantallas que no necesitan el resto del
+    calculo de temporada (ej: Ranking, que usa puntos de toda la vida)."""
+    _umbral, nombre, _sub, imagen = RANGOS[_indice_tier(puntos)]
+    return nombre, imagen
+
+
 def progreso_siguiente_rango(puntos):
     """Devuelve (puntos_que_faltan, nombre_siguiente_tier), o None si ya
     esta en el tier maximo."""

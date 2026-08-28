@@ -762,50 +762,71 @@ def listar_tareas_rango(usuario_id, fecha_inicio, fecha_fin):
         return []
 
 
-# ===================== MI RANGO (TRIMESTRAL) =====================
-# Rango personal que sube cada trimestre segun los puntos acumulados
-# (tareas + logros + chat, la misma formula que el Ranking general pero
-# filtrada solo a las fechas de ese trimestre).
+# ===================== MI RANGO (TEMPORADA) =====================
+# Rango personal que sube durante una temporada academica fija (vacaciones
+# -> fin de las 16 semanas de clases), igual para todos los alumnos (no por
+# curso individual). Se actualizan estas 3 constantes a mano cada vez que
+# empieza una temporada nueva:
 
-RANGOS_TRIMESTRE = [
-    (0, "🥉 Bronce"),
-    (100, "🥈 Cobre"),
-    (250, "🥇 Oro"),
-    (500, "💎 Platino"),
-    (1000, "👑 Diamante"),
+FECHA_INICIO_TEMPORADA = date(2026, 8, 17)   # inicio del ciclo 2026-2
+FECHA_FIN_TEMPORADA = date(2026, 12, 7)      # fin estimado de las 16 semanas de clases
+NUMERO_TEMPORADA = 1                         # sube en 1 cada vez que actualices las fechas de arriba
+
+# 10 tiers, del mas comun al mas raro. Los umbrales son un punto de partida:
+# ajustalos cuando veas cuantos puntos gana realmente un alumno constante
+# en una temporada completa. El 4to valor es el nombre del archivo de imagen
+# en la carpeta rangos_img/ (usado en paginas.py).
+RANGOS = [
+    (0, "Bronce", "Novato", "rango_01_bronce.jpeg"),
+    (40, "Plata", "Estudiante", "rango_02_plata.jpeg"),
+    (100, "Oro", "Aprendiz", "rango_03_oro.jpeg"),
+    (180, "Diamante", "Avanzado", "rango_04_diamante.jpeg"),
+    (280, "Maestro", "Experto", "rango_05_maestro.jpeg"),
+    (420, "Élite", "Disciplinado", "rango_06_elite.jpeg"),
+    (600, "Gran Maestro", "Estratégico", "rango_07_granmaestro.jpeg"),
+    (850, "Leyenda", "Dominante", "rango_08_leyenda.jpeg"),
+    (1200, "Inmortal", "Sabio", "rango_09_inmortal.jpeg"),
+    (1700, "Dios del Conocimiento", "Supremo", "rango_10_dios.jpeg"),
 ]
+
+CAIDA_SOFT_RESET = 2  # cuantos tiers baja como maximo al empezar una temporada nueva
+
+
+def _indice_tier(puntos):
+    """Devuelve el indice (0 a 9) del tier que corresponde a esta cantidad
+    de puntos."""
+    idx = 0
+    for i, (umbral, _nombre, _sub, _img) in enumerate(RANGOS):
+        if puntos >= umbral:
+            idx = i
+    return idx
+
+
+def _indice_por_nombre(nombre_rango):
+    for i, (_umbral, nombre, _sub, _img) in enumerate(RANGOS):
+        if nombre == nombre_rango:
+            return i
+    return 0
 
 
 def calcular_rango(puntos):
-    rango = RANGOS_TRIMESTRE[0][1]
-    for umbral, nombre in RANGOS_TRIMESTRE:
-        if puntos >= umbral:
-            rango = nombre
-    return rango
+    """Nombre del tier segun los puntos (sin considerar soft reset)."""
+    return RANGOS[_indice_tier(puntos)][1]
 
 
 def progreso_siguiente_rango(puntos):
-    """Devuelve (puntos_que_faltan, nombre_siguiente_rango), o None si ya
-    esta en el rango maximo de este trimestre."""
-    for umbral, nombre in RANGOS_TRIMESTRE:
-        if puntos < umbral:
-            return umbral - puntos, nombre
-    return None
-
-
-def _limites_trimestre(anio, trimestre):
-    primer_mes = (trimestre - 1) * 3 + 1
-    inicio = date(anio, primer_mes, 1)
-    if primer_mes + 3 > 12:
-        fin = date(anio, 12, 31)
-    else:
-        fin = date(anio, primer_mes + 3, 1) - timedelta(days=1)
-    return inicio, fin
+    """Devuelve (puntos_que_faltan, nombre_siguiente_tier), o None si ya
+    esta en el tier maximo."""
+    idx = _indice_tier(puntos)
+    if idx >= len(RANGOS) - 1:
+        return None
+    umbral_siguiente, nombre_siguiente, _sub, _img = RANGOS[idx + 1]
+    return umbral_siguiente - puntos, nombre_siguiente
 
 
 def obtener_puntos_trimestre(usuario_id, fecha_inicio, fecha_fin):
     """Suma los puntos (chat/3 + tareas cumplidas + logros) de un usuario
-    dentro de un rango de fechas, para calcular su rango de ese trimestre."""
+    dentro de un rango de fechas."""
     try:
         fin_dia_completo = f"{fecha_fin}T23:59:59"
 
@@ -840,13 +861,14 @@ def obtener_puntos_trimestre(usuario_id, fecha_inicio, fecha_fin):
 
 
 def obtener_mi_rango(usuario_id):
-    """Progreso del trimestre actual (puntos + rango en vivo) mas el
-    historial de trimestres ya cerrados. Si detecta que el trimestre
-    anterior nunca se guardo, lo cierra solo en este momento (sin cron,
-    igual que la limpieza de cupos vencidos)."""
+    """Progreso de la temporada actual (fija, igual para todos: vacaciones
+    -> fin de las 16 semanas de clases) mas el historial de temporadas ya
+    cerradas. Si la temporada activa (segun FECHA_INICIO/FIN_TEMPORADA)
+    todavia no se guardo en el historial y ya paso su fecha de fin, la
+    cierra sola en este momento (sin cron). Al empezar una temporada nueva,
+    el alumno arranca en su tier anterior menos CAIDA_SOFT_RESET (nunca
+    mas abajo que Tier I), no siempre desde cero."""
     hoy = hoy_peru()
-    trimestre_actual = (hoy.month - 1) // 3 + 1
-    anio_actual = hoy.year
 
     try:
         historial = (
@@ -858,34 +880,48 @@ def obtener_mi_rango(usuario_id):
     except Exception:
         historial = []
 
-    anio_prev, trim_prev = (anio_actual, trimestre_actual - 1) if trimestre_actual > 1 else (anio_actual - 1, 4)
-    ya_guardado = any(h["anio"] == anio_prev and h["trimestre"] == trim_prev for h in historial)
+    anio_temporada = FECHA_INICIO_TEMPORADA.year
+    ya_guardado_actual = any(h["anio"] == anio_temporada and h["trimestre"] == NUMERO_TEMPORADA for h in historial)
 
-    if not ya_guardado:
-        inicio_prev, fin_prev = _limites_trimestre(anio_prev, trim_prev)
-        if fin_prev < hoy:
-            puntos_prev = obtener_puntos_trimestre(usuario_id, inicio_prev, fin_prev)
-            rango_prev = calcular_rango(puntos_prev)
-            try:
-                supabase.table("rangos_historial").insert({
-                    "usuario_id": usuario_id,
-                    "anio": anio_prev,
-                    "trimestre": trim_prev,
-                    "puntos_totales": puntos_prev,
-                    "rango": rango_prev
-                }).execute()
-                historial.append({"anio": anio_prev, "trimestre": trim_prev, "puntos_totales": puntos_prev, "rango": rango_prev})
-            except Exception:
-                pass
+    fin_para_calculo = min(hoy, FECHA_FIN_TEMPORADA)
+    puntos_actual = obtener_puntos_trimestre(usuario_id, FECHA_INICIO_TEMPORADA, fin_para_calculo)
+    idx_por_puntos = _indice_tier(puntos_actual)
 
-    inicio_actual, _ = _limites_trimestre(anio_actual, trimestre_actual)
-    puntos_actual = obtener_puntos_trimestre(usuario_id, inicio_actual, hoy)
-    rango_actual = calcular_rango(puntos_actual)
+    # temporadas anteriores a la activa (para el soft reset)
+    anteriores = [h for h in historial if not (h["anio"] == anio_temporada and h["trimestre"] == NUMERO_TEMPORADA)]
+    idx_piso = 0
+    if anteriores:
+        idx_piso = max(0, _indice_por_nombre(anteriores[-1]["rango"]) - CAIDA_SOFT_RESET)
+
+    idx_final = max(idx_por_puntos, idx_piso)
+    _umbral_actual, rango_actual, subtitulo_actual, imagen_actual = RANGOS[idx_final]
+
+    if hoy > FECHA_FIN_TEMPORADA and not ya_guardado_actual:
+        try:
+            supabase.table("rangos_historial").insert({
+                "usuario_id": usuario_id,
+                "anio": anio_temporada,
+                "trimestre": NUMERO_TEMPORADA,
+                "puntos_totales": puntos_actual,
+                "rango": rango_actual
+            }).execute()
+            historial.append({"anio": anio_temporada, "trimestre": NUMERO_TEMPORADA, "puntos_totales": puntos_actual, "rango": rango_actual})
+        except Exception:
+            pass
+
+    siguiente = progreso_siguiente_rango(puntos_actual)
 
     return {
-        "anio": anio_actual,
-        "trimestre": trimestre_actual,
+        "anio": anio_temporada,
+        "trimestre": NUMERO_TEMPORADA,
+        "temporada_inicio": FECHA_INICIO_TEMPORADA,
+        "temporada_fin": FECHA_FIN_TEMPORADA,
         "puntos": puntos_actual,
         "rango": rango_actual,
+        "subtitulo": subtitulo_actual,
+        "imagen": imagen_actual,
+        "indice_tier": idx_final,
+        "siguiente_faltan": siguiente[0] if siguiente else None,
+        "siguiente_nombre": siguiente[1] if siguiente else None,
         "historial": historial
     }

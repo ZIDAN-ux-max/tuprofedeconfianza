@@ -10,7 +10,7 @@ from datetime import date, timedelta
 
 import streamlit as st
 
-from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea
+from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario
 from materias_data import materias_de_carrera
 from utils import hoy_peru
 
@@ -180,8 +180,16 @@ def _seccion_calendario_mensual(usuario):
     anio = st.session_state["cal_anio_actual"]
     mes = st.session_state["cal_mes_actual"]
 
-    fondo_elegido = st.session_state.get("cal_fondo_tema", list(TEMAS_COLORES.keys())[0])
-    intensidad = st.session_state.get("cal_intensidad", 50)
+    # La preferencia de fondo/intensidad vive en la base de datos, ligada al
+    # usuario (no solo a st.session_state), para que no se pierda al navegar
+    # a otra seccion o si la app se reinicia.
+    if "cal_fondo_tema" not in st.session_state:
+        st.session_state["cal_fondo_tema"] = usuario.get("pref_calendario_fondo") or list(TEMAS_COLORES.keys())[0]
+    if "cal_intensidad" not in st.session_state:
+        st.session_state["cal_intensidad"] = usuario.get("pref_calendario_intensidad") or 50
+
+    fondo_elegido = st.session_state["cal_fondo_tema"]
+    intensidad = st.session_state["cal_intensidad"]
 
     opacidad_fuerte = 0.06 + (intensidad / 100) * 0.44
     opacidad_tenue = max(0.04, opacidad_fuerte * 0.3)
@@ -205,7 +213,12 @@ def _seccion_calendario_mensual(usuario):
         with col_fondo:
             fondo_elegido = st.selectbox("🎨 Fondo del calendario", list(TEMAS_COLORES.keys()), key="cal_fondo_tema")
         with col_intensidad:
-            intensidad = st.slider("🎚️ Intensidad del color", 0, 100, 50, key="cal_intensidad")
+            intensidad = st.slider("🎚️ Intensidad del color", 0, 100, key="cal_intensidad")
+
+        if fondo_elegido != (usuario.get("pref_calendario_fondo") or list(TEMAS_COLORES.keys())[0]) or intensidad != (usuario.get("pref_calendario_intensidad") or 50):
+            guardar_preferencia_calendario(usuario["id"], fondo_elegido, intensidad)
+            usuario["pref_calendario_fondo"] = fondo_elegido
+            usuario["pref_calendario_intensidad"] = intensidad
 
         col_prev, col_titulo, col_next = st.columns([1, 3, 1])
         with col_prev:

@@ -668,6 +668,20 @@ def eliminar_documentos(ids_documentos):
 # A diferencia de la biblioteca de documentos (compartida), el calendario
 # es personal: cada alumno solo ve y administra sus propios eventos.
 
+def guardar_preferencia_calendario(usuario_id, fondo, intensidad):
+    """Guarda el fondo/tema y la intensidad de color elegidos en el
+    Calendario, ligados al usuario (no a la sesion del navegador), para
+    que no se pierdan al navegar a otra seccion o si la app se reinicia."""
+    try:
+        supabase.table("usuarios").update({
+            "pref_calendario_fondo": fondo,
+            "pref_calendario_intensidad": intensidad
+        }).eq("id", usuario_id).execute()
+        return True
+    except Exception:
+        return False
+
+
 def guardar_evento(usuario_id, titulo, fecha, tipo="Otro", materia=None, notas=None):
     try:
         supabase.table("eventos_calendario").insert({

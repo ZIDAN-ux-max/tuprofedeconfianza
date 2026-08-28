@@ -777,16 +777,16 @@ NUMERO_TEMPORADA = 1                         # sube en 1 cada vez que actualices
 # en una temporada completa. El 4to valor es el nombre del archivo de imagen
 # en la carpeta rangos_img/ (usado en paginas.py).
 RANGOS = [
-    (0, "Bronce", "Novato", "rango_01_bronce.jpeg"),
-    (40, "Plata", "Estudiante", "rango_02_plata.jpeg"),
-    (100, "Oro", "Aprendiz", "rango_03_oro.jpeg"),
-    (180, "Diamante", "Avanzado", "rango_04_diamante.jpeg"),
-    (280, "Maestro", "Experto", "rango_05_maestro.jpeg"),
-    (420, "Élite", "Disciplinado", "rango_06_elite.jpeg"),
-    (600, "Gran Maestro", "Estratégico", "rango_07_granmaestro.jpeg"),
-    (850, "Leyenda", "Dominante", "rango_08_leyenda.jpeg"),
-    (1200, "Inmortal", "Sabio", "rango_09_inmortal.jpeg"),
-    (1700, "Dios del Conocimiento", "Supremo", "rango_10_dios.jpeg"),
+    (0, "Bronce", "Novato", "rango_01_bronce.png"),
+    (40, "Plata", "Estudiante", "rango_02_plata.png"),
+    (100, "Oro", "Aprendiz", "rango_03_oro.png"),
+    (180, "Diamante", "Avanzado", "rango_04_diamante.png"),
+    (280, "Maestro", "Experto", "rango_05_maestro.png"),
+    (420, "Élite", "Disciplinado", "rango_06_elite.png"),
+    (600, "Gran Maestro", "Estratégico", "rango_07_granmaestro.png"),
+    (850, "Leyenda", "Dominante", "rango_08_leyenda.png"),
+    (1200, "Inmortal", "Sabio", "rango_09_inmortal.png"),
+    (1700, "Dios del Conocimiento", "Supremo", "rango_10_dios.png"),
 ]
 
 CAIDA_SOFT_RESET = 2  # cuantos tiers baja como maximo al empezar una temporada nueva

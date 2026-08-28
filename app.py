@@ -7,7 +7,7 @@ examen, paginas)."""
 import streamlit as st
 
 from estilos import aplicar_estilos
-from database import login, registrar, registrar_asistencia, obtener_estadisticas, supabase, listar_cursos
+from database import login, registrar, registrar_asistencia, obtener_estadisticas, supabase, listar_cursos, obtener_mi_rango
 from utils import obtener_nivel
 from chat import mostrar_chat
 from examen import mostrar_modo_examen
@@ -121,6 +121,23 @@ else:
         st.markdown(f"### Hola, {usuario['nombre']} 👋")
         st.markdown(f"<span style='background:{nivel_color}; color:white; padding:3px 10px; border-radius:20px; font-size:0.85em'>{nivel}</span>", unsafe_allow_html=True)
         st.markdown(f"<p style='color:#F59E0B; font-weight:bold; margin-top:8px'>🔥 Racha: {racha} dias</p>", unsafe_allow_html=True)
+
+        try:
+            datos_rango = obtener_mi_rango(usuario["id"])
+            col_img_rango, col_txt_rango = st.columns([1, 2])
+            with col_img_rango:
+                st.image(f"rangos_img/{datos_rango['imagen']}", use_container_width=True)
+            with col_txt_rango:
+                st.markdown(
+                    f"<div style='margin-top:2px'>"
+                    f"<div style='color:white; font-weight:bold; font-size:0.95em; line-height:1.1'>{datos_rango['rango']}</div>"
+                    f"<div style='color:#00C9FF; font-size:0.75em'>{datos_rango['puntos']} pts</div>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+        except Exception:
+            pass
+
         st.divider()
         seccion = st.radio("Menu", ["Chat", "Modo Examen", "Revisa mi Solucion", "Documentos", "Formulario", "Calendario", "Mi Dia", "Mi Rango", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"], key="menu_seccion")
         st.divider()

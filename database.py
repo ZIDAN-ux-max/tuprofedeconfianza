@@ -668,20 +668,6 @@ def eliminar_documentos(ids_documentos):
 # A diferencia de la biblioteca de documentos (compartida), el calendario
 # es personal: cada alumno solo ve y administra sus propios eventos.
 
-def guardar_preferencia_calendario(usuario_id, fondo, intensidad):
-    """Guarda el fondo/tema y la intensidad de color elegidos en el
-    Calendario, ligados al usuario (no a la sesion del navegador), para
-    que no se pierdan al navegar a otra seccion o si la app se reinicia."""
-    try:
-        supabase.table("usuarios").update({
-            "pref_calendario_fondo": fondo,
-            "pref_calendario_intensidad": intensidad
-        }).eq("id", usuario_id).execute()
-        return True
-    except Exception:
-        return False
-
-
 def guardar_evento(usuario_id, titulo, fecha, tipo="Otro", materia=None, notas=None):
     try:
         supabase.table("eventos_calendario").insert({
@@ -947,3 +933,39 @@ def obtener_mi_rango(usuario_id):
         "siguiente_nombre": siguiente[1] if siguiente else None,
         "historial": historial
     }
+
+
+# ===================== PLAN DE ESTUDIO =====================
+
+def guardar_plan_estudio(usuario_id, materia_general, curso, fecha_inicio_ciclo, estructura):
+    """Guarda (o reemplaza, si ya existia uno para este curso) el plan de
+    estudio de un alumno: la fecha de inicio de ciclo que dio, y la
+    estructura ya extraida del silabo/ficha (para no volver a llamar a la
+    IA cada vez que se muestra el plan)."""
+    try:
+        existente = supabase.table("planes_estudio").select("id").eq("usuario_id", usuario_id).eq("materia_general", materia_general).eq("curso", curso).execute()
+        datos = {
+            "usuario_id": usuario_id,
+            "materia_general": materia_general,
+            "curso": curso,
+            "fecha_inicio_ciclo": str(fecha_inicio_ciclo),
+            "estructura_json": estructura,
+            "actualizado_en": ahora_peru().isoformat()
+        }
+        if existente.data:
+            supabase.table("planes_estudio").update(datos).eq("id", existente.data[0]["id"]).execute()
+        else:
+            supabase.table("planes_estudio").insert(datos).execute()
+        return True
+    except Exception:
+        return False
+
+
+def obtener_plan_estudio(usuario_id, materia_general, curso):
+    """Trae el plan de estudio ya guardado de este alumno para este curso,
+    o None si todavia no genero uno."""
+    try:
+        result = supabase.table("planes_estudio").select("*").eq("usuario_id", usuario_id).eq("materia_general", materia_general).eq("curso", curso).execute()
+        return result.data[0] if result.data else None
+    except Exception:
+        return None

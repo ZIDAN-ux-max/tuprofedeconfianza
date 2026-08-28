@@ -3,7 +3,7 @@
 import streamlit as st
 import textwrap
 
-from database import obtener_ranking, obtener_logros_usuario, obtener_mi_rango, progreso_siguiente_rango
+from database import obtener_ranking, obtener_logros_usuario, obtener_mi_rango, progreso_siguiente_rango, RANGOS
 from logros_data import LOGROS_DISPONIBLES
 from materias_data import EMOJI_MATERIA
 
@@ -214,6 +214,11 @@ def mostrar_mi_rango(usuario):
 
         st.write("")
         if datos["siguiente_nombre"]:
+            umbral_actual = RANGOS[datos["indice_tier"]][0]
+            umbral_siguiente = datos["puntos"] + datos["siguiente_faltan"]
+            rango_tramo = umbral_siguiente - umbral_actual
+            avance = (datos["puntos"] - umbral_actual) / rango_tramo if rango_tramo > 0 else 1.0
+            st.progress(min(max(avance, 0.0), 1.0))
             st.markdown(
                 f"<p style='text-align:center; color:rgba(255,255,255,0.7)'>"
                 f"Te faltan <strong style='color:#00C9FF;'>{datos['siguiente_faltan']} pts</strong> para llegar a {datos['siguiente_nombre']}</p>",
@@ -225,6 +230,25 @@ def mostrar_mi_rango(usuario):
                 "Llegaste al rango maximo de esta temporada 🎉</p>",
                 unsafe_allow_html=True
             )
+
+    st.write("")
+    st.markdown("<h3>Todos los rangos</h3>", unsafe_allow_html=True)
+    cols_rangos = st.columns(5)
+    for i, (umbral, nombre, subtitulo, imagen) in enumerate(RANGOS):
+        with cols_rangos[i % 5]:
+            desbloqueado = i <= datos["indice_tier"]
+            opacidad = "1" if desbloqueado else "0.35"
+            borde = "1.5px solid #00C9FF" if i == datos["indice_tier"] else "1px solid rgba(255,255,255,0.12)"
+            st.markdown(f"<div style='opacity:{opacidad}; border:{borde}; border-radius:12px; padding:6px; text-align:center'>", unsafe_allow_html=True)
+            st.image(f"rangos_img/{imagen}", use_container_width=True)
+            st.markdown(
+                f"<div style='font-size:0.8em; font-weight:bold; color:white; margin-top:-6px'>{nombre}</div>"
+                f"<div style='font-size:0.7em; color:rgba(255,255,255,0.5)'>{umbral} pts</div>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            if i % 5 == 4 or i == len(RANGOS) - 1:
+                st.write("")
 
     if datos["historial"]:
         st.write("")

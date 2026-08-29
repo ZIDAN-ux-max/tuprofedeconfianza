@@ -985,3 +985,16 @@ def obtener_plan_estudio(usuario_id, materia_general, curso):
         return result.data[0] if result.data else None
     except Exception:
         return None
+
+
+def guardar_preferencia_calendario(usuario_id, fondo, intensidad):
+    """Guarda la preferencia de tema visual (fondo) e intensidad del color
+    del Calendario, para que quede igual la proxima vez que el alumno entre."""
+    try:
+        supabase.table("usuarios").update({
+            "pref_calendario_fondo": fondo,
+            "pref_calendario_intensidad": intensidad
+        }).eq("id", usuario_id).execute()
+        return True
+    except Exception:
+        return False

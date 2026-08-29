@@ -998,3 +998,38 @@ def guardar_preferencia_calendario(usuario_id, fondo, intensidad):
         return True
     except Exception:
         return False
+
+
+# ===================== HORARIO DE CLASES =====================
+
+def guardar_clase_horario(usuario_id, dia_semana, hora_inicio, hora_fin, etiqueta=None):
+    """Agrega un bloque de clase al horario semanal del alumno.
+    dia_semana: 0=Lunes ... 6=Domingo."""
+    try:
+        supabase.table("horario_clases").insert({
+            "usuario_id": usuario_id,
+            "dia_semana": dia_semana,
+            "hora_inicio": str(hora_inicio),
+            "hora_fin": str(hora_fin),
+            "etiqueta": etiqueta
+        }).execute()
+        return True
+    except Exception:
+        return False
+
+
+def listar_horario_clases(usuario_id):
+    """Trae todos los bloques de clase del alumno, ordenados por dia y hora."""
+    try:
+        result = supabase.table("horario_clases").select("*").eq("usuario_id", usuario_id).order("dia_semana").order("hora_inicio").execute()
+        return result.data
+    except Exception:
+        return []
+
+
+def eliminar_clase_horario(clase_id):
+    try:
+        supabase.table("horario_clases").delete().eq("id", clase_id).execute()
+        return True
+    except Exception:
+        return False

@@ -14,6 +14,7 @@ from examen import mostrar_modo_examen
 from documentos import mostrar_documentos
 from formulario import mostrar_formulario, renderizar_generador_formulario
 from calendario import mostrar_calendario
+from horario_estudio import mostrar_horario_estudio
 from tareas import mostrar_tareas
 from revision import mostrar_revision
 from paginas import mostrar_ranking, mostrar_acerca_de, mostrar_logros, mostrar_estadisticas, mostrar_mi_rango
@@ -139,7 +140,7 @@ else:
             pass
 
         st.divider()
-        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Revisa mi Solucion", "Documentos", "Formulario", "Calendario", "Mi Dia", "Mi Rango", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"], key="menu_seccion")
+        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Revisa mi Solucion", "Documentos", "Formulario", "Calendario", "Horario de Estudio", "Mi Dia", "Mi Rango", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"], key="menu_seccion")
         st.divider()
         curso_elegido = None
         if seccion == "Chat":
@@ -199,6 +200,8 @@ else:
         mostrar_formulario(usuario)
     elif seccion == "Calendario":
         mostrar_calendario(usuario)
+    elif seccion == "Horario de Estudio":
+        mostrar_horario_estudio(usuario)
     elif seccion == "Mi Dia":
         mostrar_tareas(usuario)
     elif seccion == "Mi Rango":

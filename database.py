@@ -359,6 +359,22 @@ def _sanear_para_storage(texto):
     return texto.strip("_") or "archivo"
 
 
+def obtener_textos_silabo_ficha_separados(materia_general, curso, limite_cada_uno=4000):
+    """Trae el texto del silabo y de la ficha de evaluacion POR SEPARADO
+    (no combinados como obtener_texto_silabo), con mas espacio cada uno -
+    pensada para una extraccion puntual (una sola vez), no para meterse en
+    cada mensaje del Chat. Devuelve (texto_silabo, texto_ficha)."""
+    try:
+        result = supabase.table("documentos").select("contenido_texto, tipo_documento").eq("materia_general", materia_general).eq("curso", curso).in_("tipo_documento", ["silabo", "ficha_evaluada"]).execute()
+        if not result.data:
+            return "", ""
+        texto_silabo = "\n\n".join(d["contenido_texto"] for d in result.data if d.get("tipo_documento") == "silabo" and d.get("contenido_texto"))[:limite_cada_uno]
+        texto_ficha = "\n\n".join(d["contenido_texto"] for d in result.data if d.get("tipo_documento") == "ficha_evaluada" and d.get("contenido_texto"))[:limite_cada_uno]
+        return texto_silabo, texto_ficha
+    except Exception:
+        return "", ""
+
+
 def obtener_texto_silabo(materia_general, curso, limite_caracteres=1800):
     """Trae el texto de los documentos marcados como 'silabo' o
     'ficha_evaluada' de este curso, para dárselo siempre al tutor como

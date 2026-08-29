@@ -119,16 +119,9 @@ def _mostrar_plan(plan):
         )
 
 
-def mostrar_horario_estudio(usuario):
-    st.markdown("<h1 style='text-align:center;'>🗓️ Horario de Estudio</h1>", unsafe_allow_html=True)
-    st.markdown(
-        "<p style='text-align:center; color:rgba(255,255,255,0.6)'>"
-        "A partir del sílabo y la ficha de evaluación de tu curso, armamos las fechas reales "
-        "de cada evaluación y qué repasar antes de cada una.</p>",
-        unsafe_allow_html=True
-    )
-    st.divider()
-
+def mostrar_horario_estudio_contenido(usuario):
+    """El contenido en si (sin titulo propio), para poder usarse tanto en
+    su propia pagina como embebido dentro de una pestaña de Calendario."""
     materias = materias_de_carrera(usuario.get("carrera")) or ["Matematicas"]
     materia = st.selectbox("Materia", materias, key="horario_materia")
     cursos = listar_cursos(materia)
@@ -160,3 +153,16 @@ def mostrar_horario_estudio(usuario):
                     plan = calcular_horario_con_fechas(estructura, fecha_inicio)
                     st.success("Horario generado")
                     _mostrar_plan(plan)
+
+
+def mostrar_horario_estudio(usuario):
+    """Pagina independiente (menu lateral 'Horario de Estudio')."""
+    st.markdown("<h1 style='text-align:center;'>🗓️ Horario de Estudio</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<p style='text-align:center; color:rgba(255,255,255,0.6)'>"
+        "A partir del sílabo y la ficha de evaluación de tu curso, armamos las fechas reales "
+        "de cada evaluación y qué repasar antes de cada una.</p>",
+        unsafe_allow_html=True
+    )
+    st.divider()
+    mostrar_horario_estudio_contenido(usuario)

@@ -13,6 +13,7 @@ import streamlit as st
 from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario
 from materias_data import materias_de_carrera
 from utils import hoy_peru
+from horario_estudio import mostrar_horario_estudio_contenido
 
 TIPOS_EVENTO = ["Examen", "Entrega", "Otro"]
 EMOJI_TIPO = {"Examen": "📝", "Entrega": "📦", "Otro": "📌"}
@@ -378,10 +379,12 @@ def mostrar_calendario(usuario):
     st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.6)'>Tus examenes, entregas y tareas, solo para ti</p>", unsafe_allow_html=True)
     st.divider()
 
-    tab1, tab2, tab3 = st.tabs(["🗓️ Calendario", "📋 Mis fechas", "➕ Agregar"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🗓️ Calendario", "📋 Mis fechas", "➕ Agregar", "📚 Horario de Estudio"])
     with tab1:
         _seccion_calendario_mensual(usuario)
     with tab2:
         _seccion_lista(usuario)
     with tab3:
         _seccion_agregar(usuario)
+    with tab4:
+        mostrar_horario_estudio_contenido(usuario)

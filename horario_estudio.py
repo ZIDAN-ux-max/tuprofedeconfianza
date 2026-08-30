@@ -5,12 +5,12 @@ fechas y pesos de evaluaciones) y, con la fecha de inicio de clases, calcula
 el calendario real de fechas. Archivo separado de calendario.py a proposito
 (evita chocar con cambios en paralelo)."""
 import json
-from datetime import timedelta, date
+from datetime import timedelta, date, time as time_type
 
 import streamlit as st
 
 from tutor_ai import client, MODELO_RESUMEN
-from database import listar_cursos, obtener_textos_silabo_ficha_separados, guardar_plan_estudio, obtener_plan_estudio
+from database import listar_cursos, obtener_textos_silabo_ficha_separados, guardar_plan_estudio, obtener_plan_estudio, guardar_clase_horario, listar_horario_clases, eliminar_clase_horario
 from materias_data import materias_de_carrera
 from utils import hoy_peru
 
@@ -213,9 +213,83 @@ def _mostrar_plan(plan):
         )
 
 
+DIAS_SEMANA = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
+
+
+def _seccion_horario_clases(usuario):
+    """Que el alumno cargue su horario semanal de clases (dia/hora), para
+    despues poder armar bloques de estudio solo en los huecos libres."""
+    st.markdown("#### 🏫 Tu horario de clases")
+    st.caption("Cargalo una vez, asi el horario de estudio se arma solo en tus huecos libres, sin pisar tus clases.")
+
+    clases = listar_horario_clases(usuario["id"])
+    if clases:
+        for c in clases:
+            col1, col2 = st.columns([5, 1])
+            with col1:
+                etiqueta_txt = f" - {c['etiqueta']}" if c.get("etiqueta") else ""
+                st.markdown(f"<span style='color:white'>{DIAS_SEMANA[c['dia_semana']]} {c['hora_inicio'][:5]} - {c['hora_fin'][:5]}{etiqueta_txt}</span>", unsafe_allow_html=True)
+            with col2:
+                if st.button("🗑️", key=f"del_clase_{c['id']}"):
+                    eliminar_clase_horario(c["id"])
+                    st.rerun()
+
+    with st.form("form_agregar_clase", clear_on_submit=True):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            dia_legible = st.selectbox("Dia", DIAS_SEMANA, key="clase_dia")
+        with col2:
+            hora_inicio = st.time_input("Desde", value=time_type(8, 0), key="clase_inicio")
+        with col3:
+            hora_fin = st.time_input("Hasta", value=time_type(10, 0), key="clase_fin")
+        etiqueta = st.text_input("Curso (opcional, ej: Fisica II)", key="clase_etiqueta")
+        if st.form_submit_button("+ Agregar bloque de clase"):
+            if hora_fin <= hora_inicio:
+                st.warning("La hora de fin debe ser despues de la de inicio.")
+            else:
+                dia_num = DIAS_SEMANA.index(dia_legible)
+                guardar_clase_horario(usuario["id"], dia_num, hora_inicio, hora_fin, etiqueta or None)
+                st.rerun()
+
+
+def _mostrar_bloques_de_hoy(usuario, plan, estructura):
+    """Si hoy cae dentro de la ventana de repaso de alguna evaluacion,
+    muestra el horario de bloques de estudio con hora exacta para hoy,
+    respetando el horario de clases del alumno."""
+    hoy = hoy_peru()
+    evaluacion_activa = next((p for p in plan if p["fecha_inicio_repaso"] <= hoy <= p["fecha_evaluacion"]), None)
+    if not evaluacion_activa:
+        return
+
+    horario_clases = listar_horario_clases(usuario["id"])
+    dia_semana_hoy = hoy.weekday()  # 0=Lunes
+    tema_hoy = ", ".join(evaluacion_activa["temas_a_repasar"][:2]) or evaluacion_activa["evaluacion"]
+    nivel = estructura.get("nivel_dificultad", "intermedio")
+    bloques = generar_bloques_estudio_del_dia(dia_semana_hoy, horario_clases, nivel, tema_hoy)
+
+    st.markdown(
+        f"<div style='background:rgba(0,201,255,0.08); border:1px solid rgba(0,201,255,0.3); "
+        f"border-radius:12px; padding:14px 18px; margin-bottom:14px;'>"
+        f"<strong style='color:#00C9FF'>📚 Hoy toca repasar para: {evaluacion_activa['evaluacion']}</strong>",
+        unsafe_allow_html=True
+    )
+    if not bloques:
+        st.caption("No encontramos huecos libres hoy segun tu horario de clases (o todavia no lo cargaste arriba).")
+    else:
+        emojis = {"estudio": "📖", "descanso_corto": "☕", "descanso_largo": "🛋️"}
+        for b in bloques:
+            etiqueta = "Estudio" if b["tipo"] == "estudio" else ("Descanso corto" if b["tipo"] == "descanso_corto" else "Descanso largo")
+            texto_tema = f" - {b['tema']}" if b["tema"] else ""
+            st.markdown(f"{emojis[b['tipo']]} **{_minutos_a_hora(b['inicio_min'])} - {_minutos_a_hora(b['fin_min'])}**: {etiqueta}{texto_tema}")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
 def mostrar_horario_estudio_contenido(usuario):
     """El contenido en si (sin titulo propio), para poder usarse tanto en
     su propia pagina como embebido dentro de una pestaña de Calendario."""
+    with st.expander("🏫 Configurar mi horario de clases (una sola vez)"):
+        _seccion_horario_clases(usuario)
+
     materias = materias_de_carrera(usuario.get("carrera")) or ["Matematicas"]
     materia = st.selectbox("Materia", materias, key="horario_materia")
     cursos = listar_cursos(materia)
@@ -228,6 +302,7 @@ def mostrar_horario_estudio_contenido(usuario):
     if plan_guardado:
         st.caption(f"Ultimo plan generado para este curso, con inicio de ciclo el {plan_guardado['fecha_inicio_ciclo']}")
         plan = calcular_horario_con_fechas(plan_guardado["estructura_json"], date.fromisoformat(plan_guardado["fecha_inicio_ciclo"]))
+        _mostrar_bloques_de_hoy(usuario, plan, plan_guardado["estructura_json"])
         _mostrar_plan(plan)
         st.divider()
 

@@ -10,7 +10,7 @@ from datetime import date, timedelta
 
 import streamlit as st
 
-from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario
+from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario, listar_bloques_estudio
 from materias_data import materias_de_carrera
 from utils import hoy_peru
 from horario_estudio import mostrar_horario_estudio_contenido
@@ -54,6 +54,30 @@ def _color_urgencia(dias_faltantes):
     if dias_faltantes <= 7:
         return "#F59E0B", "rgba(245,158,11,0.3)"
     return "#92FE9D", "rgba(146,254,157,0.3)"
+
+
+def _bloques_estudio_agrupados(bloques_del_dia):
+    """Agrupa los bloques de estudio (ya filtrados a un dia) por curso, para
+    mostrar un resumen: curso, rango horario, tema y minutos efectivos de
+    estudio (sin contar los descansos)."""
+    por_curso = {}
+    for b in bloques_del_dia:
+        por_curso.setdefault(b["curso"], []).append(b)
+    resumenes = []
+    for curso, bs in por_curso.items():
+        bs = sorted(bs, key=lambda x: x["hora_inicio"])
+        estudio = [x for x in bs if x["tipo"] == "estudio"]
+        minutos = sum(
+            (int(x["hora_fin"][:2]) * 60 + int(x["hora_fin"][3:5])) - (int(x["hora_inicio"][:2]) * 60 + int(x["hora_inicio"][3:5]))
+            for x in estudio
+        )
+        tema = next((x["tema"] for x in estudio if x.get("tema")), "")
+        evaluacion = next((x["evaluacion"] for x in estudio if x.get("evaluacion")), "")
+        resumenes.append({
+            "curso": curso, "inicio": bs[0]["hora_inicio"][:5], "fin": bs[-1]["hora_fin"][:5],
+            "tema": tema, "evaluacion": evaluacion, "minutos": minutos,
+        })
+    return sorted(resumenes, key=lambda r: r["inicio"])
 
 
 def _seccion_agregar(usuario):
@@ -256,6 +280,12 @@ def _seccion_calendario_mensual(usuario):
             f = date.fromisoformat(str(tarea["fecha"]))
             tareas_por_dia.setdefault(f, []).append(tarea)
 
+        bloques_estudio_mes = listar_bloques_estudio(usuario["id"], fecha_desde=primer_dia_mes, fecha_hasta=ultimo_dia_mes)
+        bloques_por_dia = {}
+        for b in bloques_estudio_mes:
+            f = date.fromisoformat(b["fecha"])
+            bloques_por_dia.setdefault(f, []).append(b)
+
         semanas = calendar_mod.Calendar(firstweekday=6).monthdayscalendar(anio, mes)  # empieza en Domingo
         dia_seleccionado = st.session_state.get("cal_dia_seleccionado")
 
@@ -316,6 +346,8 @@ def _seccion_calendario_mensual(usuario):
                                     color_punto = "🟣"
                             if not color_punto and fecha_celda in tareas_por_dia:
                                 color_punto = "🟢"
+                            if not color_punto and fecha_celda in bloques_por_dia:
+                                color_punto = "🔵"
 
                             es_hoy = fecha_celda == hoy
                             es_sel = fecha_celda == dia_seleccionado
@@ -334,7 +366,7 @@ def _seccion_calendario_mensual(usuario):
 
         st.markdown(
             "<p style='font-size:0.78em; color:rgba(255,255,255,0.45); margin-top:8px'>"
-            "🔴 Examen &nbsp; 🟠 Entrega &nbsp; 🟣 Otro &nbsp; 🟢 Tarea de Mi Día</p>",
+            "🔴 Examen &nbsp; 🟠 Entrega &nbsp; 🟣 Otro &nbsp; 🟢 Tarea de Mi Día &nbsp; 🔵 Horario de estudio</p>",
             unsafe_allow_html=True
         )
 
@@ -344,8 +376,9 @@ def _seccion_calendario_mensual(usuario):
 
         eventos_dia = eventos_por_dia.get(dia_seleccionado, [])
         tareas_dia = tareas_por_dia.get(dia_seleccionado, [])
+        bloques_dia = _bloques_estudio_agrupados(bloques_por_dia.get(dia_seleccionado, []))
 
-        if not eventos_dia and not tareas_dia:
+        if not eventos_dia and not tareas_dia and not bloques_dia:
             st.caption("No tienes nada guardado para este día.")
         else:
             for evento in eventos_dia:
@@ -360,6 +393,16 @@ def _seccion_calendario_mensual(usuario):
                     if st.button("🗑️", key=f"cal_del_ev_{evento['id']}"):
                         eliminar_evento(evento["id"])
                         st.rerun()
+
+            for r in bloques_dia:
+                horas, mins = divmod(r["minutos"], 60)
+                efectivas_txt = f"{horas}h{mins:02d}" if horas else f"{mins}min"
+                eval_txt = f" · para {r['evaluacion']}" if r["evaluacion"] else ""
+                st.markdown(
+                    f"📖 **{r['curso']}** · {r['inicio']}–{r['fin']} ({efectivas_txt} efectivas){eval_txt}"
+                    + (f"<br><span style='color:rgba(255,255,255,0.6); font-size:0.85em'>{r['tema']}</span>" if r["tema"] else ""),
+                    unsafe_allow_html=True
+                )
 
             for tarea in tareas_dia:
                 col1, col2 = st.columns([5, 1])

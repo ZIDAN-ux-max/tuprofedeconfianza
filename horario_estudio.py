@@ -12,7 +12,7 @@ import streamlit as st
 from tutor_ai import client, MODELO_RESUMEN
 from database import (
     listar_cursos, obtener_textos_silabo_ficha_separados, guardar_plan_estudio, obtener_plan_estudio,
-    guardar_clase_horario, listar_horario_clases, eliminar_clase_horario,
+    guardar_clase_horario, listar_horario_clases, eliminar_clase_horario, editar_clase_horario,
     guardar_bloques_estudio, eliminar_bloques_estudio_futuros, eliminar_bloques_estudio_futuros_todos_los_cursos,
     listar_bloques_estudio, eliminar_bloques_estudio_de_otros_cursos, listar_planes_estudio,
 )
@@ -362,18 +362,34 @@ def _seccion_horario_clases(usuario):
     st.caption("Cargalo una vez, asi el horario de estudio se arma solo en tus huecos libres, sin pisar tus clases.")
 
     clases = listar_horario_clases(usuario["id"])
+    editando_id = st.session_state.get("editando_clase_id")
     if clases:
         for c in clases:
-            col1, col2 = st.columns([5, 1])
+            col1, col2, col3 = st.columns([5, 1, 1])
             with col1:
                 etiqueta_txt = f" - {c['etiqueta']}" if c.get("etiqueta") else ""
                 st.markdown(f"<span style='color:white'>{DIAS_SEMANA[c['dia_semana']]} {c['hora_inicio'][:5]} - {c['hora_fin'][:5]}{etiqueta_txt}</span>", unsafe_allow_html=True)
             with col2:
+                if st.button("✏️", key=f"edit_clase_{c['id']}"):
+                    h_ini = c["hora_inicio"][:5].split(":")
+                    h_fin = c["hora_fin"][:5].split(":")
+                    st.session_state["editando_clase_id"] = c["id"]
+                    st.session_state["clase_dia"] = DIAS_SEMANA[c["dia_semana"]]
+                    st.session_state["clase_inicio"] = time_type(int(h_ini[0]), int(h_ini[1]))
+                    st.session_state["clase_fin"] = time_type(int(h_fin[0]), int(h_fin[1]))
+                    st.session_state["clase_etiqueta"] = c.get("etiqueta") or ""
+                    st.rerun()
+            with col3:
                 if st.button("🗑️", key=f"del_clase_{c['id']}"):
                     eliminar_clase_horario(c["id"])
+                    if st.session_state.get("editando_clase_id") == c["id"]:
+                        del st.session_state["editando_clase_id"]
                     with st.spinner("Ajustando tus horarios de estudio a este cambio..."):
                         regenerar_todos_los_planes(usuario["id"])
                     st.rerun()
+
+    if editando_id:
+        st.caption("✏️ Editando ese bloque — cambia lo que quieras abajo y guarda, o cancelá.")
 
     with st.form("form_agregar_clase", clear_on_submit=True):
         col1, col2, col3 = st.columns(3)
@@ -384,15 +400,27 @@ def _seccion_horario_clases(usuario):
         with col3:
             hora_fin = st.time_input("Hasta", value=time_type(10, 0), key="clase_fin")
         etiqueta = st.text_input("Curso (opcional, ej: Fisica II)", key="clase_etiqueta")
-        if st.form_submit_button("+ Agregar bloque de clase"):
+        texto_boton = "💾 Guardar cambios" if editando_id else "+ Agregar bloque de clase"
+        if st.form_submit_button(texto_boton):
             if hora_fin <= hora_inicio:
                 st.warning("La hora de fin debe ser despues de la de inicio.")
             else:
                 dia_num = DIAS_SEMANA.index(dia_legible)
-                guardar_clase_horario(usuario["id"], dia_num, hora_inicio, hora_fin, etiqueta or None)
+                if editando_id:
+                    editar_clase_horario(editando_id, dia_num, hora_inicio, hora_fin, etiqueta or None)
+                    del st.session_state["editando_clase_id"]
+                else:
+                    guardar_clase_horario(usuario["id"], dia_num, hora_inicio, hora_fin, etiqueta or None)
                 with st.spinner("Ajustando tus horarios de estudio a este cambio..."):
                     regenerar_todos_los_planes(usuario["id"])
                 st.rerun()
+
+    if editando_id:
+        if st.button("Cancelar edición", key="cancelar_editar_clase"):
+            del st.session_state["editando_clase_id"]
+            for k in ["clase_dia", "clase_inicio", "clase_fin", "clase_etiqueta"]:
+                st.session_state.pop(k, None)
+            st.rerun()
 
 
 def _mostrar_bloques_de_hoy(usuario, plan, estructura, materia_general, curso):

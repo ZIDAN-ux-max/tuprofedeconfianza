@@ -1018,6 +1018,21 @@ def guardar_clase_horario(usuario_id, dia_semana, hora_inicio, hora_fin, etiquet
         return False
 
 
+def editar_clase_horario(clase_id, dia_semana, hora_inicio, hora_fin, etiqueta=None):
+    """Edita un bloque de clase existente (en vez de borrar y volver a
+    crear). dia_semana: 0=Lunes ... 6=Domingo."""
+    try:
+        supabase.table("horario_clases").update({
+            "dia_semana": dia_semana,
+            "hora_inicio": str(hora_inicio),
+            "hora_fin": str(hora_fin),
+            "etiqueta": etiqueta
+        }).eq("id", clase_id).execute()
+        return True
+    except Exception:
+        return False
+
+
 def listar_horario_clases(usuario_id):
     """Trae todos los bloques de clase del alumno, ordenados por dia y hora."""
     try:

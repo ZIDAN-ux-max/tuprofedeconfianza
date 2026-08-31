@@ -458,11 +458,28 @@ def _mostrar_bloques_de_hoy(usuario, plan, estructura, materia_general, curso):
     if not bloques:
         st.caption("No encontramos huecos libres hoy segun tu horario de clases (o todavia no lo cargaste arriba).")
     else:
-        emojis = {"estudio": "📖", "descanso_corto": "☕", "descanso_largo": "🛋️"}
-        for b in bloques:
-            etiqueta = "Estudio" if b["tipo"] == "estudio" else ("Descanso corto" if b["tipo"] == "descanso_corto" else "Descanso largo")
-            texto_tema = f" - {b['tema']}" if b["tema"] else ""
-            st.markdown(f"{emojis[b['tipo']]} **{_minutos_a_hora(b['inicio_min'])} - {_minutos_a_hora(b['fin_min'])}**: {etiqueta}{texto_tema}")
+        bloques_de_estudio = [b for b in bloques if b["tipo"] == "estudio"]
+        minutos_efectivos = sum(b["fin_min"] - b["inicio_min"] for b in bloques_de_estudio)
+        horas, mins = divmod(minutos_efectivos, 60)
+        efectivas_txt = f"{horas}h{mins:02d}" if horas else f"{mins}min"
+        rango_inicio = _minutos_a_hora(bloques[0]["inicio_min"])
+        rango_fin = _minutos_a_hora(bloques[-1]["fin_min"])
+
+        st.caption(f"🕐 {len(bloques_de_estudio)} bloques de estudio · {efectivas_txt} efectivas · de {rango_inicio} a {rango_fin}")
+        st.markdown(f"📖 **{rango_inicio} – {rango_fin}: {tema_hoy}**")
+
+        descansos = [b for b in bloques if b["tipo"] != "estudio"]
+        if descansos:
+            partes = []
+            for b in descansos:
+                if b["tipo"] == "descanso_largo":
+                    partes.append(f"🛋️ {_minutos_a_hora(b['inicio_min'])}–{_minutos_a_hora(b['fin_min'])} descanso largo")
+                else:
+                    partes.append(f"☕ {_minutos_a_hora(b['inicio_min'])} descanso corto")
+            st.markdown(
+                f"<span style='color:#8892a0; font-size:0.85em;'>{' &nbsp;·&nbsp; '.join(partes)}</span>",
+                unsafe_allow_html=True
+            )
     st.markdown("</div>", unsafe_allow_html=True)
 
 

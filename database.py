@@ -1144,3 +1144,16 @@ def listar_planes_estudio(usuario_id):
         return result.data
     except Exception:
         return []
+
+
+def marcar_bloques_estudio_completado(usuario_id, materia_general, curso, fecha, completado):
+    """Marca (o desmarca) como cumplidos todos los bloques de tipo 'estudio'
+    de un curso en un dia especifico (una sesion completa, no bloque por
+    bloque individual)."""
+    try:
+        supabase.table("bloques_estudio").update({"completado": completado}) \
+            .eq("usuario_id", usuario_id).eq("materia_general", materia_general).eq("curso", curso) \
+            .eq("fecha", str(fecha)).eq("tipo", "estudio").execute()
+        return True
+    except Exception:
+        return False

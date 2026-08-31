@@ -10,7 +10,7 @@ from datetime import date, timedelta
 
 import streamlit as st
 
-from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario, listar_bloques_estudio
+from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario, listar_bloques_estudio, marcar_bloques_estudio_completado
 from materias_data import materias_de_carrera
 from utils import hoy_peru
 from horario_estudio import mostrar_horario_estudio_contenido
@@ -59,7 +59,8 @@ def _color_urgencia(dias_faltantes):
 def _bloques_estudio_agrupados(bloques_del_dia):
     """Agrupa los bloques de estudio (ya filtrados a un dia) por curso, para
     mostrar un resumen: curso, rango horario, tema y minutos efectivos de
-    estudio (sin contar los descansos)."""
+    estudio (sin contar los descansos). Incluye 'completado' = True solo si
+    TODOS los bloques de estudio de esa sesion estan marcados como hechos."""
     por_curso = {}
     for b in bloques_del_dia:
         por_curso.setdefault(b["curso"], []).append(b)
@@ -73,9 +74,11 @@ def _bloques_estudio_agrupados(bloques_del_dia):
         )
         tema = next((x["tema"] for x in estudio if x.get("tema")), "")
         evaluacion = next((x["evaluacion"] for x in estudio if x.get("evaluacion")), "")
+        materia_general = bs[0].get("materia_general", "")
+        completado = bool(estudio) and all(x.get("completado") for x in estudio)
         resumenes.append({
-            "curso": curso, "inicio": bs[0]["hora_inicio"][:5], "fin": bs[-1]["hora_fin"][:5],
-            "tema": tema, "evaluacion": evaluacion, "minutos": minutos,
+            "curso": curso, "materia_general": materia_general, "inicio": bs[0]["hora_inicio"][:5], "fin": bs[-1]["hora_fin"][:5],
+            "tema": tema, "evaluacion": evaluacion, "minutos": minutos, "completado": completado,
         })
     return sorted(resumenes, key=lambda r: r["inicio"])
 
@@ -398,11 +401,18 @@ def _seccion_calendario_mensual(usuario):
                 horas, mins = divmod(r["minutos"], 60)
                 efectivas_txt = f"{horas}h{mins:02d}" if horas else f"{mins}min"
                 eval_txt = f" · para {r['evaluacion']}" if r["evaluacion"] else ""
-                st.markdown(
-                    f"📖 **{r['curso']}** · {r['inicio']}–{r['fin']} ({efectivas_txt} efectivas){eval_txt}"
-                    + (f"<br><span style='color:rgba(255,255,255,0.6); font-size:0.85em'>{r['tema']}</span>" if r["tema"] else ""),
-                    unsafe_allow_html=True
-                )
+                col_txt, col_check = st.columns([6, 1])
+                with col_txt:
+                    st.markdown(
+                        f"📖 **{r['curso']}** · {r['inicio']}–{r['fin']} ({efectivas_txt} efectivas){eval_txt}"
+                        + (f"<br><span style='color:rgba(255,255,255,0.6); font-size:0.85em'>{r['tema']}</span>" if r["tema"] else ""),
+                        unsafe_allow_html=True
+                    )
+                with col_check:
+                    hecho = st.checkbox("Hecho", value=r["completado"], key=f"mes_hecho_{dia_seleccionado}_{r['curso']}", label_visibility="collapsed")
+                    if hecho != r["completado"]:
+                        marcar_bloques_estudio_completado(usuario["id"], r["materia_general"], r["curso"], dia_seleccionado, hecho)
+                        st.rerun()
 
             for tarea in tareas_dia:
                 col1, col2 = st.columns([5, 1])
@@ -491,7 +501,15 @@ def _seccion_vista_semana(usuario):
         for r in bloques_dia:
             horas, mins = divmod(r["minutos"], 60)
             efectivas_txt = f"{horas}h{mins:02d}" if horas else f"{mins}min"
-            st.markdown(f"&nbsp;&nbsp;📖 {r['curso']} · {r['inicio']}–{r['fin']} ({efectivas_txt})", unsafe_allow_html=True)
+            tema_txt = f"<br>&nbsp;&nbsp;<span style='color:rgba(255,255,255,0.55); font-size:0.85em'>{r['tema']}</span>" if r["tema"] else ""
+            col_txt, col_check = st.columns([6, 1])
+            with col_txt:
+                st.markdown(f"&nbsp;&nbsp;📖 {r['curso']} · {r['inicio']}–{r['fin']} ({efectivas_txt}){tema_txt}", unsafe_allow_html=True)
+            with col_check:
+                hecho = st.checkbox("Hecho", value=r["completado"], key=f"sem_hecho_{f}_{r['curso']}", label_visibility="collapsed")
+                if hecho != r["completado"]:
+                    marcar_bloques_estudio_completado(usuario["id"], r["materia_general"], r["curso"], f, hecho)
+                    st.rerun()
         for t in tareas_dia:
             check = "✅" if t.get("completado") else "⬜"
             st.markdown(f"&nbsp;&nbsp;{check} {t['texto']}", unsafe_allow_html=True)

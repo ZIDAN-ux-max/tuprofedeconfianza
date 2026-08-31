@@ -25,7 +25,7 @@ def extraer_estructura_curso(texto_silabo, texto_ficha):
     una estructura clara: cuantas semanas tiene el ciclo, que tema se ve
     cada semana, y en que semana cae cada evaluacion (con su peso y tipo).
     Devuelve un dict, o None si algo fallo."""
-    material = f"SILABO:\n{texto_silabo[:14000]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:14000]}"
+    material = f"SILABO:\n{texto_silabo[:6000]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:6000]}"
 
     prompt = f"""Lee este silabo y ficha de evaluacion de un curso universitario, y extrae
 su estructura en JSON. Presta atencion a los numeros de semana exactos que
@@ -54,16 +54,13 @@ caen en un dia fijo de clase) - si el documento la da, extraela.
 Material del curso:
 {material}
 """
-    try:
-        respuesta = client.chat.completions.create(
-            model=MODELO_RESUMEN,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=3000,
-            response_format={"type": "json_object"}
-        )
-        return json.loads(respuesta.choices[0].message.content)
-    except Exception:
-        return None
+    respuesta = client.chat.completions.create(
+        model=MODELO_RESUMEN,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=3000,
+        response_format={"type": "json_object"}
+    )
+    return json.loads(respuesta.choices[0].message.content)
 
 
 BLOQUES_POR_NIVEL = {
@@ -573,10 +570,13 @@ def mostrar_horario_estudio_contenido(usuario):
             st.warning("No encontramos un sílabo o ficha de evaluación subidos para este curso. Sube alguno primero en Documentos, marcandolo con el tipo correcto.")
         else:
             with st.spinner("Leyendo el sílabo y la ficha, armando tu horario..."):
-                estructura = extraer_estructura_curso(texto_silabo, texto_ficha)
-                if not estructura or not estructura.get("evaluaciones"):
-                    st.error("No se pudo extraer la estructura del curso (puede ser un corte momentaneo del servicio). Intenta de nuevo.")
-                else:
+                try:
+                    estructura = extraer_estructura_curso(texto_silabo, texto_ficha)
+                except Exception as e:
+                    estructura = None
+                    st.error(f"No se pudo extraer la estructura del curso. Detalle técnico: {e}")
+
+                if estructura and estructura.get("evaluaciones"):
                     guardar_plan_estudio(usuario["id"], materia, curso, fecha_inicio, estructura)
                     plan = calcular_horario_con_fechas(estructura, fecha_inicio, usuario_id=usuario["id"], curso=curso)
                     nivel = estructura.get("nivel_dificultad", "intermedio")
@@ -586,6 +586,8 @@ def mostrar_horario_estudio_contenido(usuario):
                     st.success("Horario generado")
                     _mostrar_plan(plan)
                     st.rerun()
+                elif estructura is not None:
+                    st.error("La IA respondió pero no encontró ninguna evaluación en el sílabo/ficha. Revisa que el documento tenga esa información.")
 
 
 def mostrar_horario_estudio(usuario):

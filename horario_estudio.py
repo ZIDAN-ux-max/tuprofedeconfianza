@@ -58,7 +58,7 @@ Material del curso:
         respuesta = client.chat.completions.create(
             model=MODELO_RESUMEN,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1800,
+            max_tokens=3000,
             response_format={"type": "json_object"}
         )
         return json.loads(respuesta.choices[0].message.content)

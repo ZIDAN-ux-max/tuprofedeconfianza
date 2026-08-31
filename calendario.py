@@ -10,7 +10,7 @@ from datetime import date, timedelta
 
 import streamlit as st
 
-from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario, listar_bloques_estudio, marcar_bloques_estudio_completado
+from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario, listar_bloques_estudio, marcar_bloques_estudio_completado, listar_horario_clases
 from materias_data import materias_de_carrera
 from utils import hoy_peru
 from horario_estudio import mostrar_horario_estudio_contenido

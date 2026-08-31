@@ -359,7 +359,7 @@ def _sanear_para_storage(texto):
     return texto.strip("_") or "archivo"
 
 
-def obtener_textos_silabo_ficha_separados(materia_general, curso, limite_cada_uno=4000):
+def obtener_textos_silabo_ficha_separados(materia_general, curso, limite_cada_uno=14000):
     """Trae el texto del silabo y de la ficha de evaluacion POR SEPARADO
     (no combinados como obtener_texto_silabo), con mas espacio cada uno -
     pensada para una extraccion puntual (una sola vez), no para meterse en

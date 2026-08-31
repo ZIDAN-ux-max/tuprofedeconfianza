@@ -25,7 +25,7 @@ def extraer_estructura_curso(texto_silabo, texto_ficha):
     una estructura clara: cuantas semanas tiene el ciclo, que tema se ve
     cada semana, y en que semana cae cada evaluacion (con su peso y tipo).
     Devuelve un dict, o None si algo fallo."""
-    material = f"SILABO:\n{texto_silabo[:4000]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:3000]}"
+    material = f"SILABO:\n{texto_silabo[:14000]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:14000]}"
 
     prompt = f"""Lee este silabo y ficha de evaluacion de un curso universitario, y extrae
 su estructura en JSON. Presta atencion a los numeros de semana exactos que

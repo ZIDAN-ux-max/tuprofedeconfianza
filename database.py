@@ -1033,3 +1033,99 @@ def eliminar_clase_horario(clase_id):
         return True
     except Exception:
         return False
+
+
+# ===================== BLOQUES DE ESTUDIO (persistidos) =====================
+
+def guardar_bloques_estudio(usuario_id, materia_general, curso, bloques):
+    """Guarda en bloque una lista de bloques de estudio ya calculados, para
+    no tener que recalcularlos cada vez que se muestran. Cada bloque es un
+    dict con: fecha, hora_inicio, hora_fin (str 'HH:MM'), tipo
+    ('estudio'/'descanso_corto'/'descanso_largo'), tema, evaluacion."""
+    if not bloques:
+        return True
+    try:
+        filas = [{
+            "usuario_id": usuario_id,
+            "materia_general": materia_general,
+            "curso": curso,
+            "fecha": str(b["fecha"]),
+            "hora_inicio": b["hora_inicio"],
+            "hora_fin": b["hora_fin"],
+            "tipo": b["tipo"],
+            "tema": b.get("tema"),
+            "evaluacion": b.get("evaluacion"),
+        } for b in bloques]
+        supabase.table("bloques_estudio").insert(filas).execute()
+        return True
+    except Exception:
+        return False
+
+
+def eliminar_bloques_estudio_futuros(usuario_id, materia_general, curso, desde_fecha):
+    """Borra los bloques guardados de este curso desde 'desde_fecha' en
+    adelante (nunca toca los dias que ya pasaron), antes de regenerarlos."""
+    try:
+        supabase.table("bloques_estudio").delete() \
+            .eq("usuario_id", usuario_id).eq("materia_general", materia_general).eq("curso", curso) \
+            .gte("fecha", str(desde_fecha)).execute()
+        return True
+    except Exception:
+        return False
+
+
+def eliminar_bloques_estudio_futuros_todos_los_cursos(usuario_id, desde_fecha):
+    """Igual que arriba pero para TODOS los cursos del alumno. Se usa cuando
+    cambia el horario de clases, porque un cambio ahi puede afectar los
+    huecos libres de cualquier curso, no solo uno."""
+    try:
+        supabase.table("bloques_estudio").delete() \
+            .eq("usuario_id", usuario_id).gte("fecha", str(desde_fecha)).execute()
+        return True
+    except Exception:
+        return False
+
+
+def listar_bloques_estudio(usuario_id, fecha_desde=None, fecha_hasta=None, materia_general=None, curso=None):
+    """Trae los bloques de estudio ya guardados de un alumno, con filtros
+    opcionales de rango de fecha y/o curso. Vacio si todavia no genero
+    ninguno (en ese caso, la pantalla debe caer al calculo en vivo)."""
+    try:
+        query = supabase.table("bloques_estudio").select("*").eq("usuario_id", usuario_id)
+        if fecha_desde:
+            query = query.gte("fecha", str(fecha_desde))
+        if fecha_hasta:
+            query = query.lte("fecha", str(fecha_hasta))
+        if materia_general:
+            query = query.eq("materia_general", materia_general)
+        if curso:
+            query = query.eq("curso", curso)
+        result = query.order("fecha").order("hora_inicio").execute()
+        return result.data
+    except Exception:
+        return []
+
+
+def eliminar_bloques_estudio_de_otros_cursos(usuario_id, curso_a_mantener, fecha_desde, fecha_hasta):
+    """Borra los bloques de estudio de todos los cursos del alumno EXCEPTO
+    'curso_a_mantener', dentro del rango de fechas dado. Se usa cuando el
+    alumno decide priorizar un curso sobre los que ya tenian ese hueco
+    reservado (boton 'reemplazar')."""
+    try:
+        supabase.table("bloques_estudio").delete() \
+            .eq("usuario_id", usuario_id).neq("curso", curso_a_mantener) \
+            .gte("fecha", str(fecha_desde)).lte("fecha", str(fecha_hasta)).execute()
+        return True
+    except Exception:
+        return False
+
+
+def listar_planes_estudio(usuario_id):
+    """Trae todos los planes de estudio guardados de un alumno (uno por
+    curso), para poder regenerarlos en cascada si cambia el horario de
+    clases."""
+    try:
+        result = supabase.table("planes_estudio").select("*").eq("usuario_id", usuario_id).execute()
+        return result.data
+    except Exception:
+        return []

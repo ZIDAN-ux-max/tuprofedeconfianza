@@ -427,93 +427,6 @@ def _seccion_calendario_mensual(usuario):
                         st.rerun()
 
 
-def _seccion_vista_semana(usuario):
-    """Vista compacta de 7 dias (empieza en Domingo, igual que la grilla del
-    mes), mostrando examenes/entregas, horario de estudio y tareas de cada
-    dia sin tener que ir clickeando de a un dia en el calendario mensual."""
-    hoy = hoy_peru()
-    if "cal_semana_inicio" not in st.session_state:
-        offset_desde_domingo = (hoy.weekday() + 1) % 7  # weekday(): Lunes=0..Domingo=6
-        st.session_state["cal_semana_inicio"] = hoy - timedelta(days=offset_desde_domingo)
-
-    inicio_semana = st.session_state["cal_semana_inicio"]
-    fin_semana = inicio_semana + timedelta(days=6)
-
-    col_prev, col_titulo, col_next = st.columns([1, 3, 1])
-    with col_prev:
-        if st.button("◀", key="cal_sem_prev", use_container_width=True):
-            st.session_state["cal_semana_inicio"] = inicio_semana - timedelta(days=7)
-            st.rerun()
-    with col_titulo:
-        st.markdown(
-            f"<h4 style='text-align:center; margin:0'>{inicio_semana.strftime('%d %b')} - {fin_semana.strftime('%d %b %Y')}</h4>",
-            unsafe_allow_html=True
-        )
-    with col_next:
-        if st.button("▶", key="cal_sem_next", use_container_width=True):
-            st.session_state["cal_semana_inicio"] = inicio_semana + timedelta(days=7)
-            st.rerun()
-
-    eventos = listar_eventos(usuario["id"])
-    eventos_por_dia = {}
-    for e in eventos:
-        f = date.fromisoformat(str(e["fecha"]))
-        if inicio_semana <= f <= fin_semana:
-            eventos_por_dia.setdefault(f, []).append(e)
-
-    tareas = listar_tareas_rango(usuario["id"], inicio_semana, fin_semana)
-    tareas_por_dia = {}
-    for t in tareas:
-        f = date.fromisoformat(str(t["fecha"]))
-        tareas_por_dia.setdefault(f, []).append(t)
-
-    bloques = listar_bloques_estudio(usuario["id"], fecha_desde=inicio_semana, fecha_hasta=fin_semana)
-    bloques_por_dia = {}
-    for b in bloques:
-        f = date.fromisoformat(b["fecha"])
-        bloques_por_dia.setdefault(f, []).append(b)
-
-    for i in range(7):
-        f = inicio_semana + timedelta(days=i)
-        es_hoy = f == hoy
-        eventos_dia = eventos_por_dia.get(f, [])
-        tareas_dia = tareas_por_dia.get(f, [])
-        bloques_dia = _bloques_estudio_agrupados(bloques_por_dia.get(f, []))
-        dia_nombre = DIAS_SEMANA_ES[(f.weekday() + 1) % 7]
-
-        borde = "#00C9FF" if es_hoy else "rgba(255,255,255,0.15)"
-        hoy_txt = " <span style='color:#00C9FF; font-size:0.8em'>(HOY)</span>" if es_hoy else ""
-        st.markdown(
-            f"<div style='border-left:4px solid {borde}; background:rgba(255,255,255,0.04); "
-            f"border-radius:8px; padding:8px 14px; margin:10px 0 4px 0;'>"
-            f"<strong style='color:white'>{dia_nombre} {f.day}</strong>{hoy_txt}</div>",
-            unsafe_allow_html=True
-        )
-
-        if not eventos_dia and not tareas_dia and not bloques_dia:
-            st.caption("&nbsp;&nbsp;Nada agendado")
-            continue
-
-        for e in eventos_dia:
-            emoji_tipo = EMOJI_TIPO.get(e.get("tipo"), "📌")
-            materia_txt = f" · {e['materia']}" if e.get("materia") else ""
-            st.markdown(f"&nbsp;&nbsp;{emoji_tipo} {e['titulo']}{materia_txt}", unsafe_allow_html=True)
-        for r in bloques_dia:
-            horas, mins = divmod(r["minutos"], 60)
-            efectivas_txt = f"{horas}h{mins:02d}" if horas else f"{mins}min"
-            tema_txt = f"<br>&nbsp;&nbsp;<span style='color:rgba(255,255,255,0.55); font-size:0.85em'>{r['tema']}</span>" if r["tema"] else ""
-            col_txt, col_check = st.columns([6, 1])
-            with col_txt:
-                st.markdown(f"&nbsp;&nbsp;📖 {r['curso']} · {r['inicio']}–{r['fin']} ({efectivas_txt}){tema_txt}", unsafe_allow_html=True)
-            with col_check:
-                hecho = st.checkbox("Hecho", value=r["completado"], key=f"sem_hecho_{f}_{r['curso']}", label_visibility="collapsed")
-                if hecho != r["completado"]:
-                    marcar_bloques_estudio_completado(usuario["id"], r["materia_general"], r["curso"], f, hecho)
-                    st.rerun()
-        for t in tareas_dia:
-            check = "✅" if t.get("completado") else "⬜"
-            st.markdown(f"&nbsp;&nbsp;{check} {t['texto']}", unsafe_allow_html=True)
-
 
 HORA_GRID_INICIO = 6 * 60   # 6:00 am
 HORA_GRID_FIN = 22 * 60     # 10:00 pm
@@ -649,11 +562,9 @@ def mostrar_calendario(usuario):
 
     tab1, tab2, tab3, tab4 = st.tabs(["🗓️ Calendario", "📋 Mis fechas", "➕ Agregar", "📚 Horario de Estudio"])
     with tab1:
-        vista = st.radio("Vista", ["Mes", "Semana", "Horario"], horizontal=True, key="cal_vista_modo", label_visibility="collapsed")
+        vista = st.radio("Vista", ["Mes", "Horario"], horizontal=True, key="cal_vista_modo", label_visibility="collapsed")
         if vista == "Mes":
             _seccion_calendario_mensual(usuario)
-        elif vista == "Semana":
-            _seccion_vista_semana(usuario)
         else:
             _seccion_vista_horario_semanal(usuario)
     with tab2:

@@ -18,26 +18,36 @@ from pdf_formulario import _render_formula_imagen
 PATRON_FORMULA = re.compile(r"\$(.+?)\$")
 
 
-def _texto_o_imagenes(texto, estilo, elementos):
+def _texto_o_imagenes(texto, estilo, elementos, prefijo=""):
     """Si el texto tiene formulas entre $...$, las separa y renderiza cada
     una como imagen chica en linea con el resto (que sigue como texto
-    normal). Si no tiene formulas, es solo un parrafo comun."""
+    normal). Si no tiene formulas, es solo un parrafo comun. 'prefijo' (ej:
+    '( ) ' o 'A) ') se pega al inicio del primer trozo de texto, para que
+    el marcador de opcion no quede en su propia linea aparte."""
     texto = texto or ""
     partes = PATRON_FORMULA.split(texto)
+    primero_puesto = False
+
     if len(partes) == 1:
-        elementos.append(Paragraph(texto, estilo))
+        elementos.append(Paragraph(prefijo + texto, estilo))
         return
+
     for i, parte in enumerate(partes):
         if not parte.strip():
             continue
         if i % 2 == 1:  # es formula (estaba entre $...$)
+            if not primero_puesto and prefijo:
+                elementos.append(Paragraph(prefijo, estilo))
+                primero_puesto = True
             img_buf = _render_formula_imagen(parte)
             if img_buf:
                 elementos.append(Image(img_buf, width=45 * mm, height=9 * mm, kind="proportional"))
             else:
                 elementos.append(Paragraph(parte, estilo))
         else:
-            elementos.append(Paragraph(parte, estilo))
+            texto_parte = (prefijo + parte) if (not primero_puesto and prefijo) else parte
+            primero_puesto = True
+            elementos.append(Paragraph(texto_parte, estilo))
 
 
 def generar_pdf_examen(materia, curso, preguntas):
@@ -70,7 +80,7 @@ def generar_pdf_examen(materia, curso, preguntas):
 
         if tipo == "multiple":
             for opcion in pregunta.get("opciones", []):
-                bloque.append(Paragraph(f"( &nbsp; ) {opcion}", estilo_opcion))
+                _texto_o_imagenes(opcion, estilo_opcion, bloque, prefijo="( &nbsp; ) ")
         elif tipo == "abierta":
             bloque.append(Spacer(1, 4 * mm))
             for _ in range(3):
@@ -79,11 +89,11 @@ def generar_pdf_examen(materia, curso, preguntas):
             columna_a = pregunta.get("columna_a", [])
             columna_b = pregunta.get("columna_b", [])
             for item_a in columna_a:
-                bloque.append(Paragraph(f"( &nbsp; ) {item_a}", estilo_opcion))
+                _texto_o_imagenes(item_a, estilo_opcion, bloque, prefijo="( &nbsp; ) ")
             bloque.append(Spacer(1, 2 * mm))
             for j, item_b in enumerate(columna_b):
                 letra = chr(65 + j)
-                bloque.append(Paragraph(f"{letra}) {item_b}", estilo_opcion))
+                _texto_o_imagenes(item_b, estilo_opcion, bloque, prefijo=f"{letra}) ")
 
         bloque.append(Spacer(1, 6 * mm))
         elementos.extend(bloque)
@@ -98,7 +108,7 @@ def generar_pdf_examen(materia, curso, preguntas):
             texto_clave = "; ".join(f"{k} → {v}" for k, v in correcta.items())
         else:
             texto_clave = str(correcta)
-        elementos.append(Paragraph(f"<b>{i+1}.</b> {texto_clave}", estilo_clave))
+        _texto_o_imagenes(texto_clave, estilo_clave, elementos, prefijo=f"<b>{i+1}.</b> ")
         elementos.append(Spacer(1, 2 * mm))
 
     doc.build(elementos)

@@ -12,7 +12,7 @@ import streamlit as st
 
 from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario, listar_bloques_estudio, marcar_bloques_estudio_completado, listar_horario_clases
 from materias_data import materias_de_carrera
-from utils import hoy_peru
+from utils import hoy_peru, ahora_peru
 from horario_estudio import mostrar_horario_estudio_contenido
 
 TIPOS_EVENTO = ["Examen", "Entrega", "Otro"]
@@ -462,97 +462,147 @@ def _seccion_vista_horario_semanal(usuario):
     inicio_semana = st.session_state["cal_semana_inicio"]
     fin_semana = inicio_semana + timedelta(days=6)
 
-    col_prev, col_titulo, col_next = st.columns([1, 3, 1])
-    with col_prev:
-        if st.button("◀", key="cal_hor_prev", use_container_width=True):
-            st.session_state["cal_semana_inicio"] = inicio_semana - timedelta(days=7)
-            st.rerun()
-    with col_titulo:
-        st.markdown(f"<h4 style='text-align:center; margin:0'>{inicio_semana.strftime('%d %b')} - {fin_semana.strftime('%d %b %Y')}</h4>", unsafe_allow_html=True)
-    with col_next:
-        if st.button("▶", key="cal_hor_next", use_container_width=True):
-            st.session_state["cal_semana_inicio"] = inicio_semana + timedelta(days=7)
-            st.rerun()
+    # Mismo fondo/intensidad que el mes (preferencia compartida, guardada en
+    # el usuario), asi cambiarlo en cualquiera de las dos vistas actualiza
+    # ambas.
+    if "cal_fondo_tema" not in st.session_state:
+        st.session_state["cal_fondo_tema"] = usuario.get("pref_calendario_fondo") or list(TEMAS_COLORES.keys())[0]
+    if "cal_intensidad" not in st.session_state:
+        st.session_state["cal_intensidad"] = usuario.get("pref_calendario_intensidad") or 50
+
+    col_fondo, col_intensidad = st.columns([2, 2])
+    with col_fondo:
+        fondo_elegido = st.selectbox("🎨 Fondo del calendario", list(TEMAS_COLORES.keys()), key="cal_fondo_tema")
+    with col_intensidad:
+        intensidad = st.slider("🎚️ Intensidad del color", 0, 100, key="cal_intensidad")
+    if fondo_elegido != (usuario.get("pref_calendario_fondo") or list(TEMAS_COLORES.keys())[0]) or intensidad != (usuario.get("pref_calendario_intensidad") or 50):
+        guardar_preferencia_calendario(usuario["id"], fondo_elegido, intensidad)
+        usuario["pref_calendario_fondo"] = fondo_elegido
+        usuario["pref_calendario_intensidad"] = intensidad
+    opacidad_tenue = max(0.04, (0.06 + (intensidad / 100) * 0.44) * 0.3)
     st.markdown(
-        "<p style='font-size:0.78em; color:rgba(255,255,255,0.45)'>"
-        "🔵 Clases &nbsp; 🟣 Horario de estudio &nbsp; 📌 Examen/entrega (arriba, sin hora fija)</p>",
+        f"""
+        <style>
+        .st-key-cal_horario_box {{
+            background:{_construir_fondo(TEMAS_COLORES[fondo_elegido], opacidad_tenue)} !important;
+            border-radius: 16px !important;
+            border-color: transparent !important;
+            padding: 4px 10px !important;
+        }}
+        </style>
+        """,
         unsafe_allow_html=True
     )
 
-    clases = listar_horario_clases(usuario["id"])
-    eventos = listar_eventos(usuario["id"])
-    eventos_por_dia = {}
-    for e in eventos:
-        f = date.fromisoformat(str(e["fecha"]))
-        if inicio_semana <= f <= fin_semana:
-            eventos_por_dia.setdefault(f, []).append(e)
-    bloques = listar_bloques_estudio(usuario["id"], fecha_desde=inicio_semana, fecha_hasta=fin_semana)
-    bloques_por_dia = {}
-    for b in bloques:
-        f = date.fromisoformat(b["fecha"])
-        bloques_por_dia.setdefault(f, []).append(b)
-
-    horas_labels = [f"{h}:00" for h in range(6, 22)]
-    n_horas = len(horas_labels)
-    alto_grilla = ALTO_FILA_PX * n_horas
-
-    # Encabezados de dia
-    encabezados = "<div style='display:flex;'><div style='width:44px; flex-shrink:0;'></div>"
-    for i in range(7):
-        f = inicio_semana + timedelta(days=i)
-        dia_nombre = DIAS_SEMANA_ES[(f.weekday() + 1) % 7]
-        color = "#00C9FF" if f == hoy else "white"
-        encabezados += f"<div style='flex:1; min-width:90px; text-align:center; font-weight:bold; color:{color}; font-size:0.85em; padding:2px 0;'>{dia_nombre} {f.day}</div>"
-    encabezados += "</div>"
-
-    # Fila de chips (examenes/entregas, sin hora)
-    chips_fila = "<div style='display:flex;'><div style='width:44px; flex-shrink:0;'></div>"
-    for i in range(7):
-        f = inicio_semana + timedelta(days=i)
-        chips = "".join(
-            f"<div style='background:rgba(239,68,68,0.3); border-radius:4px; padding:1px 4px; "
-            f"font-size:0.62em; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
-            f"{EMOJI_TIPO.get(e.get('tipo'), '📌')} {e['titulo']}</div>"
-            for e in eventos_por_dia.get(f, [])
+    with st.container(border=True, key="cal_horario_box"):
+        col_prev, col_titulo, col_next = st.columns([1, 3, 1])
+        with col_prev:
+            if st.button("◀", key="cal_hor_prev", use_container_width=True):
+                st.session_state["cal_semana_inicio"] = inicio_semana - timedelta(days=7)
+                st.rerun()
+        with col_titulo:
+            st.markdown(f"<h4 style='text-align:center; margin:0'>{inicio_semana.strftime('%d %b')} - {fin_semana.strftime('%d %b %Y')}</h4>", unsafe_allow_html=True)
+        with col_next:
+            if st.button("▶", key="cal_hor_next", use_container_width=True):
+                st.session_state["cal_semana_inicio"] = inicio_semana + timedelta(days=7)
+                st.rerun()
+        st.markdown(
+            "<p style='font-size:0.78em; color:rgba(255,255,255,0.45)'>"
+            "🔵 Clases &nbsp; 🟣 Horario de estudio &nbsp; 📌 Examen/entrega (arriba, sin hora fija) &nbsp; 🔴 Ahora</p>",
+            unsafe_allow_html=True
         )
-        chips_fila += f"<div style='flex:1; min-width:90px; min-height:22px; padding:0 2px;'>{chips}</div>"
-    chips_fila += "</div>"
 
-    # Grilla: columna de horas + 7 columnas de dias
-    cuerpo = "<div style='display:flex;'>"
-    cuerpo += "<div style='width:44px; flex-shrink:0;'>"
-    for h in horas_labels:
-        cuerpo += f"<div style='height:{ALTO_FILA_PX}px; font-size:0.7em; color:rgba(255,255,255,0.4); text-align:right; padding-right:4px; border-top:1px solid rgba(255,255,255,0.08); box-sizing:border-box;'>{h}</div>"
-    cuerpo += "</div>"
+        clases = listar_horario_clases(usuario["id"])
+        eventos = listar_eventos(usuario["id"])
+        eventos_por_dia = {}
+        for e in eventos:
+            f = date.fromisoformat(str(e["fecha"]))
+            if inicio_semana <= f <= fin_semana:
+                eventos_por_dia.setdefault(f, []).append(e)
+        bloques = listar_bloques_estudio(usuario["id"], fecha_desde=inicio_semana, fecha_hasta=fin_semana)
+        bloques_por_dia = {}
+        for b in bloques:
+            f = date.fromisoformat(b["fecha"])
+            bloques_por_dia.setdefault(f, []).append(b)
 
-    for i in range(7):
-        f = inicio_semana + timedelta(days=i)
-        borde_col = "2px solid #00C9FF" if f == hoy else "1px solid rgba(255,255,255,0.08)"
-        clases_dia = [c for c in clases if c["dia_semana"] == f.weekday()]
-        bloques_agrupados_dia = _bloques_estudio_agrupados(bloques_por_dia.get(f, []))
+        horas_labels = [f"{h}:00" for h in range(6, 22)]
+        n_horas = len(horas_labels)
+        alto_grilla = ALTO_FILA_PX * n_horas
 
-        bloques_html = ""
-        for c in clases_dia:
-            etiqueta = c.get("etiqueta") or "Clase"
-            bloques_html += _bloque_html(
-                c["hora_inicio"][:5], c["hora_fin"][:5], etiqueta, f"{c['hora_inicio'][:5]}-{c['hora_fin'][:5]}",
-                "rgba(74,144,226,0.35)", "#4A90E2"
+        # Encabezados de dia
+        encabezados = "<div style='display:flex;'><div style='width:44px; flex-shrink:0;'></div>"
+        for i in range(7):
+            f = inicio_semana + timedelta(days=i)
+            dia_nombre = DIAS_SEMANA_ES[(f.weekday() + 1) % 7]
+            color = "#00C9FF" if f == hoy else "white"
+            encabezados += f"<div style='flex:1; min-width:90px; text-align:center; font-weight:bold; color:{color}; font-size:0.85em; padding:2px 0;'>{dia_nombre} {f.day}</div>"
+        encabezados += "</div>"
+
+        # Fila de chips (examenes/entregas, sin hora)
+        chips_fila = "<div style='display:flex;'><div style='width:44px; flex-shrink:0;'></div>"
+        for i in range(7):
+            f = inicio_semana + timedelta(days=i)
+            chips = "".join(
+                f"<div style='background:rgba(239,68,68,0.3); border-radius:4px; padding:1px 4px; "
+                f"font-size:0.62em; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
+                f"{EMOJI_TIPO.get(e.get('tipo'), '📌')} {e['titulo']}</div>"
+                for e in eventos_por_dia.get(f, [])
             )
-        for r in bloques_agrupados_dia:
-            check = " ✅" if r["completado"] else ""
-            bloques_html += _bloque_html(
-                r["inicio"], r["fin"], f"📖 {r['curso']}{check}", f"{r['inicio']}-{r['fin']}",
-                "rgba(146,110,254,0.3)", "#926EFE"
+            chips_fila += f"<div style='flex:1; min-width:90px; min-height:22px; padding:0 2px;'>{chips}</div>"
+        chips_fila += "</div>"
+
+        # Grilla: columna de horas + 7 columnas de dias
+        cuerpo = "<div style='display:flex;'>"
+        cuerpo += "<div style='width:44px; flex-shrink:0;'>"
+        for h in horas_labels:
+            cuerpo += f"<div style='height:{ALTO_FILA_PX}px; font-size:0.7em; color:rgba(255,255,255,0.4); text-align:right; padding-right:4px; border-top:1px solid rgba(255,255,255,0.08); box-sizing:border-box;'>{h}</div>"
+        cuerpo += "</div>"
+
+        for i in range(7):
+            f = inicio_semana + timedelta(days=i)
+            borde_col = "2px solid #00C9FF" if f == hoy else "1px solid rgba(255,255,255,0.08)"
+            clases_dia = [c for c in clases if c["dia_semana"] == f.weekday()]
+            bloques_agrupados_dia = _bloques_estudio_agrupados(bloques_por_dia.get(f, []))
+
+            bloques_html = ""
+            for c in clases_dia:
+                etiqueta = c.get("etiqueta") or "Clase"
+                bloques_html += _bloque_html(
+                    c["hora_inicio"][:5], c["hora_fin"][:5], etiqueta, f"{c['hora_inicio'][:5]}-{c['hora_fin'][:5]}",
+                    "rgba(74,144,226,0.35)", "#4A90E2"
+                )
+            for r in bloques_agrupados_dia:
+                check = " ✅" if r["completado"] else ""
+                bloques_html += _bloque_html(
+                    r["inicio"], r["fin"], f"📖 {r['curso']}{check}", f"{r['inicio']}-{r['fin']}",
+                    "rgba(146,110,254,0.3)", "#926EFE"
+                )
+
+            cuerpo += (
+                f"<div style='flex:1; min-width:90px; border-left:{borde_col}; position:relative; height:{alto_grilla}px; "
+                f"background-image: repeating-linear-gradient(to bottom, rgba(255,255,255,0.06) 0, rgba(255,255,255,0.06) 1px, transparent 1px, transparent {ALTO_FILA_PX}px);'>"
+                f"{bloques_html}</div>"
             )
+        cuerpo += "</div>"
 
-        cuerpo += (
-            f"<div style='flex:1; min-width:90px; border-left:{borde_col}; position:relative; height:{alto_grilla}px; "
-            f"background-image: repeating-linear-gradient(to bottom, rgba(255,255,255,0.06) 0, rgba(255,255,255,0.06) 1px, transparent 1px, transparent {ALTO_FILA_PX}px);'>"
-            f"{bloques_html}</div>"
-        )
-    cuerpo += "</div>"
+        # Linea horizontal marcando la hora actual (solo si la semana que se
+        # esta viendo incluye hoy, y la hora actual cae dentro del rango 6am-10pm).
+        ahora = ahora_peru()
+        minutos_ahora = ahora.hour * 60 + ahora.minute
+        cuerpo_con_linea = f"<div style='position:relative; height:{alto_grilla}px;'>{cuerpo}"
+        if inicio_semana <= hoy <= fin_semana and HORA_GRID_INICIO <= minutos_ahora <= HORA_GRID_FIN:
+            top_pct_ahora = _min_a_pct(minutos_ahora)
+            hora_txt = ahora.strftime("%H:%M")
+            cuerpo_con_linea += (
+                f"<div style='position:absolute; top:{top_pct_ahora}%; left:44px; right:0; height:0; "
+                f"border-top:2px solid #FF5A5F; z-index:5; pointer-events:none;'>"
+                f"<div style='position:absolute; left:-5px; top:-5px; width:9px; height:9px; border-radius:50%; background:#FF5A5F;'></div>"
+                f"<div style='position:absolute; left:2px; top:-15px; font-size:0.62em; color:#FF5A5F; background:rgba(0,0,0,0.45); padding:0 3px; border-radius:3px;'>{hora_txt}</div>"
+                f"</div>"
+            )
+        cuerpo_con_linea += "</div>"
 
-    st.markdown(f"<div style='overflow-x:auto;'>{encabezados}{chips_fila}{cuerpo}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='overflow-x:auto;'>{encabezados}{chips_fila}{cuerpo_con_linea}</div>", unsafe_allow_html=True)
 
 
 def mostrar_calendario(usuario):

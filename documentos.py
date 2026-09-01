@@ -9,7 +9,7 @@ import io
 import streamlit as st
 
 from database import guardar_documento, listar_cursos, listar_documentos, listar_ciclos, listar_carreras, usuario_subio_documento, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
-from utils import extraer_texto_pdf, extraer_texto_pptx
+from utils import extraer_texto_pdf, extraer_texto_pptx, extraer_texto_docx
 from materias_data import MATERIAS_DISPONIBLES
 
 LIMITE_CARACTERES_DOCUMENTO = 60000  # ~20 paginas por archivo. Ya no se manda todo al tutor de una:
@@ -95,11 +95,11 @@ def _seccion_plan_rapido(usuario):
     with col_silabo:
         with st.container(border=True):
             st.markdown("<div class='marca-silabo'></div><p class='tarjeta-titulo'>📘 Sílabo</p><p class='tarjeta-sub'>Plan de temas por semana</p>", unsafe_allow_html=True)
-            archivo_silabo = st.file_uploader("Sílabo (PDF)", type=["pdf"], key="plan_top_silabo", label_visibility="collapsed")
+            archivo_silabo = st.file_uploader("Sílabo (PDF o Word)", type=["pdf", "docx"], key="plan_top_silabo", label_visibility="collapsed")
     with col_ficha:
         with st.container(border=True):
             st.markdown("<div class='marca-ficha'></div><p class='tarjeta-titulo'>🗓️ Ficha de actividades</p><p class='tarjeta-sub'>Fechas y pesos de evaluaciones</p>", unsafe_allow_html=True)
-            archivo_ficha = st.file_uploader("Ficha de actividades evaluadas (PDF)", type=["pdf"], key="plan_top_ficha", label_visibility="collapsed")
+            archivo_ficha = st.file_uploader("Ficha de actividades evaluadas (PDF o Word)", type=["pdf", "docx"], key="plan_top_ficha", label_visibility="collapsed")
 
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
@@ -131,6 +131,8 @@ def _subir_uno(materia, curso, archivo, usuario, ciclo, universidad, carrera, ti
     bytes_pdf = archivo.getvalue()
     if archivo.name.lower().endswith(".pptx"):
         texto = extraer_texto_pptx(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
+    elif archivo.name.lower().endswith(".docx"):
+        texto = extraer_texto_docx(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
     else:
         texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
     if not texto:
@@ -171,7 +173,7 @@ def _seccion_subir(usuario):
         )
 
     with col_archivos:
-        archivos = st.file_uploader("Selecciona uno o varios PDFs o PPTX", type=["pdf", "pptx"], accept_multiple_files=True, key="doc_archivos")
+        archivos = st.file_uploader("Selecciona uno o varios PDFs, PPTX o Word", type=["pdf", "pptx", "docx"], accept_multiple_files=True, key="doc_archivos")
 
     if st.button("Subir a la biblioteca", use_container_width=True):
         if not curso or not curso.strip():

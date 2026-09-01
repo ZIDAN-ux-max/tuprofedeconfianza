@@ -5,6 +5,7 @@ import io
 import re
 import PyPDF2
 from pptx import Presentation
+from docx import Document as DocumentoWord
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -66,6 +67,21 @@ def extraer_texto_pdf(archivo, max_caracteres=3000):
         texto = ""
         for page in pdf_reader.pages:
             texto += page.extract_text()
+        return texto[:max_caracteres]
+    except Exception:
+        return None
+
+
+def extraer_texto_docx(archivo, max_caracteres=3000):
+    """Extrae texto de un Word (.docx): parrafos y tablas (las fichas de
+    evaluacion suelen tener el cronograma de fechas en tablas), mismo uso
+    que extraer_texto_pdf."""
+    try:
+        documento = DocumentoWord(io.BytesIO(archivo.read()))
+        texto = "\n".join(p.text for p in documento.paragraphs if p.text.strip())
+        for tabla in documento.tables:
+            for fila in tabla.rows:
+                texto += "\n" + " | ".join(celda.text.strip() for celda in fila.cells)
         return texto[:max_caracteres]
     except Exception:
         return None

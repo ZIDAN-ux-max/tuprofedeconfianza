@@ -3,6 +3,7 @@ groq
 supabase
 PyPDF2
 python-pptx
+python-docx
 scikit-learn
 matplotlib
 reportlab

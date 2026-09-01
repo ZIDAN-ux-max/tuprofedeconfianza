@@ -25,7 +25,7 @@ def extraer_estructura_curso(texto_silabo, texto_ficha):
     una estructura clara: cuantas semanas tiene el ciclo, que tema se ve
     cada semana, y en que semana cae cada evaluacion (con su peso y tipo).
     Devuelve un dict, o None si algo fallo."""
-    material = f"SILABO:\n{texto_silabo[:6000]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:6000]}"
+    material = f"SILABO:\n{texto_silabo[:9000]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:9000]}"
 
     prompt = f"""Lee este silabo y ficha de evaluacion de un curso universitario, y extrae
 su estructura en JSON. Presta atencion a los numeros de semana exactos que
@@ -562,7 +562,21 @@ def mostrar_horario_estudio_contenido(usuario):
         _mostrar_plan(plan)
         st.divider()
 
-    fecha_inicio = st.date_input("¿Que dia empezaron las clases de este curso?", key="horario_fecha_inicio")
+    if plan_guardado:
+        fecha_default = date.fromisoformat(plan_guardado["fecha_inicio_ciclo"])
+    else:
+        otros_planes = listar_planes_estudio(usuario["id"])
+        if otros_planes:
+            fechas_otros_cursos = [p["fecha_inicio_ciclo"] for p in otros_planes]
+            fecha_default = date.fromisoformat(max(set(fechas_otros_cursos), key=fechas_otros_cursos.count))
+        else:
+            fecha_default = hoy_peru()
+
+    fecha_inicio = st.date_input(
+        "¿Que dia empezaron las clases de este curso?",
+        value=fecha_default,
+        key=f"horario_fecha_inicio_{materia}_{curso}"
+    )
 
     if st.button("✨ Generar horario de estudio", use_container_width=True):
         texto_silabo, texto_ficha = obtener_textos_silabo_ficha_separados(materia, curso)

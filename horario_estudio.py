@@ -5,6 +5,7 @@ fechas y pesos de evaluaciones) y, con la fecha de inicio de clases, calcula
 el calendario real de fechas. Archivo separado de calendario.py a proposito
 (evita chocar con cambios en paralelo)."""
 import json
+import hashlib
 from datetime import timedelta, date, time as time_type
 
 import streamlit as st
@@ -18,6 +19,47 @@ from database import (
 )
 from materias_data import materias_de_carrera
 from utils import hoy_peru
+
+
+def _hash_material(texto_silabo, texto_ficha):
+    """Hash del silabo+ficha completos (sin cortar). Se usa para saber si el
+    documento cambio desde la ultima vez que se le pidio a la IA que lo lea,
+    y asi no gastar tokens de nuevo si no cambio nada."""
+    contenido = (texto_silabo or "") + "||" + (texto_ficha or "")
+    return hashlib.sha256(contenido.encode("utf-8")).hexdigest()
+
+
+def _partir_a_la_mitad(texto):
+    """Corte el texto a la mitad, ajustado al salto de linea mas cercano
+    (para no cortar una palabra/fila de tabla al medio). Se usa para mandar
+    la primera mitad del curso (~semana 1-8) y despues la segunda
+    (~semana 9-16) en 2 llamadas separadas a la IA, en vez de 1 sola llamada
+    gigante que arriesga pasarse del presupuesto compartido de tokens."""
+    if not texto:
+        return "", ""
+    medio = len(texto) // 2
+    corte = texto.rfind("\n", 0, medio)
+    if corte == -1:
+        corte = medio
+    return texto[:corte], texto[corte:]
+
+
+def _fusionar_estructuras(primera, segunda):
+    """Combina la estructura de la primera mitad del curso con la de la
+    segunda mitad, en una sola (sin duplicar semanas/evaluaciones si se
+    solaparan un poco en el corte)."""
+    temas = {t["semana"]: t for t in primera.get("temas_por_semana", [])}
+    for t in segunda.get("temas_por_semana", []):
+        temas[t["semana"]] = t
+    evaluaciones = {(e["nombre"], e["semana"]): e for e in primera.get("evaluaciones", [])}
+    for e in segunda.get("evaluaciones", []):
+        evaluaciones[(e["nombre"], e["semana"])] = e
+    return {
+        "temas_por_semana": sorted(temas.values(), key=lambda t: t["semana"]),
+        "evaluaciones": sorted(evaluaciones.values(), key=lambda e: e["semana"]),
+        "nivel_dificultad": segunda.get("nivel_dificultad") or primera.get("nivel_dificultad", "intermedio"),
+        "_completo": True,
+    }
 
 
 def extraer_estructura_curso(texto_silabo, texto_ficha):
@@ -578,30 +620,79 @@ def mostrar_horario_estudio_contenido(usuario):
         key=f"horario_fecha_inicio_{materia}_{curso}"
     )
 
+    texto_silabo_full, texto_ficha_full = obtener_textos_silabo_ficha_separados(materia, curso)
+    hash_actual = _hash_material(texto_silabo_full, texto_ficha_full)
+    estructura_guardada = plan_guardado["estructura_json"] if plan_guardado else None
+    hash_guardado = plan_guardado.get("hash_material") if plan_guardado else None
+    ya_completo = bool(estructura_guardada and estructura_guardada.get("_completo") and hash_guardado == hash_actual)
+    mostrar_boton_segunda_mitad = bool(
+        estructura_guardada and not estructura_guardada.get("_completo") and hash_guardado == hash_actual
+    )
+
     if st.button("✨ Generar horario de estudio", use_container_width=True):
-        texto_silabo, texto_ficha = obtener_textos_silabo_ficha_separados(materia, curso)
-        if not texto_silabo and not texto_ficha:
+        if not texto_silabo_full and not texto_ficha_full:
             st.warning("No encontramos un sílabo o ficha de evaluación subidos para este curso. Sube alguno primero en Documentos, marcandolo con el tipo correcto.")
+        elif hash_guardado == hash_actual and estructura_guardada:
+            # El documento no cambio desde la ultima extraccion (completa o
+            # parcial) - reusamos lo que ya tenemos, sin gastar tokens.
+            st.info("El sílabo/ficha no cambiaron desde la última vez — usando lo que ya se había leído (sin gastar tokens nuevos).")
+            plan = calcular_horario_con_fechas(estructura_guardada, fecha_inicio, usuario_id=usuario["id"], curso=curso)
+            nivel = estructura_guardada.get("nivel_dificultad", "intermedio")
+            _, hubo_otros, rango_inicio, rango_fin = generar_y_guardar_bloques(usuario["id"], materia, curso, plan, nivel)
+            if hubo_otros:
+                st.session_state[f"conflicto_bloques_{materia}_{curso}"] = {"rango_inicio": rango_inicio, "rango_fin": rango_fin}
+            _mostrar_plan(plan)
+            st.rerun()
         else:
-            with st.spinner("Leyendo el sílabo y la ficha, armando tu horario..."):
+            primera_silabo, _ = _partir_a_la_mitad(texto_silabo_full)
+            primera_ficha, _ = _partir_a_la_mitad(texto_ficha_full)
+            with st.spinner("Leyendo la primera mitad del curso (hasta ~semana 8)..."):
                 try:
-                    estructura = extraer_estructura_curso(texto_silabo, texto_ficha)
+                    estructura = extraer_estructura_curso(primera_silabo, primera_ficha)
                 except Exception as e:
                     estructura = None
                     st.error(f"No se pudo extraer la estructura del curso. Detalle técnico: {e}")
 
                 if estructura and estructura.get("evaluaciones"):
-                    guardar_plan_estudio(usuario["id"], materia, curso, fecha_inicio, estructura)
+                    estructura["_completo"] = False
+                    guardar_plan_estudio(usuario["id"], materia, curso, fecha_inicio, estructura, hash_material=hash_actual)
                     plan = calcular_horario_con_fechas(estructura, fecha_inicio, usuario_id=usuario["id"], curso=curso)
                     nivel = estructura.get("nivel_dificultad", "intermedio")
                     _, hubo_otros, rango_inicio, rango_fin = generar_y_guardar_bloques(usuario["id"], materia, curso, plan, nivel)
                     if hubo_otros:
                         st.session_state[f"conflicto_bloques_{materia}_{curso}"] = {"rango_inicio": rango_inicio, "rango_fin": rango_fin}
-                    st.success("Horario generado")
+                    st.success("Primera mitad generada. Cuando quieras, tocá 'Generar segunda mitad' para llegar hasta el examen final.")
                     _mostrar_plan(plan)
                     st.rerun()
                 elif estructura is not None:
                     st.error("La IA respondió pero no encontró ninguna evaluación en el sílabo/ficha. Revisa que el documento tenga esa información.")
+
+    if mostrar_boton_segunda_mitad:
+        if st.button("📚 Generar segunda mitad (hasta el examen final)", use_container_width=True):
+            _, segunda_silabo = _partir_a_la_mitad(texto_silabo_full)
+            _, segunda_ficha = _partir_a_la_mitad(texto_ficha_full)
+            with st.spinner("Leyendo la segunda mitad del curso (hasta el examen final)..."):
+                try:
+                    estructura_segunda = extraer_estructura_curso(segunda_silabo, segunda_ficha)
+                except Exception as e:
+                    estructura_segunda = None
+                    st.error(f"No se pudo extraer la segunda mitad. Detalle técnico: {e}")
+
+                if estructura_segunda and estructura_segunda.get("evaluaciones"):
+                    estructura_completa = _fusionar_estructuras(estructura_guardada, estructura_segunda)
+                    guardar_plan_estudio(usuario["id"], materia, curso, fecha_inicio, estructura_completa, hash_material=hash_actual)
+                    plan = calcular_horario_con_fechas(estructura_completa, fecha_inicio, usuario_id=usuario["id"], curso=curso)
+                    nivel = estructura_completa.get("nivel_dificultad", "intermedio")
+                    _, hubo_otros, rango_inicio, rango_fin = generar_y_guardar_bloques(usuario["id"], materia, curso, plan, nivel)
+                    if hubo_otros:
+                        st.session_state[f"conflicto_bloques_{materia}_{curso}"] = {"rango_inicio": rango_inicio, "rango_fin": rango_fin}
+                    st.success("Curso completo — horario generado hasta el examen final.")
+                    _mostrar_plan(plan)
+                    st.rerun()
+                elif estructura_segunda is not None:
+                    st.error("La IA respondió pero no encontró evaluaciones nuevas en la segunda mitad. Revisa el documento.")
+    elif ya_completo:
+        st.caption("✅ Este curso ya está generado completo, hasta el examen final.")
 
 
 def mostrar_horario_estudio(usuario):

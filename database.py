@@ -953,11 +953,11 @@ def obtener_mi_rango(usuario_id):
 
 # ===================== PLAN DE ESTUDIO =====================
 
-def guardar_plan_estudio(usuario_id, materia_general, curso, fecha_inicio_ciclo, estructura):
+def guardar_plan_estudio(usuario_id, materia_general, curso, fecha_inicio_ciclo, estructura, hash_material=None):
     """Guarda (o reemplaza, si ya existia uno para este curso) el plan de
-    estudio de un alumno: la fecha de inicio de ciclo que dio, y la
-    estructura ya extraida del silabo/ficha (para no volver a llamar a la
-    IA cada vez que se muestra el plan)."""
+    estudio de un alumno: la fecha de inicio de ciclo que dio, la
+    estructura ya extraida del silabo/ficha, y un hash del texto usado (para
+    no volver a llamar a la IA si el documento no cambio)."""
     try:
         existente = supabase.table("planes_estudio").select("id").eq("usuario_id", usuario_id).eq("materia_general", materia_general).eq("curso", curso).execute()
         datos = {
@@ -966,6 +966,7 @@ def guardar_plan_estudio(usuario_id, materia_general, curso, fecha_inicio_ciclo,
             "curso": curso,
             "fecha_inicio_ciclo": str(fecha_inicio_ciclo),
             "estructura_json": estructura,
+            "hash_material": hash_material,
             "actualizado_en": ahora_peru().isoformat()
         }
         if existente.data:

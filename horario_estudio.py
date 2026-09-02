@@ -67,7 +67,7 @@ def extraer_estructura_curso(texto_silabo, texto_ficha):
     una estructura clara: cuantas semanas tiene el ciclo, que tema se ve
     cada semana, y en que semana cae cada evaluacion (con su peso y tipo).
     Devuelve un dict, o None si algo fallo."""
-    material = f"SILABO:\n{texto_silabo[:9000]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:9000]}"
+    material = f"SILABO:\n{texto_silabo[:3500]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:3500]}"
 
     prompt = f"""Lee este silabo y ficha de evaluacion de un curso universitario, y extrae
 su estructura en JSON. Presta atencion a los numeros de semana exactos que
@@ -99,7 +99,7 @@ Material del curso:
     respuesta = client.chat.completions.create(
         model=MODELO_RESUMEN,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=3000,
+        max_tokens=1800,
         response_format={"type": "json_object"}
     )
     return json.loads(respuesta.choices[0].message.content)

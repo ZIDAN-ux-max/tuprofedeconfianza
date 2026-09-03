@@ -271,6 +271,7 @@ def calcular_horario_con_fechas(estructura, fecha_inicio_ciclo, usuario_id=None,
 
     plan = []
     semana_anterior_evaluada = 0
+    fecha_evaluacion_anterior = fecha_inicio_ciclo
     for ev in sorted(evaluaciones, key=lambda e: e["semana"]):
         semana_eval = ev["semana"]
         fecha_exacta_txt = ev.get("fecha_exacta")
@@ -287,13 +288,22 @@ def calcular_horario_con_fechas(estructura, fecha_inicio_ciclo, usuario_id=None,
         else:
             fecha_eval = fecha_de_semana(semana_eval)
 
-        fecha_inicio_repaso = fecha_eval - timedelta(days=dias_anticipacion_estudio)
-
         # Temas cubiertos desde la ultima evaluacion hasta esta (los que hay que repasar)
         temas_a_repasar = [
             temas[s] for s in sorted(temas.keys())
             if semana_anterior_evaluada < s <= semana_eval
         ]
+
+        # Usa TODO el tiempo libre desde la evaluacion anterior (no un
+        # numero fijo de dias): asi un parcial/final con muchos temas y
+        # mucho tiempo disponible reparte el repaso en todo ese rango, en
+        # vez de amontonarlo en los ultimos dias. El minimo escala con la
+        # cantidad de temas (2 dias por tema, o dias_anticipacion_estudio,
+        # lo que sea mayor), pero nunca se pasa del tiempo realmente
+        # disponible ni arranca antes de la evaluacion anterior.
+        dias_disponibles = max((fecha_eval - fecha_evaluacion_anterior).days, 0)
+        dias_ventana = min(dias_disponibles, max(dias_anticipacion_estudio, len(temas_a_repasar) * 2))
+        fecha_inicio_repaso = max(fecha_eval - timedelta(days=dias_ventana), fecha_evaluacion_anterior)
 
         plan.append({
             "evaluacion": ev["nombre"],
@@ -305,6 +315,7 @@ def calcular_horario_con_fechas(estructura, fecha_inicio_ciclo, usuario_id=None,
             "temas_a_repasar": temas_a_repasar,
         })
         semana_anterior_evaluada = semana_eval
+        fecha_evaluacion_anterior = fecha_eval
 
     return plan
 
@@ -422,8 +433,8 @@ DIAS_SEMANA = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "D
 def _seccion_horario_clases(usuario):
     """Que el alumno cargue su horario semanal de clases (dia/hora), para
     despues poder armar bloques de estudio solo en los huecos libres."""
-    st.markdown("#### 🏫 Tu horario de clases")
-    st.caption("Cargalo una vez, asi el horario de estudio se arma solo en tus huecos libres, sin pisar tus clases.")
+    st.markdown("#### 🏫 Tu horario ocupado (clases, gym, trabajo, etc.)")
+    st.caption("Cargalo una vez, asi el horario de estudio se arma solo en tus huecos libres, sin pisar nada de esto. No es solo para clases: si vas al gym, trabajas, o tenes cualquier actividad fija, agregala igual aca con su dia y hora.")
 
     clases = listar_horario_clases(usuario["id"])
     editando_id = st.session_state.get("editando_clase_id")
@@ -566,7 +577,7 @@ def _mostrar_bloques_de_hoy(usuario, plan, estructura, materia_general, curso):
 def mostrar_horario_estudio_contenido(usuario):
     """El contenido en si (sin titulo propio), para poder usarse tanto en
     su propia pagina como embebido dentro de una pestaña de Calendario."""
-    with st.expander("🏫 Configurar mi horario de clases (una sola vez)"):
+    with st.expander("🏫 Configurar mi horario ocupado (clases, gym, trabajo, etc.)"):
         _seccion_horario_clases(usuario)
 
     materias = materias_de_carrera(usuario.get("carrera")) or ["Matematicas"]
@@ -579,7 +590,7 @@ def mostrar_horario_estudio_contenido(usuario):
 
     if _dia_semana_del_curso(usuario["id"], curso) is None:
         st.caption(
-            f"⚠️ No encontramos '{curso}' en tu horario de clases (arriba en '🏫 Configurar mi horario de clases'). "
+            f"⚠️ No encontramos '{curso}' en tu horario ocupado (arriba en '🏫 Configurar mi horario ocupado'). "
             "Escribe el nombre EXACTO del curso ahi (ej: si el curso se llama 'Fisica II', usa 'Fisica II', no solo 'Fisica'), "
             "asi las fechas de tus evaluaciones continuas son exactas. Mientras tanto, se usa una fecha aproximada."
         )

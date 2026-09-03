@@ -1003,31 +1003,33 @@ def guardar_preferencia_calendario(usuario_id, fondo, intensidad):
 
 # ===================== HORARIO DE CLASES =====================
 
-def guardar_clase_horario(usuario_id, dia_semana, hora_inicio, hora_fin, etiqueta=None):
-    """Agrega un bloque de clase al horario semanal del alumno.
-    dia_semana: 0=Lunes ... 6=Domingo."""
+def guardar_clase_horario(usuario_id, dia_semana, hora_inicio, hora_fin, etiqueta=None, categoria="clase"):
+    """Agrega un bloque ocupado al horario semanal del alumno (clase, gym,
+    trabajo, etc.). dia_semana: 0=Lunes ... 6=Domingo."""
     try:
         supabase.table("horario_clases").insert({
             "usuario_id": usuario_id,
             "dia_semana": dia_semana,
             "hora_inicio": str(hora_inicio),
             "hora_fin": str(hora_fin),
-            "etiqueta": etiqueta
+            "etiqueta": etiqueta,
+            "categoria": categoria
         }).execute()
         return True
     except Exception:
         return False
 
 
-def editar_clase_horario(clase_id, dia_semana, hora_inicio, hora_fin, etiqueta=None):
-    """Edita un bloque de clase existente (en vez de borrar y volver a
-    crear). dia_semana: 0=Lunes ... 6=Domingo."""
+def editar_clase_horario(clase_id, dia_semana, hora_inicio, hora_fin, etiqueta=None, categoria="clase"):
+    """Edita un bloque existente (en vez de borrar y volver a crear).
+    dia_semana: 0=Lunes ... 6=Domingo."""
     try:
         supabase.table("horario_clases").update({
             "dia_semana": dia_semana,
             "hora_inicio": str(hora_inicio),
             "hora_fin": str(hora_fin),
-            "etiqueta": etiqueta
+            "etiqueta": etiqueta,
+            "categoria": categoria
         }).eq("id", clase_id).execute()
         return True
     except Exception:

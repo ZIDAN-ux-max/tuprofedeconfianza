@@ -430,11 +430,19 @@ def _mostrar_plan(plan):
 DIAS_SEMANA = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
 
 
+CATEGORIAS_HORARIO = {
+    "clase": ("📘 Clase", "#4A90E2"),
+    "deporte": ("🏃 Deporte", "#43D69D"),
+    "trabajo": ("💼 Trabajo", "#FFAD47"),
+    "otro": ("📌 Otro", "#8892A0"),
+}
+
+
 def _seccion_horario_clases(usuario):
     """Que el alumno cargue su horario semanal de clases (dia/hora), para
     despues poder armar bloques de estudio solo en los huecos libres."""
     st.markdown("#### 🏫 Tu horario ocupado (clases, gym, trabajo, etc.)")
-    st.caption("Cargalo una vez, asi el horario de estudio se arma solo en tus huecos libres, sin pisar nada de esto. No es solo para clases: si vas al gym, trabajas, o tenes cualquier actividad fija, agregala igual aca con su dia y hora.")
+    st.caption("Cargalo una vez, asi el horario de estudio se arma solo en tus huecos libres, sin pisar nada de esto. Elegí el Tipo (Clase, Deporte, Trabajo u Otro) para diferenciarlos por color en la vista Horario del Calendario.")
 
     clases = listar_horario_clases(usuario["id"])
     editando_id = st.session_state.get("editando_clase_id")
@@ -449,7 +457,12 @@ def _seccion_horario_clases(usuario):
             col1, col2, col3 = st.columns([5, 1, 1])
             with col1:
                 etiqueta_txt = f" - {c['etiqueta']}" if c.get("etiqueta") else ""
-                st.markdown(f"<span style='color:white'>{DIAS_SEMANA[c['dia_semana']]} {c['hora_inicio'][:5]} - {c['hora_fin'][:5]}{etiqueta_txt}</span>", unsafe_allow_html=True)
+                emoji_cat, color_cat = CATEGORIAS_HORARIO.get(c.get("categoria") or "clase", CATEGORIAS_HORARIO["clase"])
+                st.markdown(
+                    f"<span style='color:{color_cat}'>{emoji_cat.split(' ')[0]}</span> "
+                    f"<span style='color:white'>{DIAS_SEMANA[c['dia_semana']]} {c['hora_inicio'][:5]} - {c['hora_fin'][:5]}{etiqueta_txt}</span>",
+                    unsafe_allow_html=True
+                )
             with col2:
                 if st.button("✏️", key=f"edit_clase_{c['id']}"):
                     st.session_state["editando_clase_id"] = c["id"]
@@ -478,11 +491,13 @@ def _seccion_horario_clases(usuario):
         inicio_default = time_type(int(h_ini[0]), int(h_ini[1]))
         fin_default = time_type(int(h_fin[0]), int(h_fin[1]))
         etiqueta_default = clase_editando.get("etiqueta") or ""
+        categoria_default = clase_editando.get("categoria") or "clase"
     else:
         dia_default = "Lunes"
         inicio_default = time_type(8, 0)
         fin_default = time_type(10, 0)
         etiqueta_default = ""
+        categoria_default = "clase"
 
     with st.form(f"form_clase_{sufijo}", clear_on_submit=True):
         col1, col2, col3 = st.columns(3)
@@ -492,18 +507,23 @@ def _seccion_horario_clases(usuario):
             hora_inicio = st.time_input("Desde", value=inicio_default, key=f"clase_inicio_{sufijo}")
         with col3:
             hora_fin = st.time_input("Hasta", value=fin_default, key=f"clase_fin_{sufijo}")
-        etiqueta = st.text_input("Curso (opcional, ej: Fisica II)", value=etiqueta_default, key=f"clase_etiqueta_{sufijo}")
-        texto_boton = "💾 Guardar cambios" if clase_editando else "+ Agregar bloque de clase"
+        claves_categoria = list(CATEGORIAS_HORARIO.keys())
+        categoria = st.selectbox(
+            "Tipo", claves_categoria, index=claves_categoria.index(categoria_default),
+            format_func=lambda k: CATEGORIAS_HORARIO[k][0], key=f"clase_categoria_{sufijo}"
+        )
+        etiqueta = st.text_input("Nombre (opcional, ej: Fisica II, Gimnasio)", value=etiqueta_default, key=f"clase_etiqueta_{sufijo}")
+        texto_boton = "💾 Guardar cambios" if clase_editando else "+ Agregar bloque"
         if st.form_submit_button(texto_boton):
             if hora_fin <= hora_inicio:
                 st.warning("La hora de fin debe ser despues de la de inicio.")
             else:
                 dia_num = DIAS_SEMANA.index(dia_legible)
                 if clase_editando:
-                    editar_clase_horario(editando_id, dia_num, hora_inicio, hora_fin, etiqueta or None)
+                    editar_clase_horario(editando_id, dia_num, hora_inicio, hora_fin, etiqueta or None, categoria)
                     st.session_state.pop("editando_clase_id", None)
                 else:
-                    guardar_clase_horario(usuario["id"], dia_num, hora_inicio, hora_fin, etiqueta or None)
+                    guardar_clase_horario(usuario["id"], dia_num, hora_inicio, hora_fin, etiqueta or None, categoria)
                 with st.spinner("Ajustando tus horarios de estudio a este cambio..."):
                     regenerar_todos_los_planes(usuario["id"])
                 st.rerun()

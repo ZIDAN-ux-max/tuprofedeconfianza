@@ -24,6 +24,15 @@ MESES_ES = [
 ]
 DIAS_SEMANA_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
 
+# Mismas categorias/colores que en horario_estudio.py, para que un bloque
+# de horario ocupado se vea igual de un lado que del otro.
+COLORES_CATEGORIA_HORARIO = {
+    "clase": ("rgba(74,144,226,0.35)", "#4A90E2"),
+    "deporte": ("rgba(67,214,157,0.3)", "#43D69D"),
+    "trabajo": ("rgba(255,173,71,0.3)", "#FFAD47"),
+    "otro": ("rgba(136,146,160,0.3)", "#8892A0"),
+}
+
 TEMAS_COLORES = {
     "🎓 Año académico 2026": [(0, 201, 255), (146, 254, 157)],
     "🌙 Oscuro clásico": [(255, 255, 255)],
@@ -509,7 +518,7 @@ def _seccion_vista_horario_dia(usuario):
                 st.rerun()
         st.markdown(
             "<p style='font-size:0.78em; color:rgba(255,255,255,0.45)'>"
-            "🔵 Clases &nbsp; 🟣 Horario de estudio &nbsp; 📌 Examen/entrega (sin hora fija) &nbsp; 🔴 Ahora</p>",
+            "🔵 Clase &nbsp; 🟢 Deporte &nbsp; 🟠 Trabajo &nbsp; ⚪ Otro &nbsp; 🟣 Horario de estudio &nbsp; 📌 Examen/entrega (sin hora fija) &nbsp; 🔴 Ahora</p>",
             unsafe_allow_html=True
         )
 
@@ -538,9 +547,10 @@ def _seccion_vista_horario_dia(usuario):
         bloques_html = ""
         for c in clases_dia:
             etiqueta = c.get("etiqueta") or "Clase"
+            fondo_cat, borde_cat = COLORES_CATEGORIA_HORARIO.get(c.get("categoria") or "clase", COLORES_CATEGORIA_HORARIO["clase"])
             bloques_html += _bloque_html(
                 c["hora_inicio"][:5], c["hora_fin"][:5], etiqueta, f"{c['hora_inicio'][:5]}-{c['hora_fin'][:5]}",
-                "rgba(74,144,226,0.35)", "#4A90E2"
+                fondo_cat, borde_cat
             )
         for r in bloques_agrupados_dia:
             check = " ✅" if r["completado"] else ""

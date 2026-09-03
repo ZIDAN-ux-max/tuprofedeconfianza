@@ -62,14 +62,9 @@ def _fusionar_estructuras(primera, segunda):
     }
 
 
-def extraer_estructura_curso(texto_silabo, texto_ficha):
-    """Le pide a la IA que lea el silabo y la ficha de evaluacion y devuelva
-    una estructura clara: cuantas semanas tiene el ciclo, que tema se ve
-    cada semana, y en que semana cae cada evaluacion (con su peso y tipo).
-    Devuelve un dict, o None si algo fallo."""
-    material = f"SILABO:\n{texto_silabo[:3500]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:3500]}"
-
-    prompt = f"""Lee este silabo y ficha de evaluacion de un curso universitario, y extrae
+def _construir_prompt_extraccion(texto_silabo, texto_ficha, limite_caracteres):
+    material = f"SILABO:\n{texto_silabo[:limite_caracteres]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:limite_caracteres]}"
+    return f"""Lee este silabo y ficha de evaluacion de un curso universitario, y extrae
 su estructura en JSON. Presta atencion a los numeros de semana exactos que
 aparecen en los documentos (no los inventes).
 
@@ -96,13 +91,36 @@ caen en un dia fijo de clase) - si el documento la da, extraela.
 Material del curso:
 {material}
 """
-    respuesta = client.chat.completions.create(
-        model=MODELO_RESUMEN,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=1800,
-        response_format={"type": "json_object"}
-    )
-    return json.loads(respuesta.choices[0].message.content)
+
+
+def extraer_estructura_curso(texto_silabo, texto_ficha):
+    """Le pide a la IA que lea el silabo y la ficha de evaluacion y devuelva
+    una estructura clara: cuantas semanas tiene el ciclo, que tema se ve
+    cada semana, y en que semana cae cada evaluacion (con su peso y tipo).
+
+    Si la llamada choca con el limite compartido de tokens (por trafico de
+    otros usuarios de la app en ese mismo minuto, o documentos grandes),
+    reintenta automaticamente con menos texto en vez de fallar directo.
+    Devuelve un dict; deja que la excepcion se propague si todos los
+    intentos fallan (el llamador la muestra al usuario)."""
+    limites_a_intentar = [3500, 1800, 900]
+    ultimo_error = None
+    for limite in limites_a_intentar:
+        prompt = _construir_prompt_extraccion(texto_silabo, texto_ficha, limite)
+        try:
+            respuesta = client.chat.completions.create(
+                model=MODELO_RESUMEN,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=1800,
+                response_format={"type": "json_object"}
+            )
+            return json.loads(respuesta.choices[0].message.content)
+        except Exception as e:
+            ultimo_error = e
+            texto_error = str(e).lower()
+            if "rate_limit" not in texto_error and "413" not in texto_error and "tokens per minute" not in texto_error:
+                raise  # no es un problema de tamaño - no tiene sentido reintentar con menos texto
+    raise ultimo_error
 
 
 BLOQUES_POR_NIVEL = {

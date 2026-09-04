@@ -116,10 +116,28 @@ def _seccion_plan_rapido(usuario):
         elif not archivo_silabo and not archivo_ficha:
             st.warning("Sube al menos el Sílabo o la Ficha de actividades")
         else:
+            def _reemplazar_documento_existente(materia, curso, tipo_documento):
+                """Borra el silabo/ficha anterior de ESTE MISMO usuario para
+                este curso (si habia) antes de guardar el nuevo, para que
+                siempre quede uno solo vigente por tipo. Solo toca
+                documentos subidos por el mismo nombre de usuario - Documentos
+                es una biblioteca compartida entre alumnos, asi que nunca
+                debe borrar lo que subio otra persona."""
+                existentes = [
+                    d for d in listar_documentos(materia)
+                    if d.get("curso") == curso
+                    and (d.get("tipo_documento") or "apunte") == tipo_documento
+                    and d.get("subido_por") == usuario["nombre"]
+                ]
+                for d in existentes:
+                    eliminar_documento(d["id"])
+
             resultados = []
             if archivo_silabo:
+                _reemplazar_documento_existente(materia_pr, curso_pr, "silabo")
                 resultados.append(("Sílabo", _subir_uno(materia_pr, curso_pr, archivo_silabo, usuario, None, usuario.get("universidad"), usuario.get("carrera"), "silabo")))
             if archivo_ficha:
+                _reemplazar_documento_existente(materia_pr, curso_pr, "ficha_evaluada")
                 resultados.append(("Ficha de actividades", _subir_uno(materia_pr, curso_pr, archivo_ficha, usuario, None, usuario.get("universidad"), usuario.get("carrera"), "ficha_evaluada")))
 
             for nombre, resultado in resultados:

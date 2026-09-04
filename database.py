@@ -520,7 +520,7 @@ def listar_documentos(materia_general=None, ciclo=None, carrera=None):
     """Lista todos los documentos, opcionalmente filtrados por materia y/o
     ciclo y/o carrera, agrupables luego por curso en la UI."""
     try:
-        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, carrera, nombre_archivo, subido_por, fecha_subida, storage_path")
+        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, carrera, nombre_archivo, subido_por, fecha_subida, storage_path, tipo_documento")
         if materia_general:
             query = query.eq("materia_general", materia_general)
         if ciclo:

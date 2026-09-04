@@ -300,7 +300,7 @@ def _seccion_explorar(usuario):
 
                 if es_admin:
                     with col0:
-                        marcado = st.checkbox("", key=f"sel_doc_{doc['id']}", label_visibility="collapsed")
+                        marcado = st.checkbox("Seleccionar documento", key=f"sel_doc_{doc['id']}", label_visibility="collapsed")
                         if marcado:
                             seleccionados.append(doc["id"])
                 with col1:

@@ -8,7 +8,7 @@ como contexto fijo del curso."""
 import io
 import streamlit as st
 
-from database import guardar_documento, listar_cursos, listar_documentos, listar_ciclos, listar_carreras, usuario_subio_documento, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento
+from database import guardar_documento, listar_cursos, listar_documentos, listar_ciclos, listar_carreras, usuario_subio_documento, eliminar_documento, eliminar_curso, eliminar_documentos, obtener_texto_documento, obtener_url_documento, obtener_textos_silabo_ficha_separados
 from utils import extraer_texto_pdf, extraer_texto_pptx, extraer_texto_docx
 from materias_data import MATERIAS_DISPONIBLES
 
@@ -91,14 +91,21 @@ def _seccion_plan_rapido(usuario):
         else:
             curso_pr = seleccion_pr
 
+    ya_hay_silabo, ya_hay_ficha = False, False
+    if curso_pr and curso_pr.strip():
+        texto_silabo_chk, texto_ficha_chk = obtener_textos_silabo_ficha_separados(materia_pr, curso_pr)
+        ya_hay_silabo, ya_hay_ficha = bool(texto_silabo_chk), bool(texto_ficha_chk)
+
     col_silabo, col_ficha = st.columns(2)
     with col_silabo:
         with st.container(border=True):
-            st.markdown("<div class='marca-silabo'></div><p class='tarjeta-titulo'>📘 Sílabo</p><p class='tarjeta-sub'>Plan de temas por semana</p>", unsafe_allow_html=True)
+            estado_silabo = "<span style='color:#43D69D; font-size:0.8em'>✅ Ya subido</span>" if ya_hay_silabo else "<span style='color:rgba(255,255,255,0.4); font-size:0.8em'>Sin subir todavía</span>"
+            st.markdown(f"<div class='marca-silabo'></div><p class='tarjeta-titulo'>📘 Sílabo</p><p class='tarjeta-sub'>Plan de temas por semana</p>{estado_silabo}", unsafe_allow_html=True)
             archivo_silabo = st.file_uploader("Sílabo (PDF o Word)", type=["pdf", "docx"], key="plan_top_silabo", label_visibility="collapsed")
     with col_ficha:
         with st.container(border=True):
-            st.markdown("<div class='marca-ficha'></div><p class='tarjeta-titulo'>🗓️ Ficha de actividades</p><p class='tarjeta-sub'>Fechas y pesos de evaluaciones</p>", unsafe_allow_html=True)
+            estado_ficha = "<span style='color:#43D69D; font-size:0.8em'>✅ Ya subida</span>" if ya_hay_ficha else "<span style='color:rgba(255,255,255,0.4); font-size:0.8em'>Sin subir todavía</span>"
+            st.markdown(f"<div class='marca-ficha'></div><p class='tarjeta-titulo'>🗓️ Ficha de actividades</p><p class='tarjeta-sub'>Fechas y pesos de evaluaciones</p>{estado_ficha}", unsafe_allow_html=True)
             archivo_ficha = st.file_uploader("Ficha de actividades evaluadas (PDF o Word)", type=["pdf", "docx"], key="plan_top_ficha", label_visibility="collapsed")
 
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
@@ -220,6 +227,10 @@ def _seccion_explorar(usuario):
     materia_filtro = st.radio("Filtrar por materia", ["Todas"] + MATERIAS_DISPONIBLES, horizontal=True, key="doc_filtro")
     materia_query = None if materia_filtro == "Todas" else materia_filtro
 
+    TIPOS_DOCUMENTO_LEGIBLE = {"silabo": "📘 Sílabo", "ficha_evaluada": "🗓️ Ficha de actividades", "apunte": "📄 Apunte"}
+    tipo_filtro = st.radio("Filtrar por tipo", ["Todos"] + list(TIPOS_DOCUMENTO_LEGIBLE.values()), horizontal=True, key="doc_filtro_tipo")
+    tipo_query = None if tipo_filtro == "Todos" else next(k for k, v in TIPOS_DOCUMENTO_LEGIBLE.items() if v == tipo_filtro)
+
     col_ciclo, col_carrera = st.columns(2)
     with col_ciclo:
         ciclos_disponibles = listar_ciclos(materia_query)
@@ -235,6 +246,8 @@ def _seccion_explorar(usuario):
             carrera_query = None if carrera_filtro == "Todas" else carrera_filtro
 
     documentos = listar_documentos(materia_query, ciclo_query, carrera_query)
+    if tipo_query:
+        documentos = [d for d in documentos if (d.get("tipo_documento") or "apunte") == tipo_query]
     if busqueda and busqueda.strip():
         texto_buscado = busqueda.strip().lower()
         documentos = [
@@ -293,7 +306,8 @@ def _seccion_explorar(usuario):
                 with col1:
                     fecha = str(doc.get("fecha_subida", ""))[:10]
                     subio = doc.get("subido_por") or "Alguien"
-                    st.markdown(f"📄 **{doc['nombre_archivo']}** — subido por {subio} el {fecha}")
+                    emoji_tipo_doc = TIPOS_DOCUMENTO_LEGIBLE.get(doc.get("tipo_documento") or "apunte", "📄 Apunte").split(" ")[0]
+                    st.markdown(f"{emoji_tipo_doc} **{doc['nombre_archivo']}** — subido por {subio} el {fecha}")
                 with col2:
                     if st.button("👁️ Ver texto", key=f"ver_doc_{doc['id']}"):
                         st.session_state[f"mostrar_texto_{doc['id']}"] = not st.session_state.get(f"mostrar_texto_{doc['id']}", False)

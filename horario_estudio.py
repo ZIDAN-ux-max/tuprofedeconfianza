@@ -349,7 +349,7 @@ def generar_y_guardar_bloques(usuario_id, materia_general, curso, plan, nivel_di
     fecha_actual = rango_inicio
     while fecha_actual <= rango_fin:
         evaluacion_del_dia = next(
-            (p for p in plan if p["fecha_inicio_repaso"] <= fecha_actual <= p["fecha_evaluacion"]), None
+            (p for p in plan if p["fecha_inicio_repaso"] <= fecha_actual < p["fecha_evaluacion"]), None
         )
         if evaluacion_del_dia:
             tema_dia = ", ".join(evaluacion_del_dia["temas_a_repasar"][:2]) or evaluacion_del_dia["evaluacion"]
@@ -545,6 +545,16 @@ def _mostrar_bloques_de_hoy(usuario, plan, estructura, materia_general, curso):
     if not evaluacion_activa:
         return
 
+    if hoy == evaluacion_activa["fecha_evaluacion"]:
+        st.markdown(
+            f"<div style='background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.4); "
+            f"border-radius:12px; padding:14px 18px; margin-bottom:14px;'>"
+            f"📝 <strong>Hoy es: {evaluacion_activa['evaluacion']}</strong> — ¡suerte!"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+        return
+
     tema_hoy = ", ".join(evaluacion_activa["temas_a_repasar"][:2]) or evaluacion_activa["evaluacion"]
     guardados_hoy = listar_bloques_estudio(usuario["id"], fecha_desde=hoy, fecha_hasta=hoy, materia_general=materia_general, curso=curso)
     if guardados_hoy:
@@ -606,7 +616,10 @@ def mostrar_horario_estudio_contenido(usuario):
     if not cursos:
         st.info("Todavia no hay cursos con documentos en esta materia. Sube el sílabo y la ficha primero en Documentos.")
         return
-    curso = st.selectbox("Curso", cursos, key="horario_curso")
+    curso = st.selectbox("Curso", cursos, key=f"horario_curso_{materia}")
+    if st.session_state.get("horario_curso_anterior") != curso:
+        st.session_state["horario_curso_anterior"] = curso
+        st.rerun()
 
     if _dia_semana_del_curso(usuario["id"], curso) is None:
         st.caption(

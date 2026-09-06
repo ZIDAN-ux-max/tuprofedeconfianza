@@ -401,7 +401,7 @@ def obtener_texto_silabo(materia_general, curso, limite_caracteres=1800):
         return ""
 
 
-def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None, carrera=None, tipo_documento="apunte"):
+def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None, carrera=None, tipo_documento="apunte", verificar_duplicado=True, duplicado_por_curso=False):
     """Guarda el documento (metadata + texto), lo parte en fragmentos pequenos
     (documento_chunks) para busqueda por relevancia, y si se paso el PDF
     original en bytes, lo sube a Supabase Storage para poder descargarlo
@@ -423,9 +423,13 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
         storage_path = None
         contenido_hash = hash_texto(contenido_texto)
 
-        ya_existe = supabase.table("documentos").select("id").eq("contenido_hash", contenido_hash).limit(1).execute()
-        if ya_existe.data:
-            return "duplicado"
+        if verificar_duplicado:
+            consulta_duplicado = supabase.table("documentos").select("id").eq("contenido_hash", contenido_hash)
+            if duplicado_por_curso:
+                consulta_duplicado = consulta_duplicado.eq("materia_general", materia_general).eq("curso", curso)
+            ya_existe = consulta_duplicado.limit(1).execute()
+            if ya_existe.data:
+                return "duplicado"
 
         if archivo_bytes:
             import uuid

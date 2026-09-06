@@ -144,7 +144,7 @@ def _seccion_plan_rapido(usuario):
                 if resultado == "ok":
                     st.success(f"{nombre} guardado correctamente")
                 elif resultado == "duplicado":
-                    st.info(f"{nombre}: ya existía un documento con el mismo contenido")
+                    st.info(f"{nombre}: ya había uno igual para este curso (probablemente lo subió otro compañero) — no hace falta subirlo de nuevo, ya está listo para usarse.")
                 elif resultado == "vacio":
                     st.warning(f"{nombre}: tiene muy poco contenido, revisa que el PDF tenga texto seleccionable")
                 else:
@@ -152,7 +152,11 @@ def _seccion_plan_rapido(usuario):
 
 
 def _subir_uno(materia, curso, archivo, usuario, ciclo, universidad, carrera, tipo_documento):
-    """Sube un solo archivo (usado para Sílabo y Ficha, que son de a uno)."""
+    """Sube un solo archivo. Se usa tanto para Sílabo/Ficha (de a uno, sin
+    chequeo de duplicado global - ya se garantiza uno solo por curso
+    borrando el anterior antes de llamar a esta funcion) como para apuntes
+    sueltos (con el chequeo de duplicado global, para no repetir el mismo
+    apunte que subio otro alumno)."""
     bytes_pdf = archivo.getvalue()
     if archivo.name.lower().endswith(".pptx"):
         texto = extraer_texto_pptx(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
@@ -162,7 +166,9 @@ def _subir_uno(materia, curso, archivo, usuario, ciclo, universidad, carrera, ti
         texto = extraer_texto_pdf(io.BytesIO(bytes_pdf), max_caracteres=LIMITE_CARACTERES_DOCUMENTO)
     if not texto:
         return "fallido"
-    return guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo, universidad=universidad, carrera=carrera, tipo_documento=tipo_documento)
+    verificar_duplicado = True
+    duplicado_por_curso = tipo_documento in ("silabo", "ficha_evaluada")
+    return guardar_documento(materia, curso, archivo.name, texto, usuario["nombre"], archivo_bytes=bytes_pdf, ciclo=ciclo, universidad=universidad, carrera=carrera, tipo_documento=tipo_documento, verificar_duplicado=verificar_duplicado, duplicado_por_curso=duplicado_por_curso)
 
 
 def _seccion_subir(usuario):

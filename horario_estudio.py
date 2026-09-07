@@ -62,8 +62,8 @@ def _fusionar_estructuras(primera, segunda):
     }
 
 
-def _construir_prompt_extraccion(texto_silabo, texto_ficha, limite_caracteres):
-    material = f"SILABO:\n{texto_silabo[:limite_caracteres]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:limite_caracteres]}"
+def _construir_prompt_extraccion(texto_silabo, texto_ficha, limite_silabo, limite_ficha):
+    material = f"SILABO:\n{texto_silabo[:limite_silabo]}\n\nFICHA DE EVALUACION:\n{texto_ficha[:limite_ficha]}"
     return f"""Lee este silabo y ficha de evaluacion de un curso universitario, y extrae
 su estructura en JSON. Presta atencion a los numeros de semana exactos que
 aparecen en los documentos (no los inventes).
@@ -103,10 +103,10 @@ def extraer_estructura_curso(texto_silabo, texto_ficha):
     reintenta automaticamente con menos texto en vez de fallar directo.
     Devuelve un dict; deja que la excepcion se propague si todos los
     intentos fallan (el llamador la muestra al usuario)."""
-    limites_a_intentar = [3500, 1800, 900]
+    limites_a_intentar = [(3000, 6000), (1500, 3000), (800, 1500)]  # (limite_silabo, limite_ficha)
     ultimo_error = None
-    for limite in limites_a_intentar:
-        prompt = _construir_prompt_extraccion(texto_silabo, texto_ficha, limite)
+    for limite_silabo, limite_ficha in limites_a_intentar:
+        prompt = _construir_prompt_extraccion(texto_silabo, texto_ficha, limite_silabo, limite_ficha)
         try:
             respuesta = client.chat.completions.create(
                 model=MODELO_RESUMEN,
@@ -707,7 +707,7 @@ def mostrar_horario_estudio_contenido(usuario):
             st.rerun()
         else:
             primera_silabo, _ = _partir_a_la_mitad(texto_silabo_full)
-            primera_ficha, _ = _partir_a_la_mitad(texto_ficha_full)
+            primera_ficha = texto_ficha_full  # la ficha nunca se parte: la tabla de evaluaciones se corrompe si se corta a la mitad
             with st.spinner("Leyendo la primera mitad del curso (hasta ~semana 8)..."):
                 try:
                     estructura = extraer_estructura_curso(primera_silabo, primera_ficha)
@@ -732,7 +732,7 @@ def mostrar_horario_estudio_contenido(usuario):
     if mostrar_boton_segunda_mitad:
         if st.button("📚 Generar segunda mitad (hasta el examen final)", use_container_width=True):
             _, segunda_silabo = _partir_a_la_mitad(texto_silabo_full)
-            _, segunda_ficha = _partir_a_la_mitad(texto_ficha_full)
+            segunda_ficha = texto_ficha_full  # la ficha nunca se parte, igual que en la primera mitad
             with st.spinner("Leyendo la segunda mitad del curso (hasta el examen final)..."):
                 try:
                     estructura_segunda = extraer_estructura_curso(segunda_silabo, segunda_ficha)

@@ -686,6 +686,14 @@ def mostrar_horario_estudio_contenido(usuario):
     hash_actual = _hash_material(texto_silabo_full, texto_ficha_full)
     estructura_guardada = plan_guardado["estructura_json"] if plan_guardado else None
     hash_guardado = plan_guardado.get("hash_material") if plan_guardado else None
+
+    forzar_regeneracion = st.checkbox(
+        "🔄 Forzar relectura completa (usar si mejoramos algo del lado del código, no porque cambió tu documento)",
+        key=f"forzar_regen_{materia}_{curso}"
+    )
+    if forzar_regeneracion:
+        hash_guardado = None  # que no coincida con hash_actual, para que no use lo cacheado
+
     ya_completo = bool(estructura_guardada and estructura_guardada.get("_completo") and hash_guardado == hash_actual)
     mostrar_boton_segunda_mitad = bool(
         estructura_guardada and not estructura_guardada.get("_completo") and hash_guardado == hash_actual

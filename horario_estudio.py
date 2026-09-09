@@ -44,6 +44,14 @@ def _partir_a_la_mitad(texto):
     return texto[:corte], texto[corte:]
 
 
+def _normalizar_nombre(nombre):
+    """Normaliza un nombre de evaluacion para comparar (minusculas, sin
+    espacios de mas), asi 'Evaluación Continua 1' y 'Evaluación continua 1'
+    (que la IA a veces nombra distinto entre la primera y segunda mitad)
+    se reconocen como la misma evaluacion en vez de duplicarse."""
+    return " ".join((nombre or "").strip().lower().split())
+
+
 def _fusionar_estructuras(primera, segunda):
     """Combina la estructura de la primera mitad del curso con la de la
     segunda mitad, en una sola (sin duplicar semanas/evaluaciones si se
@@ -51,9 +59,9 @@ def _fusionar_estructuras(primera, segunda):
     temas = {t["semana"]: t for t in primera.get("temas_por_semana", [])}
     for t in segunda.get("temas_por_semana", []):
         temas[t["semana"]] = t
-    evaluaciones = {(e["nombre"], e["semana"]): e for e in primera.get("evaluaciones", [])}
+    evaluaciones = {(_normalizar_nombre(e["nombre"]), e["semana"]): e for e in primera.get("evaluaciones", [])}
     for e in segunda.get("evaluaciones", []):
-        evaluaciones[(e["nombre"], e["semana"])] = e
+        evaluaciones[(_normalizar_nombre(e["nombre"]), e["semana"])] = e
     return {
         "temas_por_semana": sorted(temas.values(), key=lambda t: t["semana"]),
         "evaluaciones": sorted(evaluaciones.values(), key=lambda e: e["semana"]),
@@ -621,11 +629,12 @@ def mostrar_horario_estudio_contenido(usuario):
         st.session_state["horario_curso_anterior"] = curso
         st.rerun()
 
-    if _dia_semana_del_curso(usuario["id"], curso) is None:
-        st.caption(
-            f"⚠️ No encontramos '{curso}' en tu horario ocupado (arriba en '🏫 Configurar mi horario ocupado'). "
-            "Escribe el nombre EXACTO del curso ahi (ej: si el curso se llama 'Fisica II', usa 'Fisica II', no solo 'Fisica'), "
-            "asi las fechas de tus evaluaciones continuas son exactas. Mientras tanto, se usa una fecha aproximada."
+    curso_en_horario_ocupado = _dia_semana_del_curso(usuario["id"], curso) is not None
+    if not curso_en_horario_ocupado:
+        st.warning(
+            f"🔒 Para generar el horario de '{curso}' primero hay que agregarlo en '🏫 Configurar mi horario ocupado' (arriba), "
+            "con el nombre EXACTO del curso (ej: si se llama 'Fisica II', usa 'Fisica II', no solo 'Fisica'). "
+            "Así las fechas de tus evaluaciones continuas son exactas, no aproximadas."
         )
 
     plan_guardado = obtener_plan_estudio(usuario["id"], materia, curso)
@@ -699,7 +708,7 @@ def mostrar_horario_estudio_contenido(usuario):
         estructura_guardada and not estructura_guardada.get("_completo") and hash_guardado == hash_actual
     )
 
-    if st.button("✨ Generar horario de estudio", use_container_width=True):
+    if st.button("✨ Generar horario de estudio", use_container_width=True, disabled=not curso_en_horario_ocupado):
         if not texto_silabo_full and not texto_ficha_full:
             st.warning("No encontramos un sílabo o ficha de evaluación subidos para este curso. Sube alguno primero en Documentos, marcandolo con el tipo correcto.")
         elif hash_guardado == hash_actual and estructura_guardada:

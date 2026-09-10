@@ -634,8 +634,7 @@ def mostrar_horario_estudio_contenido(usuario):
         st.warning(
             f"🔒 Para generar el horario de '{curso}' primero hay que agregarlo en '🏫 Configurar mi horario ocupado' (arriba), "
             "con el nombre EXACTO del curso (ej: si se llama 'Fisica II', usa 'Fisica II', no solo 'Fisica'). "
-            "Así las fechas de tus evaluaciones continuas son exactas, no aproximadas.",
-            key=f"aviso_curso_no_encontrado_{materia}_{curso}"
+            "Así las fechas de tus evaluaciones continuas son exactas, no aproximadas."
         )
 
     plan_guardado = obtener_plan_estudio(usuario["id"], materia, curso)

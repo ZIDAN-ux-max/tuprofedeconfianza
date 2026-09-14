@@ -460,6 +460,49 @@ def _bloque_html(inicio_str, fin_str, titulo, subtitulo, color_fondo, color_bord
     )
 
 
+def _bloque_sugerencia_html(inicio_min, fin_min, texto):
+    """Cuadro de sugerencia de repaso (linea punteada, no solida) para
+    diferenciarlo visualmente de las actividades fijas: es una recomendacion
+    movible, no algo quieto como Clase/Gym/Trabajo."""
+    top = _min_a_pct(inicio_min)
+    alto = _min_a_pct(fin_min) - top
+    return (
+        f"<div style='position:absolute; top:{top}%; height:{max(alto, 3)}%; left:2px; right:2px; "
+        f"background:rgba(255,209,102,0.10); border:1px dashed #FFD166; border-radius:4px; "
+        f"padding:2px 4px; font-size:0.6em; overflow:hidden; color:#FFD166;'>{texto}</div>"
+    )
+
+
+VENTANA_SUGERENCIA_MIN = 45  # tope de minutos que sugiere antes/despues de una clase
+MIN_HUECO_PARA_SUGERIR = 10  # si el hueco libre es mas chico que esto, no vale la pena sugerir
+
+
+def _sugerencias_repaso_del_dia(clases_dia, ocupados_dia):
+    """Para cada Clase (no Gym/Trabajo/Otro) de un dia, calcula un hueco
+    sugerido de repaso justo antes y justo despues, sin pisar ninguna otra
+    actividad ya cargada ese dia. Es puramente visual (no se guarda en la
+    base de datos) - una recomendacion movible, no un bloque fijo."""
+    html = ""
+    for c in clases_dia:
+        if (c.get("categoria") or "clase") != "clase":
+            continue
+        ini_clase = int(c["hora_inicio"][:2]) * 60 + int(c["hora_inicio"][3:5])
+        fin_clase = int(c["hora_fin"][:2]) * 60 + int(c["hora_fin"][3:5])
+        nombre = c.get("etiqueta") or "esta clase"
+        otros = [(oi, of) for (oi, of) in ocupados_dia if (oi, of) != (ini_clase, fin_clase)]
+
+        anterior_fin = max([of for (oi, of) in otros if of <= ini_clase], default=HORA_GRID_INICIO)
+        inicio_antes = max(anterior_fin, ini_clase - VENTANA_SUGERENCIA_MIN, HORA_GRID_INICIO)
+        if ini_clase - inicio_antes >= MIN_HUECO_PARA_SUGERIR:
+            html += _bloque_sugerencia_html(inicio_antes, ini_clase, f"📖 Repasar antes: {nombre}")
+
+        siguiente_inicio = min([oi for (oi, of) in otros if oi >= fin_clase], default=HORA_GRID_FIN)
+        fin_despues = min(siguiente_inicio, fin_clase + VENTANA_SUGERENCIA_MIN, HORA_GRID_FIN)
+        if fin_despues - fin_clase >= MIN_HUECO_PARA_SUGERIR:
+            html += _bloque_sugerencia_html(fin_clase, fin_despues, f"📖 Repasar después: {nombre}")
+    return html
+
+
 def _seccion_vista_horario_semanal(usuario):
     """Vista tipo horario universitario: 7 dias en columnas (Domingo a
     Sabado), horas en filas, clases y horario de estudio como bloques de
@@ -592,6 +635,15 @@ def _seccion_vista_horario_semanal(usuario):
                     r["inicio"], r["fin"], f"📖 {r['curso']}{check}", f"{r['inicio']}-{r['fin']}",
                     "rgba(146,110,254,0.3)", "#926EFE"
                 )
+
+            ocupados_dia = [
+                (int(c["hora_inicio"][:2]) * 60 + int(c["hora_inicio"][3:5]), int(c["hora_fin"][:2]) * 60 + int(c["hora_fin"][3:5]))
+                for c in clases_dia
+            ] + [
+                (int(r["inicio"][:2]) * 60 + int(r["inicio"][3:5]), int(r["fin"][:2]) * 60 + int(r["fin"][3:5]))
+                for r in bloques_agrupados_dia
+            ]
+            bloques_html += _sugerencias_repaso_del_dia(clases_dia, ocupados_dia)
 
             # Linea de 'ahora': solo se agrega DENTRO de la columna de hoy,
             # asi su ancho queda acotado a esa sola columna (no a toda la semana).

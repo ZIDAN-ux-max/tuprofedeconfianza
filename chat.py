@@ -8,7 +8,7 @@ Curso/Formulario/Archivo viven en la barra lateral de app.py (asi se
 quedan siempre visibles, sin depender de trucos de CSS)."""
 import streamlit as st
 
-from database import guardar_conversacion, cargar_conversaciones, obtener_estadisticas, verificar_logros, obtener_temas_debiles
+from database import guardar_conversacion, cargar_conversaciones, verificar_logros_generales, obtener_temas_debiles
 from tutor_ai import construir_system_prompt, obtener_sugerencias, responder_tutor, actualizar_perfil_alumno
 from utils import extraer_texto_pdf, normalizar_latex
 from materias_data import EMOJI_MATERIA, materias_de_carrera
@@ -56,8 +56,7 @@ def mostrar_chat(usuario, modo, curso_elegido=None):
         guardar_conversacion(usuario["id"], pregunta, texto, modo)
         actualizar_perfil_alumno(usuario["id"], modo, pregunta, texto)
         st.session_state.pop("temas_debiles_usuario", None)  # se recalcula en el proximo rerun, por si cambio
-        stats = obtener_estadisticas(usuario["id"])
-        nuevos_logros = verificar_logros(usuario["id"], stats)
+        nuevos_logros = verificar_logros_generales(usuario["id"], usuario["nombre"])
         return texto, nuevos_logros
 
     if not st.session_state.historial:

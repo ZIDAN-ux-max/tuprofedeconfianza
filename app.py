@@ -7,7 +7,7 @@ examen, paginas)."""
 import streamlit as st
 
 from estilos import aplicar_estilos
-from database import login, registrar, registrar_asistencia, obtener_estadisticas, supabase, listar_cursos, obtener_mi_rango
+from database import login, registrar, registrar_asistencia, obtener_estadisticas, supabase, listar_cursos, obtener_mi_rango, verificar_logros_generales
 from utils import obtener_nivel
 from chat import mostrar_chat
 from examen import mostrar_modo_examen
@@ -115,6 +115,14 @@ else:
     racha = registrar_asistencia(usuario["id"])
     stats = obtener_estadisticas(usuario["id"])
     nivel, nivel_color = obtener_nivel(stats["total"])
+
+    # Se revisa el catalogo COMPLETO de logros (chat, tareas, documentos,
+    # calendario, horario de estudio, plan de estudio, rango) en cada carga
+    # de pagina, sin importar en que seccion este el alumno.
+    nuevos_logros = verificar_logros_generales(usuario["id"], usuario["nombre"])
+    for logro in nuevos_logros:
+        st.balloons()
+        st.success(f"🏆 Nuevo logro: {logro['emoji']} {logro['nombre']} - {logro['descripcion']}")
 
     with st.sidebar:
         st.image("imagen2.png", use_container_width=True)

@@ -284,6 +284,74 @@ def verificar_logros(usuario_id, stats):
     return nuevos_logros
 
 
+def obtener_stats_logros(usuario_id, nombre_usuario):
+    """Junta TODAS las señales de actividad del alumno (chat, tareas,
+    documentos, calendario, horario de estudio, plan de estudio, rango) en
+    un solo dict, para revisar el catalogo completo de logros sin importar
+    desde que seccion de la app se entro. Cada bloque va en su propio
+    try/except: si una tabla falla, esa señal queda en 0 y no tumba a las
+    demas."""
+    stats = obtener_estadisticas(usuario_id)  # ya trae total/hoy/semana/racha/hora del chat
+
+    try:
+        result = supabase.table("documentos").select("id").eq("subido_por", nombre_usuario).execute()
+        stats["documentos_subidos"] = len(result.data)
+    except Exception:
+        stats["documentos_subidos"] = 0
+
+    try:
+        result = supabase.table("planes_estudio").select("id").eq("usuario_id", usuario_id).limit(1).execute()
+        stats["plan_estudio"] = 1 if result.data else 0
+    except Exception:
+        stats["plan_estudio"] = 0
+
+    try:
+        result = supabase.table("tareas_diarias").select("fecha, completado").eq("usuario_id", usuario_id).execute()
+        tareas = result.data
+        stats["tareas_completadas"] = sum(1 for t in tareas if t.get("completado"))
+        por_fecha = {}
+        for t in tareas:
+            por_fecha.setdefault(t.get("fecha"), []).append(bool(t.get("completado")))
+        stats["dia_perfecto"] = 1 if any(marcas and all(marcas) for marcas in por_fecha.values()) else 0
+    except Exception:
+        stats["tareas_completadas"] = 0
+        stats["dia_perfecto"] = 0
+
+    try:
+        result = supabase.table("eventos_calendario").select("id").eq("usuario_id", usuario_id).execute()
+        stats["eventos_calendario"] = len(result.data)
+    except Exception:
+        stats["eventos_calendario"] = 0
+
+    try:
+        result = supabase.table("bloques_estudio").select("id, completado").eq("usuario_id", usuario_id).execute()
+        stats["horario_generado"] = 1 if result.data else 0
+        stats["bloque_seguido"] = 1 if any(b.get("completado") for b in result.data) else 0
+    except Exception:
+        stats["horario_generado"] = 0
+        stats["bloque_seguido"] = 0
+
+    try:
+        historial = supabase.table("rangos_historial").select("rango").eq("usuario_id", usuario_id).execute().data
+        indices = [_indice_por_nombre(h["rango"]) for h in historial]
+        datos_rango_actual = obtener_mi_rango(usuario_id)
+        indices.append(datos_rango_actual.get("indice_tier", 0))
+        stats["tier_alcanzado"] = max(indices) if indices else 0
+    except Exception:
+        stats["tier_alcanzado"] = 0
+
+    return stats
+
+
+def verificar_logros_generales(usuario_id, nombre_usuario):
+    """Punto de entrada unico para revisar TODO el catalogo de logros
+    (chat, tareas, documentos, calendario, horario, plan de estudio,
+    rango), sin importar en que seccion de la app este el alumno. Se puede
+    llamar desde cualquier pagina/accion."""
+    stats = obtener_stats_logros(usuario_id, nombre_usuario)
+    return verificar_logros(usuario_id, stats)
+
+
 # ===================== PERFIL DEL ALUMNO (NUEVO) =====================
 # Esta es la capa de "memoria" que permite que el tutor se adapte al alumno
 # en vez de responder siempre lo mismo. Requiere la tabla perfil_alumno
@@ -401,7 +469,7 @@ def obtener_texto_silabo(materia_general, curso, limite_caracteres=1800):
         return ""
 
 
-def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None, carrera=None, tipo_documento="apunte", verificar_duplicado=True, duplicado_por_curso=False):
+def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None, carrera=None, tipo_documento="apunte"):
     """Guarda el documento (metadata + texto), lo parte en fragmentos pequenos
     (documento_chunks) para busqueda por relevancia, y si se paso el PDF
     original en bytes, lo sube a Supabase Storage para poder descargarlo
@@ -423,13 +491,9 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
         storage_path = None
         contenido_hash = hash_texto(contenido_texto)
 
-        if verificar_duplicado:
-            consulta_duplicado = supabase.table("documentos").select("id").eq("contenido_hash", contenido_hash)
-            if duplicado_por_curso:
-                consulta_duplicado = consulta_duplicado.eq("materia_general", materia_general).eq("curso", curso)
-            ya_existe = consulta_duplicado.limit(1).execute()
-            if ya_existe.data:
-                return "duplicado"
+        ya_existe = supabase.table("documentos").select("id").eq("contenido_hash", contenido_hash).limit(1).execute()
+        if ya_existe.data:
+            return "duplicado"
 
         if archivo_bytes:
             import uuid
@@ -437,12 +501,7 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
             ruta_curso = _sanear_para_storage(curso)
             ruta_archivo = _sanear_para_storage(nombre_archivo)
             storage_path = f"{ruta_materia}/{ruta_curso}/{uuid.uuid4().hex}_{ruta_archivo}"
-            if nombre_archivo.lower().endswith(".pptx"):
-                content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            elif nombre_archivo.lower().endswith(".docx"):
-                content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            else:
-                content_type = "application/pdf"
+            content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation" if nombre_archivo.lower().endswith(".pptx") else "application/pdf"
             try:
                 supabase.storage.from_(BUCKET_DOCUMENTOS).upload(
                     storage_path, archivo_bytes, {"content-type": content_type}
@@ -529,7 +588,7 @@ def listar_documentos(materia_general=None, ciclo=None, carrera=None):
     """Lista todos los documentos, opcionalmente filtrados por materia y/o
     ciclo y/o carrera, agrupables luego por curso en la UI."""
     try:
-        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, carrera, nombre_archivo, subido_por, fecha_subida, storage_path, tipo_documento")
+        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, carrera, nombre_archivo, subido_por, fecha_subida, storage_path")
         if materia_general:
             query = query.eq("materia_general", materia_general)
         if ciclo:
@@ -1012,33 +1071,31 @@ def guardar_preferencia_calendario(usuario_id, fondo, intensidad):
 
 # ===================== HORARIO DE CLASES =====================
 
-def guardar_clase_horario(usuario_id, dia_semana, hora_inicio, hora_fin, etiqueta=None, categoria="clase"):
-    """Agrega un bloque ocupado al horario semanal del alumno (clase, gym,
-    trabajo, etc.). dia_semana: 0=Lunes ... 6=Domingo."""
+def guardar_clase_horario(usuario_id, dia_semana, hora_inicio, hora_fin, etiqueta=None):
+    """Agrega un bloque de clase al horario semanal del alumno.
+    dia_semana: 0=Lunes ... 6=Domingo."""
     try:
         supabase.table("horario_clases").insert({
             "usuario_id": usuario_id,
             "dia_semana": dia_semana,
             "hora_inicio": str(hora_inicio),
             "hora_fin": str(hora_fin),
-            "etiqueta": etiqueta,
-            "categoria": categoria
+            "etiqueta": etiqueta
         }).execute()
         return True
     except Exception:
         return False
 
 
-def editar_clase_horario(clase_id, dia_semana, hora_inicio, hora_fin, etiqueta=None, categoria="clase"):
-    """Edita un bloque existente (en vez de borrar y volver a crear).
-    dia_semana: 0=Lunes ... 6=Domingo."""
+def editar_clase_horario(clase_id, dia_semana, hora_inicio, hora_fin, etiqueta=None):
+    """Edita un bloque de clase existente (en vez de borrar y volver a
+    crear). dia_semana: 0=Lunes ... 6=Domingo."""
     try:
         supabase.table("horario_clases").update({
             "dia_semana": dia_semana,
             "hora_inicio": str(hora_inicio),
             "hora_fin": str(hora_fin),
-            "etiqueta": etiqueta,
-            "categoria": categoria
+            "etiqueta": etiqueta
         }).eq("id", clase_id).execute()
         return True
     except Exception:

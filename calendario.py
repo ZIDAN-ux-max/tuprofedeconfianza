@@ -10,7 +10,7 @@ from datetime import date, timedelta
 
 import streamlit as st
 
-from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario, listar_bloques_estudio, marcar_bloques_estudio_completado, listar_horario_clases
+from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario, listar_bloques_estudio, marcar_bloques_estudio_completado, listar_horario_clases, listar_planes_estudio
 from materias_data import materias_de_carrera
 from utils import hoy_peru, ahora_peru
 from horario_estudio import mostrar_horario_estudio_contenido
@@ -475,11 +475,38 @@ def _bloque_sugerencia_html(inicio_min, fin_min, texto):
 
 VENTANA_SUGERENCIA_MIN = 45  # tope de minutos que sugiere antes/despues de una clase
 MIN_HUECO_PARA_SUGERIR = 10  # si el hueco libre es mas chico que esto, no vale la pena sugerir
+EXTRA_DESCANSO_POR_NIVEL = {"basico": 0, "intermedio": 5, "avanzado": 15}
 
 
-def _sugerencias_repaso_del_dia(clases_dia, ocupados_dia):
+def _nivel_dificultad_del_curso(usuario_id, etiqueta):
+    """Busca entre los planes de estudio ya generados uno cuyo nombre de
+    curso coincida con la etiqueta de esta clase, y devuelve su nivel de
+    dificultad (basico/intermedio/avanzado). 'intermedio' si no encuentra
+    ningun plan que coincida (ej: la clase todavia no tiene horario de
+    estudio generado)."""
+    if not etiqueta:
+        return "intermedio"
+    for p in listar_planes_estudio(usuario_id):
+        curso_plan = (p.get("curso") or "").lower()
+        if curso_plan and curso_plan in etiqueta.lower():
+            return (p.get("estructura_json") or {}).get("nivel_dificultad", "intermedio")
+    return "intermedio"
+
+
+def _descanso_obligatorio_min(duracion_clase_min, nivel):
+    """Descanso minimo obligatorio despues de una clase: 30 minutos base,
+    mas 10 min extra por cada hora que la clase dure mas de 1h30, mas un
+    extra segun el nivel de dificultad del curso."""
+    extra_por_duracion = max(0, (duracion_clase_min - 90) // 60) * 10
+    extra_por_nivel = EXTRA_DESCANSO_POR_NIVEL.get(nivel, 5)
+    return 30 + extra_por_duracion + extra_por_nivel
+
+
+def _sugerencias_repaso_del_dia(usuario_id, clases_dia, ocupados_dia):
     """Para cada Clase (no Gym/Trabajo/Otro) de un dia, calcula un hueco
-    sugerido de repaso justo antes y justo despues, sin pisar ninguna otra
+    sugerido de repaso justo antes, un descanso obligatorio justo despues
+    (segun cuanto duro la clase y el nivel del curso), y despues de ese
+    descanso otro hueco sugerido de repaso - sin pisar ninguna otra
     actividad ya cargada ese dia. Es puramente visual (no se guarda en la
     base de datos) - una recomendacion movible, no un bloque fijo."""
     html = ""
@@ -497,9 +524,16 @@ def _sugerencias_repaso_del_dia(clases_dia, ocupados_dia):
             html += _bloque_sugerencia_html(inicio_antes, ini_clase, f"📖 Repasar antes: {nombre}")
 
         siguiente_inicio = min([oi for (oi, of) in otros if oi >= fin_clase], default=HORA_GRID_FIN)
-        fin_despues = min(siguiente_inicio, fin_clase + VENTANA_SUGERENCIA_MIN, HORA_GRID_FIN)
-        if fin_despues - fin_clase >= MIN_HUECO_PARA_SUGERIR:
-            html += _bloque_sugerencia_html(fin_clase, fin_despues, f"📖 Repasar después: {nombre}")
+
+        nivel_curso = _nivel_dificultad_del_curso(usuario_id, nombre)
+        descanso_min = _descanso_obligatorio_min(fin_clase - ini_clase, nivel_curso)
+        fin_descanso = min(fin_clase + descanso_min, siguiente_inicio, HORA_GRID_FIN)
+        if fin_descanso > fin_clase:
+            html += _bloque_sugerencia_html(fin_clase, fin_descanso, f"☕ Descanso ({fin_descanso - fin_clase} min)")
+
+        fin_despues = min(siguiente_inicio, fin_descanso + VENTANA_SUGERENCIA_MIN, HORA_GRID_FIN)
+        if fin_despues - fin_descanso >= MIN_HUECO_PARA_SUGERIR:
+            html += _bloque_sugerencia_html(fin_descanso, fin_despues, f"📖 Repasar después: {nombre}")
     return html
 
 
@@ -643,7 +677,7 @@ def _seccion_vista_horario_semanal(usuario):
                 (int(r["inicio"][:2]) * 60 + int(r["inicio"][3:5]), int(r["fin"][:2]) * 60 + int(r["fin"][3:5]))
                 for r in bloques_agrupados_dia
             ]
-            bloques_html += _sugerencias_repaso_del_dia(clases_dia, ocupados_dia)
+            bloques_html += _sugerencias_repaso_del_dia(usuario["id"], clases_dia, ocupados_dia)
 
             # Linea de 'ahora': solo se agrega DENTRO de la columna de hoy,
             # asi su ancho queda acotado a esa sola columna (no a toda la semana).

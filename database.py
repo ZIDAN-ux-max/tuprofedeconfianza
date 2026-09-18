@@ -469,7 +469,7 @@ def obtener_texto_silabo(materia_general, curso, limite_caracteres=1800):
         return ""
 
 
-def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None, carrera=None, tipo_documento="apunte"):
+def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, subido_por, archivo_bytes=None, ciclo=None, universidad=None, carrera=None, tipo_documento="apunte", verificar_duplicado=True, duplicado_por_curso=False):
     """Guarda el documento (metadata + texto), lo parte en fragmentos pequenos
     (documento_chunks) para busqueda por relevancia, y si se paso el PDF
     original en bytes, lo sube a Supabase Storage para poder descargarlo
@@ -491,9 +491,13 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
         storage_path = None
         contenido_hash = hash_texto(contenido_texto)
 
-        ya_existe = supabase.table("documentos").select("id").eq("contenido_hash", contenido_hash).limit(1).execute()
-        if ya_existe.data:
-            return "duplicado"
+        if verificar_duplicado:
+            consulta_duplicado = supabase.table("documentos").select("id").eq("contenido_hash", contenido_hash)
+            if duplicado_por_curso:
+                consulta_duplicado = consulta_duplicado.eq("materia_general", materia_general).eq("curso", curso)
+            ya_existe = consulta_duplicado.limit(1).execute()
+            if ya_existe.data:
+                return "duplicado"
 
         if archivo_bytes:
             import uuid
@@ -501,7 +505,12 @@ def guardar_documento(materia_general, curso, nombre_archivo, contenido_texto, s
             ruta_curso = _sanear_para_storage(curso)
             ruta_archivo = _sanear_para_storage(nombre_archivo)
             storage_path = f"{ruta_materia}/{ruta_curso}/{uuid.uuid4().hex}_{ruta_archivo}"
-            content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation" if nombre_archivo.lower().endswith(".pptx") else "application/pdf"
+            if nombre_archivo.lower().endswith(".pptx"):
+                content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            elif nombre_archivo.lower().endswith(".docx"):
+                content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            else:
+                content_type = "application/pdf"
             try:
                 supabase.storage.from_(BUCKET_DOCUMENTOS).upload(
                     storage_path, archivo_bytes, {"content-type": content_type}
@@ -588,7 +597,7 @@ def listar_documentos(materia_general=None, ciclo=None, carrera=None):
     """Lista todos los documentos, opcionalmente filtrados por materia y/o
     ciclo y/o carrera, agrupables luego por curso en la UI."""
     try:
-        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, carrera, nombre_archivo, subido_por, fecha_subida, storage_path")
+        query = supabase.table("documentos").select("id, materia_general, curso, ciclo, carrera, nombre_archivo, subido_por, fecha_subida, storage_path, tipo_documento")
         if materia_general:
             query = query.eq("materia_general", materia_general)
         if ciclo:
@@ -1071,31 +1080,33 @@ def guardar_preferencia_calendario(usuario_id, fondo, intensidad):
 
 # ===================== HORARIO DE CLASES =====================
 
-def guardar_clase_horario(usuario_id, dia_semana, hora_inicio, hora_fin, etiqueta=None):
-    """Agrega un bloque de clase al horario semanal del alumno.
-    dia_semana: 0=Lunes ... 6=Domingo."""
+def guardar_clase_horario(usuario_id, dia_semana, hora_inicio, hora_fin, etiqueta=None, categoria="clase"):
+    """Agrega un bloque ocupado al horario semanal del alumno (clase, gym,
+    trabajo, etc.). dia_semana: 0=Lunes ... 6=Domingo."""
     try:
         supabase.table("horario_clases").insert({
             "usuario_id": usuario_id,
             "dia_semana": dia_semana,
             "hora_inicio": str(hora_inicio),
             "hora_fin": str(hora_fin),
-            "etiqueta": etiqueta
+            "etiqueta": etiqueta,
+            "categoria": categoria
         }).execute()
         return True
     except Exception:
         return False
 
 
-def editar_clase_horario(clase_id, dia_semana, hora_inicio, hora_fin, etiqueta=None):
-    """Edita un bloque de clase existente (en vez de borrar y volver a
-    crear). dia_semana: 0=Lunes ... 6=Domingo."""
+def editar_clase_horario(clase_id, dia_semana, hora_inicio, hora_fin, etiqueta=None, categoria="clase"):
+    """Edita un bloque existente (en vez de borrar y volver a crear).
+    dia_semana: 0=Lunes ... 6=Domingo."""
     try:
         supabase.table("horario_clases").update({
             "dia_semana": dia_semana,
             "hora_inicio": str(hora_inicio),
             "hora_fin": str(hora_fin),
-            "etiqueta": etiqueta
+            "etiqueta": etiqueta,
+            "categoria": categoria
         }).eq("id", clase_id).execute()
         return True
     except Exception:

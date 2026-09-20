@@ -1237,3 +1237,36 @@ def marcar_bloques_estudio_completado(usuario_id, materia_general, curso, fecha,
         return True
     except Exception:
         return False
+
+
+def guardar_sugerencia_editada(usuario_id, clase_id, tema, hora):
+    """Guarda (o pisa si ya existia) la sugerencia de repaso editada por el
+    alumno para una clase puntual: a que hora del dia repasarla y con que
+    tema. Se usa desde el Calendario cuando el alumno toca el chip
+    'Repasar' de una clase y ajusta hora/tema."""
+    try:
+        existe = supabase.table("sugerencias_editadas").select("id") \
+            .eq("usuario_id", usuario_id).eq("clase_id", clase_id).execute()
+        if existe.data:
+            supabase.table("sugerencias_editadas").update({
+                "tema": tema, "hora": hora,
+            }).eq("id", existe.data[0]["id"]).execute()
+        else:
+            supabase.table("sugerencias_editadas").insert({
+                "usuario_id": usuario_id, "clase_id": clase_id,
+                "tema": tema, "hora": hora,
+            }).execute()
+        return True
+    except Exception:
+        return False
+
+
+def obtener_sugerencias_editadas(usuario_id):
+    """Trae todas las sugerencias de repaso editadas de un alumno, como un
+    diccionario {clase_id: {"tema":..., "hora":...}} para consultarlas
+    rapido al dibujar la semana completa del Calendario."""
+    try:
+        result = supabase.table("sugerencias_editadas").select("*").eq("usuario_id", usuario_id).execute()
+        return {fila["clase_id"]: {"tema": fila["tema"], "hora": fila["hora"]} for fila in result.data}
+    except Exception:
+        return {}

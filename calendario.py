@@ -6,11 +6,11 @@ biblioteca de Documentos). Incluye una vista de mes tipo calendario real
 tarjeta), que tambien muestra las tareas de "Mi Dia" ademas de
 examenes/entregas."""
 import calendar as calendar_mod
-from datetime import date, timedelta
+from datetime import date, timedelta, time as dtime
 
 import streamlit as st
 
-from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario, listar_bloques_estudio, marcar_bloques_estudio_completado, listar_horario_clases, listar_planes_estudio
+from database import guardar_evento, listar_eventos, eliminar_evento, listar_tareas_rango, marcar_tarea, eliminar_tarea, guardar_preferencia_calendario, listar_bloques_estudio, marcar_bloques_estudio_completado, listar_horario_clases, listar_planes_estudio, guardar_sugerencia_editada, obtener_sugerencias_editadas
 from materias_data import materias_de_carrera
 from utils import hoy_peru, ahora_peru
 from horario_estudio import mostrar_horario_estudio_contenido
@@ -532,14 +532,22 @@ def _sugerencias_repaso_del_dia(usuario_id, clases_dia, ocupados_dia):
     return html
 
 
-def _chip_repaso_html(nombre):
-    """Chip suelto (sin hora fija) recordando repasar una clase dentro de
-    las 24 horas siguientes - mismo estilo que los chips de examen/entrega,
-    para no pegarlo al minuto exacto de la clase."""
+def _chip_repaso_html(clase_id, nombre, sugerencia_guardada=None):
+    """Chip suelto (sin hora fija propia en la grilla) recordando repasar
+    una clase dentro de las 24 horas siguientes - mismo estilo que los
+    chips de examen/entrega, para no pegarlo al minuto exacto de la clase.
+    Es clickeable: al tocarlo abre (via query param) el panel para elegir
+    a que hora del dia y con que tema repasar, y una vez guardado ese
+    dato se refleja aca mismo."""
+    if sugerencia_guardada:
+        texto = f"📖 Repasar {sugerencia_guardada['hora']}: {sugerencia_guardada['tema']}"
+    else:
+        texto = f"📖 Repasar: {nombre}"
     return (
+        f"<a href='?editar_sugerencia={clase_id}' target='_self' style='text-decoration:none;'>"
         f"<div style='background:rgba(255,209,102,0.25); border-radius:4px; padding:1px 4px; "
-        f"font-size:0.62em; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#FFD166;'>"
-        f"📖 Repasar: {nombre}</div>"
+        f"font-size:0.62em; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#FFD166; cursor:pointer;'>"
+        f"{texto}</div></a>"
     )
 
 
@@ -608,6 +616,7 @@ def _seccion_vista_horario_semanal(usuario):
         )
 
         clases = listar_horario_clases(usuario["id"])
+        sugerencias_guardadas = obtener_sugerencias_editadas(usuario["id"])
         eventos = listar_eventos(usuario["id"])
         eventos_por_dia = {}
         for e in eventos:
@@ -644,7 +653,7 @@ def _seccion_vista_horario_semanal(usuario):
                 for e in eventos_por_dia.get(f, [])
             )
             chips += "".join(
-                _chip_repaso_html(c.get("etiqueta") or "esta clase")
+                _chip_repaso_html(c["id"], c.get("etiqueta") or "esta clase", sugerencias_guardadas.get(c["id"]))
                 for c in clases
                 if c["dia_semana"] == f.weekday() and (c.get("categoria") or "clase") == "clase"
             )
@@ -712,6 +721,33 @@ def _seccion_vista_horario_semanal(usuario):
         cuerpo += "</div>"
 
         st.markdown(f"<div style='overflow-x:auto;'>{encabezados}{chips_fila}{cuerpo}</div>", unsafe_allow_html=True)
+
+        clase_id_editar = st.query_params.get("editar_sugerencia")
+        if clase_id_editar:
+            clase_id_editar = int(clase_id_editar)
+            clase_obj = next((c for c in clases if c["id"] == clase_id_editar), None)
+            if clase_obj:
+                guardada = sugerencias_guardadas.get(clase_id_editar)
+                tema_default = guardada["tema"] if guardada else (clase_obj.get("etiqueta") or "")
+                if guardada:
+                    h, m = guardada["hora"].split(":")
+                    hora_default = dtime(int(h), int(m))
+                else:
+                    fin = clase_obj["hora_fin"]
+                    hora_default = dtime((int(fin[:2]) + 1) % 24, int(fin[3:5]))
+                with st.expander("⚙️ Ajustar sugerencia de repaso", expanded=True):
+                    tema_nuevo = st.text_input("Tema a repasar", value=tema_default, key="editar_sug_tema")
+                    hora_nueva = st.time_input("Hora sugerida", value=hora_default, key="editar_sug_hora")
+                    col_g, col_c = st.columns(2)
+                    with col_g:
+                        if st.button("Guardar", key="editar_sug_guardar", use_container_width=True):
+                            guardar_sugerencia_editada(usuario["id"], clase_id_editar, tema_nuevo, hora_nueva.strftime("%H:%M"))
+                            st.query_params.clear()
+                            st.rerun()
+                    with col_c:
+                        if st.button("Cancelar", key="editar_sug_cancelar", use_container_width=True):
+                            st.query_params.clear()
+                            st.rerun()
 
 
 def mostrar_calendario(usuario):

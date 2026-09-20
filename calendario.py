@@ -473,8 +473,6 @@ def _bloque_sugerencia_html(inicio_min, fin_min, texto):
     )
 
 
-VENTANA_SUGERENCIA_MIN = 45  # tope de minutos que sugiere antes/despues de una clase
-MIN_HUECO_PARA_SUGERIR = 10  # si el hueco libre es mas chico que esto, no vale la pena sugerir
 EXTRA_DESCANSO_POR_NIVEL = {"basico": 0, "intermedio": 5, "avanzado": 15}
 
 
@@ -503,12 +501,19 @@ def _descanso_obligatorio_min(duracion_clase_min, nivel):
 
 
 def _sugerencias_repaso_del_dia(usuario_id, clases_dia, ocupados_dia):
-    """Para cada Clase (no Gym/Trabajo/Otro) de un dia, calcula un hueco
-    sugerido de repaso justo antes, un descanso obligatorio justo despues
-    (segun cuanto duro la clase y el nivel del curso), y despues de ese
-    descanso otro hueco sugerido de repaso - sin pisar ninguna otra
-    actividad ya cargada ese dia. Es puramente visual (no se guarda en la
-    base de datos) - una recomendacion movible, no un bloque fijo."""
+    """Para cada Clase (no Gym/Trabajo/Otro) de un dia, agrega solo el
+    descanso obligatorio justo despues (segun cuanto duro la clase y el
+    nivel del curso) - sin pisar ninguna otra actividad ya cargada ese dia.
+    Es puramente visual (no se guarda en la base de datos).
+
+    Ya NO se sugiere repasar pegado (minutos antes o despues) a la clase:
+    la evidencia de la ciencia cognitiva sobre el efecto de espaciado
+    (Cepeda et al., 2008) muestra que un repaso sin ningun respiro de por
+    medio rinde peor que uno con un espacio real, y que lo mejor
+    respaldado es repasar en algun momento dentro de las 24 horas despues
+    de la clase (Ebbinghaus; Murre & Dros, 2015) - no en el hueco que haya
+    quedado libre. Ese repaso se ofrece aparte, como chip suelto sin hora
+    fija (ver _chip_repaso_html), igual que ya se hace con examenes."""
     html = ""
     for c in clases_dia:
         if (c.get("categoria") or "clase") != "clase":
@@ -517,12 +522,6 @@ def _sugerencias_repaso_del_dia(usuario_id, clases_dia, ocupados_dia):
         fin_clase = int(c["hora_fin"][:2]) * 60 + int(c["hora_fin"][3:5])
         nombre = c.get("etiqueta") or "esta clase"
         otros = [(oi, of) for (oi, of) in ocupados_dia if (oi, of) != (ini_clase, fin_clase)]
-
-        anterior_fin = max([of for (oi, of) in otros if of <= ini_clase], default=HORA_GRID_INICIO)
-        inicio_antes = max(anterior_fin, ini_clase - VENTANA_SUGERENCIA_MIN, HORA_GRID_INICIO)
-        if ini_clase - inicio_antes >= MIN_HUECO_PARA_SUGERIR:
-            html += _bloque_sugerencia_html(inicio_antes, ini_clase, f"📖 Repasar antes: {nombre}")
-
         siguiente_inicio = min([oi for (oi, of) in otros if oi >= fin_clase], default=HORA_GRID_FIN)
 
         nivel_curso = _nivel_dificultad_del_curso(usuario_id, nombre)
@@ -530,11 +529,18 @@ def _sugerencias_repaso_del_dia(usuario_id, clases_dia, ocupados_dia):
         fin_descanso = min(fin_clase + descanso_min, siguiente_inicio, HORA_GRID_FIN)
         if fin_descanso > fin_clase:
             html += _bloque_sugerencia_html(fin_clase, fin_descanso, f"☕ Descanso ({fin_descanso - fin_clase} min)")
-
-        fin_despues = min(siguiente_inicio, fin_descanso + VENTANA_SUGERENCIA_MIN, HORA_GRID_FIN)
-        if fin_despues - fin_descanso >= MIN_HUECO_PARA_SUGERIR:
-            html += _bloque_sugerencia_html(fin_descanso, fin_despues, f"📖 Repasar después: {nombre}")
     return html
+
+
+def _chip_repaso_html(nombre):
+    """Chip suelto (sin hora fija) recordando repasar una clase dentro de
+    las 24 horas siguientes - mismo estilo que los chips de examen/entrega,
+    para no pegarlo al minuto exacto de la clase."""
+    return (
+        f"<div style='background:rgba(255,209,102,0.25); border-radius:4px; padding:1px 4px; "
+        f"font-size:0.62em; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#FFD166;'>"
+        f"📖 Repasar: {nombre}</div>"
+    )
 
 
 def _seccion_vista_horario_semanal(usuario):
@@ -596,7 +602,8 @@ def _seccion_vista_horario_semanal(usuario):
                 st.rerun()
         st.markdown(
             "<p style='font-size:0.78em; color:rgba(255,255,255,0.45)'>"
-            "🔵 Clase &nbsp; 🟢 Deporte &nbsp; 🟠 Trabajo &nbsp; ⚪ Otro &nbsp; 🟣 Horario de estudio &nbsp; 📌 Examen/entrega (arriba, sin hora fija) &nbsp; 🔴 Ahora</p>",
+            "🔵 Clase &nbsp; 🟢 Deporte &nbsp; 🟠 Trabajo &nbsp; ⚪ Otro &nbsp; 🟣 Horario de estudio &nbsp; 📌 Examen/entrega (arriba, sin hora fija) &nbsp; "
+            "📖 Repasar (arriba, en algún momento de hoy) &nbsp; ☕ Descanso obligatorio &nbsp; 🔴 Ahora</p>",
             unsafe_allow_html=True
         )
 
@@ -635,6 +642,11 @@ def _seccion_vista_horario_semanal(usuario):
                 f"font-size:0.62em; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
                 f"{EMOJI_TIPO.get(e.get('tipo'), '📌')} {e['titulo']}</div>"
                 for e in eventos_por_dia.get(f, [])
+            )
+            chips += "".join(
+                _chip_repaso_html(c.get("etiqueta") or "esta clase")
+                for c in clases
+                if c["dia_semana"] == f.weekday() and (c.get("categoria") or "clase") == "clase"
             )
             chips_fila += f"<div style='flex:1; min-width:90px; min-height:22px; padding:0 2px;'>{chips}</div>"
         chips_fila += "</div>"

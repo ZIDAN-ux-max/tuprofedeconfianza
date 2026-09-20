@@ -2,10 +2,20 @@
 """Paginas simples de la app: Ranking, Mis Logros, Mis Estadisticas y Acerca de."""
 import streamlit as st
 import textwrap
+from datetime import date
 
 from database import obtener_ranking, obtener_logros_usuario, obtener_mi_rango, progreso_siguiente_rango, RANGOS, obtener_insignia_por_puntos
 from logros_data import LOGROS_DISPONIBLES
 from materias_data import EMOJI_MATERIA
+
+
+FRASES_MOTIVACIONALES = [
+    "Los grandes avances se logran paso a paso.",
+    "Tu esfuerzo y constancia te acercan a la cima.",
+    "Cada bloque de estudio cuenta hacia tu mejor version.",
+    "No compares tu capitulo 1 con el capitulo 20 de otro.",
+    "La consistencia le gana a la intensidad.",
+]
 
 
 def mostrar_ranking(usuario):
@@ -13,45 +23,87 @@ def mostrar_ranking(usuario):
     st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.6)'>Compite con tus companeros y llega al top!</p>", unsafe_allow_html=True)
     st.divider()
     ranking, mi_posicion = obtener_ranking(usuario_id=usuario.get("id"))
-    medallas = ["🥇", "🥈", "🥉"]
-    for i, est in enumerate(ranking):
-        medalla = medallas[i] if i < 3 else f"#{i+1}"
-        es_yo = est["nombre"] == usuario["nombre"]
-        color = "rgba(0,201,255,0.1)" if es_yo else "rgba(255,255,255,0.05)"
-        borde = "1px solid rgba(0,201,255,0.5)" if es_yo else "1px solid rgba(255,255,255,0.1)"
-        etiqueta_tu = '<span style="color:#00C9FF; font-size:0.8em"> (Tu)</span>' if es_yo else ''
-        nombre_insignia, imagen_insignia = obtener_insignia_por_puntos(est["puntos"])
 
-        col_badge, col_info = st.columns([1, 8])
-        with col_badge:
-            st.image(f"rangos_img/{imagen_insignia}", use_container_width=True)
-        with col_info:
-            html_fila = (
-                f"<div style='background:{color}; border:{borde}; border-radius:16px; padding:15px; margin-bottom:8px;'>"
-                f"<span style='font-size:1.5em'>{medalla}</span>"
-                f"<strong style='color:white; margin-left:10px'>{est['nombre']}</strong>"
-                f"{etiqueta_tu}"
-                f"<span style='color:#00C9FF; font-size:0.75em; margin-left:8px'>{nombre_insignia}</span>"
-                f"<span style='float:right; color:#00C9FF; font-weight:bold;'>⭐ {est['puntos']} pts</span>"
-                f"<br>"
-                f"<span style='color:rgba(255,255,255,0.6); font-size:0.85em;'>"
-                f"💬 {est['total']} mensajes &nbsp; ✅ {est['puntos_tareas']}pts tareas &nbsp; 🏅 {est['puntos_logros']}pts logros &nbsp; 🔥 {est['racha']} dias"
-                f"</span>"
-                f"</div>"
+    col_lista, col_lateral = st.columns([3, 1])
+
+    with col_lista:
+        medallas = ["🥇", "🥈", "🥉"]
+        colores_podio = ["#FFD700", "#C0C0C0", "#CD7F32"]  # oro, plata, bronce
+        for i, est in enumerate(ranking):
+            medalla = medallas[i] if i < 3 else f"#{i+1}"
+            es_yo = est["nombre"] == usuario["nombre"]
+            if i < 3:
+                borde = f"2px solid {colores_podio[i]}"
+                color = f"rgba({','.join(str(int(colores_podio[i].lstrip('#')[j:j+2], 16)) for j in (0, 2, 4))},0.12)"
+            else:
+                borde = "1px solid rgba(0,201,255,0.5)" if es_yo else "1px solid rgba(255,255,255,0.1)"
+                color = "rgba(0,201,255,0.1)" if es_yo else "rgba(255,255,255,0.05)"
+            etiqueta_tu = '<span style="color:#00C9FF; font-size:0.8em"> (Tu)</span>' if es_yo else ''
+            nombre_insignia, imagen_insignia = obtener_insignia_por_puntos(est["puntos"])
+
+            col_badge, col_info = st.columns([1, 8])
+            with col_badge:
+                st.image(f"rangos_img/{imagen_insignia}", use_container_width=True)
+            with col_info:
+                html_fila = (
+                    f"<div style='background:{color}; border:{borde}; border-radius:16px; padding:15px; margin-bottom:8px;'>"
+                    f"<span style='font-size:1.5em'>{medalla}</span>"
+                    f"<strong style='color:white; margin-left:10px'>{est['nombre']}</strong>"
+                    f"{etiqueta_tu}"
+                    f"<span style='color:#00C9FF; font-size:0.75em; margin-left:8px'>{nombre_insignia}</span>"
+                    f"<span style='float:right; color:#00C9FF; font-weight:bold;'>⭐ {est['puntos']} pts</span>"
+                    f"<br>"
+                    f"<span style='color:rgba(255,255,255,0.6); font-size:0.85em;'>"
+                    f"💬 {est['total']} mensajes &nbsp; ✅ {est['puntos_tareas']}pts tareas &nbsp; 🏅 {est['puntos_logros']}pts logros &nbsp; 🔥 {est['racha']} dias"
+                    f"</span>"
+                    f"</div>"
+                )
+                st.markdown(html_fila, unsafe_allow_html=True)
+
+        if mi_posicion:
+            st.markdown(
+                f"<div style='background:rgba(0,201,255,0.08); border:1px dashed rgba(0,201,255,0.5); "
+                f"border-radius:16px; padding:15px; margin-top:10px; text-align:center;'>"
+                f"<span style='color:#00C9FF; font-weight:bold'>Tu puesto: #{mi_posicion['puesto']} de {mi_posicion['de_total']}</span>"
+                f"<br><span style='color:rgba(255,255,255,0.6); font-size:0.85em'>⭐ {mi_posicion['puntos']} pts — sigue sumando para subir</span>"
+                f"</div>",
+                unsafe_allow_html=True
             )
-            st.markdown(html_fila, unsafe_allow_html=True)
+        elif not ranking:
+            st.info("Todavia no hay actividad registrada. Usa el Chat, completa tareas o desbloquea logros para aparecer aca.")
 
-    if mi_posicion:
+    with col_lateral:
+        if mi_posicion:
+            nombre_rango, imagen_rango = obtener_insignia_por_puntos(mi_posicion["puntos"])
+            umbral_actual = next(u for u, n, _s, _i in RANGOS if n == nombre_rango)
+            resultado_siguiente = progreso_siguiente_rango(mi_posicion["puntos"])
+            if resultado_siguiente:
+                faltan, nombre_siguiente = resultado_siguiente
+                umbral_siguiente = mi_posicion["puntos"] + faltan
+                pct = int(100 * (mi_posicion["puntos"] - umbral_actual) / max(umbral_siguiente - umbral_actual, 1))
+                texto_progreso = f"Faltan {faltan} pts para {nombre_siguiente}"
+            else:
+                pct = 100
+                texto_progreso = "Rango maximo alcanzado"
+            st.markdown(
+                f"<div style='background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); "
+                f"border-radius:16px; padding:15px; text-align:center; margin-bottom:12px;'>"
+                f"<strong style='color:white'>{nombre_rango}</strong>"
+                f"<div style='background:rgba(255,255,255,0.1); border-radius:8px; height:10px; margin:10px 0;'>"
+                f"<div style='background:#00C9FF; width:{pct}%; height:10px; border-radius:8px;'></div></div>"
+                f"<span style='color:rgba(255,255,255,0.6); font-size:0.8em'>{texto_progreso}</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+        frase = FRASES_MOTIVACIONALES[date.today().toordinal() % len(FRASES_MOTIVACIONALES)]
         st.markdown(
-            f"<div style='background:rgba(0,201,255,0.08); border:1px dashed rgba(0,201,255,0.5); "
-            f"border-radius:16px; padding:15px; margin-top:10px; text-align:center;'>"
-            f"<span style='color:#00C9FF; font-weight:bold'>Tu puesto: #{mi_posicion['puesto']} de {mi_posicion['de_total']}</span>"
-            f"<br><span style='color:rgba(255,255,255,0.6); font-size:0.85em'>⭐ {mi_posicion['puntos']} pts — sigue sumando para subir</span>"
+            f"<div style='background:rgba(146,110,254,0.1); border:1px solid rgba(146,110,254,0.4); "
+            f"border-radius:16px; padding:15px; text-align:center;'>"
+            f"<span style='font-size:1.6em'>🚀</span>"
+            f"<p style='color:white; font-size:0.9em; margin-top:8px'>{frase}</p>"
             f"</div>",
             unsafe_allow_html=True
         )
-    elif not ranking:
-        st.info("Todavia no hay actividad registrada. Usa el Chat, completa tareas o desbloquea logros para aparecer aca.")
 
 
 def mostrar_acerca_de():

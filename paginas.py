@@ -73,14 +73,17 @@ def mostrar_ranking(usuario):
             st.info("Todavia no hay actividad registrada. Usa el Chat, completa tareas o desbloquea logros para aparecer aca.")
 
     with col_lateral:
-        if mi_posicion:
-            nombre_rango, imagen_rango = obtener_insignia_por_puntos(mi_posicion["puntos"])
+        mis_puntos = mi_posicion["puntos"] if mi_posicion else next(
+            (est["puntos"] for est in ranking if est["nombre"] == usuario["nombre"]), None
+        )
+        if mis_puntos is not None:
+            nombre_rango, imagen_rango = obtener_insignia_por_puntos(mis_puntos)
             umbral_actual = next(u for u, n, _s, _i in RANGOS if n == nombre_rango)
-            resultado_siguiente = progreso_siguiente_rango(mi_posicion["puntos"])
+            resultado_siguiente = progreso_siguiente_rango(mis_puntos)
             if resultado_siguiente:
                 faltan, nombre_siguiente = resultado_siguiente
-                umbral_siguiente = mi_posicion["puntos"] + faltan
-                pct = int(100 * (mi_posicion["puntos"] - umbral_actual) / max(umbral_siguiente - umbral_actual, 1))
+                umbral_siguiente = mis_puntos + faltan
+                pct = int(100 * (mis_puntos - umbral_actual) / max(umbral_siguiente - umbral_actual, 1))
                 texto_progreso = f"Faltan {faltan} pts para {nombre_siguiente}"
             else:
                 pct = 100

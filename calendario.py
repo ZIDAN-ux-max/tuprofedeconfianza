@@ -551,7 +551,42 @@ def _chip_repaso_html(clase_id, nombre, sugerencia_guardada=None):
     )
 
 
-def _seccion_vista_horario_semanal(usuario):
+def _plan_para_clase(planes, etiqueta_clase):
+    """Busca, entre los planes de estudio ya generados (desde el silabo),
+    el que corresponde a una Clase del horario, comparando el nombre libre
+    que puso el alumno (etiqueta) contra el nombre de curso que devolvio la
+    IA al leer el silabo. No siempre va a calzar exacto (son dos campos de
+    texto libre distintos), por eso es una comparacion flexible (uno
+    contenido en el otro) en vez de exigir igualdad exacta."""
+    etiqueta_norm = (etiqueta_clase or "").strip().lower()
+    if not etiqueta_norm:
+        return None
+    for p in planes:
+        curso_norm = (p.get("curso") or "").strip().lower()
+        if curso_norm and (curso_norm in etiqueta_norm or etiqueta_norm in curso_norm):
+            return p
+    return None
+
+
+def _tema_de_la_semana(plan, fecha):
+    """Dado un plan de estudio y una fecha, calcula que tema del silabo
+    (temas_por_semana) corresponde a esa semana del ciclo. None si el plan
+    no tiene esa estructura, la fecha es anterior al inicio de ciclo, o no
+    hay tema cargado para esa semana."""
+    if not plan:
+        return None
+    try:
+        inicio = date.fromisoformat(str(plan["fecha_inicio_ciclo"]))
+        temas = (plan.get("estructura_json") or {}).get("temas_por_semana") or []
+        if not temas or fecha < inicio:
+            return None
+        semana_num = (fecha - inicio).days // 7 + 1
+        return next((t.get("tema") for t in temas if t.get("semana") == semana_num), None)
+    except Exception:
+        return None
+
+
+
     """Vista tipo horario universitario: 7 dias en columnas (Domingo a
     Sabado), horas en filas, clases y horario de estudio como bloques de
     color, examenes/entregas como chips arriba de cada dia (no tienen hora
@@ -616,6 +651,7 @@ def _seccion_vista_horario_semanal(usuario):
         )
 
         clases = listar_horario_clases(usuario["id"])
+        planes = listar_planes_estudio(usuario["id"])
         sugerencias_guardadas = obtener_sugerencias_editadas(usuario["id"])
         eventos = listar_eventos(usuario["id"])
         eventos_por_dia = {}
@@ -653,7 +689,11 @@ def _seccion_vista_horario_semanal(usuario):
                 for e in eventos_por_dia.get(f, [])
             )
             chips += "".join(
-                _chip_repaso_html(c["id"], c.get("etiqueta") or "esta clase", sugerencias_guardadas.get(c["id"]))
+                _chip_repaso_html(
+                    c["id"],
+                    _tema_de_la_semana(_plan_para_clase(planes, c.get("etiqueta")), f) or c.get("etiqueta") or "esta clase",
+                    sugerencias_guardadas.get(c["id"]),
+                )
                 for c in clases
                 if c["dia_semana"] == f.weekday() and (c.get("categoria") or "clase") == "clase"
             )
@@ -728,7 +768,16 @@ def _seccion_vista_horario_semanal(usuario):
             clase_obj = next((c for c in clases if c["id"] == clase_id_editar), None)
             if clase_obj:
                 guardada = sugerencias_guardadas.get(clase_id_editar)
-                tema_default = guardada["tema"] if guardada else (clase_obj.get("etiqueta") or "")
+                if guardada:
+                    tema_default = guardada["tema"]
+                else:
+                    fecha_clase = next(
+                        (inicio_semana + timedelta(days=i) for i in range(7)
+                         if (inicio_semana + timedelta(days=i)).weekday() == clase_obj["dia_semana"]),
+                        hoy,
+                    )
+                    tema_real = _tema_de_la_semana(_plan_para_clase(planes, clase_obj.get("etiqueta")), fecha_clase)
+                    tema_default = tema_real or (clase_obj.get("etiqueta") or "")
                 if guardada:
                     h, m = guardada["hora"].split(":")
                     hora_default = dtime(int(h), int(m))

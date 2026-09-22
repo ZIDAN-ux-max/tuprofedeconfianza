@@ -9,6 +9,7 @@ import hashlib
 from datetime import timedelta, date, time as time_type
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from tutor_ai import client, MODELO_RESUMEN
 from database import (
@@ -18,7 +19,7 @@ from database import (
     listar_bloques_estudio, eliminar_bloques_estudio_de_otros_cursos, listar_planes_estudio,
 )
 from materias_data import materias_de_carrera
-from utils import hoy_peru
+from utils import hoy_peru, ahora_peru
 
 
 def _hash_material(texto_silabo, texto_ficha):
@@ -612,11 +613,189 @@ def _mostrar_bloques_de_hoy(usuario, plan, estructura, materia_general, curso):
     st.markdown("</div>", unsafe_allow_html=True)
 
 
-def mostrar_horario_estudio_contenido(usuario):
+def _nivel_dificultad_del_curso_simple(usuario_id, curso):
+    """Igual idea que la version de calendario.py: busca entre los planes
+    ya generados uno que calce con este curso y devuelve su nivel. Se
+    duplica aca (en vez de importar de calendario.py) para no crear un
+    import circular (calendario.py ya importa de este archivo)."""
+    for p in listar_planes_estudio(usuario_id):
+        curso_plan = (p.get("curso") or "").lower()
+        if curso_plan and curso_plan in curso.lower():
+            return (p.get("estructura_json") or {}).get("nivel_dificultad", "intermedio")
+    return "intermedio"
+
+
+def _generar_ciclos_estudio_largo(curso, nivel, inicio_min, limite_min):
+    """Arma la secuencia completa Estudio -> Explicar -> Descanso (Pomodoro
+    adaptado + auto-explicacion) desde inicio_min hasta limite_min
+    (minutos desde medianoche), usando los minutos por nivel ya validados
+    de BLOQUES_POR_NIVEL. Cada N bloques (segun el nivel) el descanso es
+    el largo en vez del corto."""
+    min_estudio, min_descanso_corto, bloques_antes_largo, min_descanso_largo = obtener_duracion_bloques(nivel)
+    min_explicar = 5
+    fases = []
+    t = inicio_min
+    ciclo = 0
+    while t < limite_min:
+        fin = min(t + min_estudio, limite_min)
+        fases.append({"tipo": "estudio", "curso": curso, "inicio": t, "fin": fin})
+        t = fin
+        if t >= limite_min:
+            break
+        fin = min(t + min_explicar, limite_min)
+        fases.append({"tipo": "explicar", "curso": curso, "inicio": t, "fin": fin})
+        t = fin
+        if t >= limite_min:
+            break
+        ciclo += 1
+        descanso = min_descanso_largo if ciclo % bloques_antes_largo == 0 else min_descanso_corto
+        fin = min(t + descanso, limite_min)
+        fases.append({"tipo": "descanso", "curso": curso, "inicio": t, "fin": fin})
+        t = fin
+    return fases
+
+
+_TIMER_HTML = """
+<div id="tel-caja" style="font-family: sans-serif; background:#1a1a3e; border-radius:16px; padding:22px; text-align:center; color:white; border:2px solid #00C9FF;">
+  <div id="tel-fase" style="font-size:1.15em; font-weight:bold; margin-bottom:10px;"></div>
+  <div id="tel-tiempo" style="font-size:3em; font-weight:bold; margin-bottom:12px;"></div>
+  <div style="background:rgba(255,255,255,0.15); border-radius:8px; height:10px; margin-bottom:10px;">
+    <div id="tel-barra" style="background:#00C9FF; width:0%; height:10px; border-radius:8px; transition:width 1s linear;"></div>
+  </div>
+  <div id="tel-progreso" style="font-size:0.85em; color:rgba(255,255,255,0.65); margin-bottom:14px;"></div>
+  <button id="tel-pausa" style="background:#926EFE; color:white; border:none; border-radius:8px; padding:8px 22px; cursor:pointer; font-size:0.9em;">Pausar</button>
+</div>
+<script>
+const fases = FASES_JSON;
+const colores = {estudio: "#00C9FF", explicar: "#926EFE", descanso: "#FFD166"};
+const etiquetas = {estudio: "📘 Estudiando", explicar: "🗣️ Explica con tus propias palabras", descanso: "☕ Descanso"};
+let idxFase = 0;
+let pausado = false;
+let segundosRestantes = (fases[0].fin - fases[0].inicio) * 60;
+
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch (e) {}
+}
+
+function actualizar() {
+  const fase = fases[idxFase];
+  const caja = document.getElementById("tel-caja");
+  caja.style.background = colores[fase.tipo] + "22";
+  caja.style.borderColor = colores[fase.tipo];
+  document.getElementById("tel-fase").innerText = etiquetas[fase.tipo] + (fase.curso ? " — " + fase.curso : "");
+  document.getElementById("tel-barra").style.background = colores[fase.tipo];
+  const m = Math.floor(Math.max(segundosRestantes, 0) / 60);
+  const s = Math.max(segundosRestantes, 0) % 60;
+  document.getElementById("tel-tiempo").innerText = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  const totalFase = (fase.fin - fase.inicio) * 60;
+  const pct = 100 - (segundosRestantes / totalFase * 100);
+  document.getElementById("tel-barra").style.width = Math.max(0, Math.min(100, pct)) + "%";
+  document.getElementById("tel-progreso").innerText = "Bloque " + (idxFase + 1) + " de " + fases.length;
+}
+
+function tick() {
+  if (pausado) return;
+  segundosRestantes -= 1;
+  if (segundosRestantes < 0) {
+    beep();
+    idxFase += 1;
+    if (idxFase >= fases.length) {
+      document.getElementById("tel-fase").innerText = "🎉 Sesion terminada";
+      document.getElementById("tel-tiempo").innerText = "00:00";
+      document.getElementById("tel-barra").style.width = "100%";
+      document.getElementById("tel-progreso").innerText = "Completaste todos los bloques";
+      clearInterval(intervalo);
+      return;
+    }
+    segundosRestantes = (fases[idxFase].fin - fases[idxFase].inicio) * 60;
+  }
+  actualizar();
+}
+
+document.getElementById("tel-pausa").addEventListener("click", function () {
+  pausado = !pausado;
+  this.innerText = pausado ? "Reanudar" : "Pausar";
+});
+
+actualizar();
+const intervalo = setInterval(tick, 1000);
+</script>
+"""
+
+
+def _seccion_estudio_largo(usuario):
+    """Herramienta 'Estudio Largo': elegis curso + hora limite y se arma
+    (y arranca) automaticamente un temporizador en vivo con ciclos de
+    Estudio -> Explicar con tus propias palabras -> Descanso, con sonido
+    al cambiar de fase. Es puramente de sesion (no se guarda en la base):
+    es una herramienta para usar ahora, no un horario para despues."""
+    with st.expander("⏱️ Estudio Largo (temporizador automatico)"):
+        st.caption(
+            "Elegi el curso y hasta que hora vas a estudiar, y se arma solo un temporizador con bloques de "
+            "estudio, un momento para explicar el tema con tus propias palabras, y descansos - avisando con "
+            "sonido cuando cambia de fase."
+        )
+        materias = materias_de_carrera(usuario.get("carrera")) or ["Matematicas"]
+        materia_el = st.selectbox("Materia", materias, key="estudio_largo_materia")
+        cursos_el = listar_cursos(materia_el)
+        curso_el = st.selectbox("Curso", cursos_el, key=f"estudio_largo_curso_{materia_el}") if cursos_el else st.text_input("Curso", key="estudio_largo_curso_texto")
+
+        ahora = ahora_peru()
+        hora_limite = st.time_input(
+            "¿Hasta que hora vas a estudiar?",
+            value=(ahora + timedelta(hours=2)).time(),
+            key="estudio_largo_hora_limite",
+        )
+
+        col_generar, col_terminar = st.columns(2)
+        with col_generar:
+            if st.button("▶️ Generar y empezar", key="estudio_largo_generar", use_container_width=True):
+                inicio_min = ahora.hour * 60 + ahora.minute
+                limite_min = hora_limite.hour * 60 + hora_limite.minute
+                if limite_min <= inicio_min:
+                    st.error("La hora limite tiene que ser mas tarde que ahora.")
+                elif not curso_el:
+                    st.error("Elegi o escribi un curso primero.")
+                else:
+                    nivel = _nivel_dificultad_del_curso_simple(usuario["id"], curso_el)
+                    st.session_state["estudio_largo_fases"] = _generar_ciclos_estudio_largo(curso_el, nivel, inicio_min, limite_min)
+        with col_terminar:
+            if st.session_state.get("estudio_largo_fases") and st.button("⏹️ Terminar sesion", key="estudio_largo_terminar", use_container_width=True):
+                st.session_state.pop("estudio_largo_fases", None)
+                st.rerun()
+
+        fases = st.session_state.get("estudio_largo_fases")
+        if fases:
+            html = _TIMER_HTML.replace("FASES_JSON", json.dumps(fases))
+            components.html(html, height=230)
+            st.caption(
+                "⚠️ Mientras corre, evita tocar otros botones de esta pagina - Streamlit reinicia el bloque actual "
+                "si la pagina se vuelve a cargar (limitacion tecnica, no hay forma simple de evitarlo)."
+            )
+            with st.expander("Ver todos los bloques de esta sesion"):
+                etiquetas_tipo = {"estudio": "📘 Estudio", "explicar": "🗣️ Explicar", "descanso": "☕ Descanso"}
+                for f in fases:
+                    hi = f"{f['inicio']//60:02d}:{f['inicio']%60:02d}"
+                    hf = f"{f['fin']//60:02d}:{f['fin']%60:02d}"
+                    st.markdown(f"- {etiquetas_tipo[f['tipo']]} {hi}-{hf}")
+
+
+
     """El contenido en si (sin titulo propio), para poder usarse tanto en
     su propia pagina como embebido dentro de una pestaña de Calendario."""
     with st.expander("🏫 Configurar mi horario ocupado (clases, gym, trabajo, etc.)"):
         _seccion_horario_clases(usuario)
+
+    _seccion_estudio_largo(usuario)
 
     materias = materias_de_carrera(usuario.get("carrera")) or ["Matematicas"]
     materia = st.selectbox("Materia", materias, key="horario_materia")

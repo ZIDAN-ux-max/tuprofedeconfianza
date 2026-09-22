@@ -587,6 +587,7 @@ def _tema_de_la_semana(plan, fecha):
 
 
 
+def _seccion_vista_horario_semanal(usuario):
     """Vista tipo horario universitario: 7 dias en columnas (Domingo a
     Sabado), horas en filas, clases y horario de estudio como bloques de
     color, examenes/entregas como chips arriba de cada dia (no tienen hora

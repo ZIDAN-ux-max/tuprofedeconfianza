@@ -790,6 +790,7 @@ def _seccion_estudio_largo(usuario):
 
 
 
+def mostrar_horario_estudio_contenido(usuario):
     """El contenido en si (sin titulo propio), para poder usarse tanto en
     su propia pagina como embebido dentro de una pestaña de Calendario."""
     with st.expander("🏫 Configurar mi horario ocupado (clases, gym, trabajo, etc.)"):

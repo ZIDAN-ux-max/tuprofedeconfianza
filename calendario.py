@@ -535,21 +535,17 @@ def _sugerencias_repaso_del_dia(usuario_id, clases_dia, ocupados_dia, fecha, pla
             tema = _tema_de_la_semana(_plan_para_clase(planes, nombre), fecha) or nombre
         fin_recom = min(ini_recom + 20, siguiente_inicio, HORA_GRID_FIN)
         if fin_recom > ini_recom:
-            html += _bloque_recomendacion_html(c["id"], ini_recom, fin_recom, tema)
+            html += _bloque_recomendacion_html(ini_recom, fin_recom, tema)
     return html
 
 
-def _bloque_recomendacion_html(clase_id, inicio_min, fin_min, tema):
-    """Cuadro punteado de recomendacion de estudio DENTRO de la grilla (no
-    un chip flotante arriba), mismo estilo que el cuadro de Descanso pero
-    clickeable: al tocarlo abre (via query param) el panel para elegir a
-    que hora del dia y con que tema repasar, y una vez guardado ese dato
-    se refleja aca mismo (con su hora real)."""
-    return (
-        f"<a href='?editar_sugerencia={clase_id}' target='_self' style='text-decoration:none;'>"
-        + _bloque_sugerencia_html(inicio_min, fin_min, f"💡 {tema}")
-        + "</a>"
-    )
+def _bloque_recomendacion_html(inicio_min, fin_min, tema):
+    """Cuadro punteado de recomendacion de estudio DENTRO de la grilla,
+    mismo estilo que el cuadro de Descanso. Es solo visual - para editarlo
+    se usa el selector 'Ajustar una recomendacion' debajo de la grilla
+    (un link <a href> aca adentro recargaria la pagina entera y cerraria
+    la sesion, por eso no se usa)."""
+    return _bloque_sugerencia_html(inicio_min, fin_min, f"💡 {tema}")
 
 
 def _plan_para_clase(planes, etiqueta_clase):
@@ -755,9 +751,16 @@ def _seccion_vista_horario_semanal(usuario):
 
         st.markdown(f"<div style='overflow-x:auto;'>{encabezados}{chips_fila}{cuerpo}</div>", unsafe_allow_html=True)
 
-        clase_id_editar = st.query_params.get("editar_sugerencia")
+        clases_con_nombre = [c for c in clases if (c.get("categoria") or "clase") == "clase"]
+        if clases_con_nombre:
+            with st.expander("✏️ Ajustar una recomendación de estudio"):
+                opciones = {f"{DIAS_SEMANA_ES[(c['dia_semana'] + 1) % 7]} - {c.get('etiqueta') or 'Clase'}": c["id"] for c in clases_con_nombre}
+                elegida = st.selectbox("¿Cuál querés ajustar?", list(opciones.keys()), key="editar_sug_selector")
+                if st.button("Editar", key="editar_sug_abrir"):
+                    st.session_state["clase_id_editar"] = opciones[elegida]
+
+        clase_id_editar = st.session_state.get("clase_id_editar")
         if clase_id_editar:
-            clase_id_editar = int(clase_id_editar)
             clase_obj = next((c for c in clases if c["id"] == clase_id_editar), None)
             if clase_obj:
                 guardada = sugerencias_guardadas.get(clase_id_editar)
@@ -784,11 +787,11 @@ def _seccion_vista_horario_semanal(usuario):
                     with col_g:
                         if st.button("Guardar", key="editar_sug_guardar", use_container_width=True):
                             guardar_sugerencia_editada(usuario["id"], clase_id_editar, tema_nuevo, hora_nueva.strftime("%H:%M"))
-                            st.query_params.clear()
+                            st.session_state.pop("clase_id_editar", None)
                             st.rerun()
                     with col_c:
                         if st.button("Cancelar", key="editar_sug_cancelar", use_container_width=True):
-                            st.query_params.clear()
+                            st.session_state.pop("clase_id_editar", None)
                             st.rerun()
 
 

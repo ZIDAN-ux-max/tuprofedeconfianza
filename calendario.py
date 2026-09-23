@@ -500,20 +500,15 @@ def _descanso_obligatorio_min(duracion_clase_min, nivel):
     return 30 + extra_por_duracion + extra_por_nivel
 
 
-def _sugerencias_repaso_del_dia(usuario_id, clases_dia, ocupados_dia):
-    """Para cada Clase (no Gym/Trabajo/Otro) de un dia, agrega solo el
-    descanso obligatorio justo despues (segun cuanto duro la clase y el
-    nivel del curso) - sin pisar ninguna otra actividad ya cargada ese dia.
-    Es puramente visual (no se guarda en la base de datos).
-
-    Ya NO se sugiere repasar pegado (minutos antes o despues) a la clase:
-    la evidencia de la ciencia cognitiva sobre el efecto de espaciado
-    (Cepeda et al., 2008) muestra que un repaso sin ningun respiro de por
-    medio rinde peor que uno con un espacio real, y que lo mejor
-    respaldado es repasar en algun momento dentro de las 24 horas despues
-    de la clase (Ebbinghaus; Murre & Dros, 2015) - no en el hueco que haya
-    quedado libre. Ese repaso se ofrece aparte, como chip suelto sin hora
-    fija (ver _chip_repaso_html), igual que ya se hace con examenes."""
+def _sugerencias_repaso_del_dia(usuario_id, clases_dia, ocupados_dia, fecha, planes, sugerencias_guardadas):
+    """Para cada Clase (no Gym/Trabajo/Otro) de un dia, agrega dos cuadros
+    punteados DENTRO de la grilla (no arriba, como chip): el descanso
+    obligatorio justo despues (segun cuanto duro la clase y el nivel del
+    curso), casi sin texto porque la posicion/color ya lo identifican, y a
+    continuacion una recomendacion de estudio clickeable con el tema real
+    del silabo (si hay un plan generado para ese curso) o la hora/tema que
+    el alumno ya haya guardado a mano. Los horarios son puramente visuales
+    por defecto (no se guardan) salvo que el alumno los edite a mano."""
     html = ""
     for c in clases_dia:
         if (c.get("categoria") or "clase") != "clase":
@@ -528,26 +523,32 @@ def _sugerencias_repaso_del_dia(usuario_id, clases_dia, ocupados_dia):
         descanso_min = _descanso_obligatorio_min(fin_clase - ini_clase, nivel_curso)
         fin_descanso = min(fin_clase + descanso_min, siguiente_inicio, HORA_GRID_FIN)
         if fin_descanso > fin_clase:
-            html += _bloque_sugerencia_html(fin_clase, fin_descanso, f"☕ Descanso ({fin_descanso - fin_clase} min)")
+            html += _bloque_sugerencia_html(fin_clase, fin_descanso, "☕")
+
+        guardada = sugerencias_guardadas.get(c["id"])
+        if guardada:
+            h, m = guardada["hora"].split(":")
+            ini_recom = max(0, min(23, int(h))) * 60 + int(m)
+            tema = guardada["tema"]
+        else:
+            ini_recom = fin_descanso
+            tema = _tema_de_la_semana(_plan_para_clase(planes, nombre), fecha) or nombre
+        fin_recom = min(ini_recom + 20, siguiente_inicio, HORA_GRID_FIN)
+        if fin_recom > ini_recom:
+            html += _bloque_recomendacion_html(c["id"], ini_recom, fin_recom, tema)
     return html
 
 
-def _chip_repaso_html(clase_id, nombre, sugerencia_guardada=None):
-    """Chip suelto (sin hora fija propia en la grilla) recordando repasar
-    una clase dentro de las 24 horas siguientes - mismo estilo que los
-    chips de examen/entrega, para no pegarlo al minuto exacto de la clase.
-    Es clickeable: al tocarlo abre (via query param) el panel para elegir
-    a que hora del dia y con que tema repasar, y una vez guardado ese
-    dato se refleja aca mismo."""
-    if sugerencia_guardada:
-        texto = f"📖 Repasar {sugerencia_guardada['hora']}: {sugerencia_guardada['tema']}"
-    else:
-        texto = f"📖 Repasar: {nombre}"
+def _bloque_recomendacion_html(clase_id, inicio_min, fin_min, tema):
+    """Cuadro punteado de recomendacion de estudio DENTRO de la grilla (no
+    un chip flotante arriba), mismo estilo que el cuadro de Descanso pero
+    clickeable: al tocarlo abre (via query param) el panel para elegir a
+    que hora del dia y con que tema repasar, y una vez guardado ese dato
+    se refleja aca mismo (con su hora real)."""
     return (
         f"<a href='?editar_sugerencia={clase_id}' target='_self' style='text-decoration:none;'>"
-        f"<div style='background:rgba(255,209,102,0.25); border-radius:4px; padding:1px 4px; "
-        f"font-size:0.62em; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#FFD166; cursor:pointer;'>"
-        f"{texto}</div></a>"
+        + _bloque_sugerencia_html(inicio_min, fin_min, f"💡 {tema}")
+        + "</a>"
     )
 
 
@@ -647,7 +648,7 @@ def _seccion_vista_horario_semanal(usuario):
         st.markdown(
             "<p style='font-size:0.78em; color:rgba(255,255,255,0.45)'>"
             "🔵 Clase &nbsp; 🟢 Deporte &nbsp; 🟠 Trabajo &nbsp; ⚪ Otro &nbsp; 🟣 Horario de estudio &nbsp; 📌 Examen/entrega (arriba, sin hora fija) &nbsp; "
-            "📖 Repasar (arriba, en algún momento de hoy) &nbsp; ☕ Descanso obligatorio &nbsp; 🔴 Ahora</p>",
+            "💡 Recomendación de estudio (toca el cuadro para cambiar hora/tema) &nbsp; ☕ Descanso obligatorio &nbsp; 🔴 Ahora</p>",
             unsafe_allow_html=True
         )
 
@@ -688,15 +689,6 @@ def _seccion_vista_horario_semanal(usuario):
                 f"font-size:0.62em; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>"
                 f"{EMOJI_TIPO.get(e.get('tipo'), '📌')} {e['titulo']}</div>"
                 for e in eventos_por_dia.get(f, [])
-            )
-            chips += "".join(
-                _chip_repaso_html(
-                    c["id"],
-                    _tema_de_la_semana(_plan_para_clase(planes, c.get("etiqueta")), f) or c.get("etiqueta") or "esta clase",
-                    sugerencias_guardadas.get(c["id"]),
-                )
-                for c in clases
-                if c["dia_semana"] == f.weekday() and (c.get("categoria") or "clase") == "clase"
             )
             chips_fila += f"<div style='flex:1; min-width:90px; min-height:22px; padding:0 2px;'>{chips}</div>"
         chips_fila += "</div>"
@@ -739,7 +731,7 @@ def _seccion_vista_horario_semanal(usuario):
                 (int(r["inicio"][:2]) * 60 + int(r["inicio"][3:5]), int(r["fin"][:2]) * 60 + int(r["fin"][3:5]))
                 for r in bloques_agrupados_dia
             ]
-            bloques_html += _sugerencias_repaso_del_dia(usuario["id"], clases_dia, ocupados_dia)
+            bloques_html += _sugerencias_repaso_del_dia(usuario["id"], clases_dia, ocupados_dia, f, planes, sugerencias_guardadas)
 
             # Linea de 'ahora': solo se agrega DENTRO de la columna de hoy,
             # asi su ancho queda acotado a esa sola columna (no a toda la semana).

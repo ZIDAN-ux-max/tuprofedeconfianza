@@ -792,6 +792,74 @@ def _seccion_vista_horario_semanal(usuario):
                             st.rerun()
 
 
+def _seccion_hoy_lateral(usuario):
+    """Panel angosto al costado de la grilla semanal con la agenda de HOY
+    en formato lista (clases, horario de estudio, recomendaciones y
+    descansos, mas examenes/entregas de hoy), ordenada por hora - para
+    verla de un vistazo sin tener que leer toda la semana."""
+    hoy = hoy_peru()
+    clases_hoy = [
+        c for c in listar_horario_clases(usuario["id"])
+        if c["dia_semana"] == hoy.weekday() and (c.get("categoria") or "clase") == "clase"
+    ]
+    planes = listar_planes_estudio(usuario["id"])
+    sugerencias_guardadas = obtener_sugerencias_editadas(usuario["id"])
+    bloques_hoy = _bloques_estudio_agrupados(listar_bloques_estudio(usuario["id"], fecha_desde=hoy, fecha_hasta=hoy))
+    eventos_hoy = [e for e in listar_eventos(usuario["id"]) if date.fromisoformat(str(e["fecha"])) == hoy]
+
+    st.markdown(
+        f"<h5 style='margin-bottom:2px'>📌 Hoy</h5>"
+        f"<p style='font-size:0.75em; color:rgba(255,255,255,0.5); margin-top:0'>{hoy.strftime('%A %d %b')}</p>",
+        unsafe_allow_html=True
+    )
+
+    for e in eventos_hoy:
+        st.markdown(
+            f"<div style='background:rgba(239,68,68,0.2); border-radius:6px; padding:4px 6px; margin-bottom:4px; font-size:0.75em;'>"
+            f"{EMOJI_TIPO.get(e.get('tipo'), '📌')} {e['titulo']}</div>",
+            unsafe_allow_html=True
+        )
+
+    items = []
+    for c in clases_hoy:
+        ini = int(c["hora_inicio"][:2]) * 60 + int(c["hora_inicio"][3:5])
+        fin = int(c["hora_fin"][:2]) * 60 + int(c["hora_fin"][3:5])
+        items.append((ini, "🔵", c.get("etiqueta") or "Clase", f"{c['hora_inicio'][:5]}-{c['hora_fin'][:5]}"))
+
+        nivel = _nivel_dificultad_del_curso(usuario["id"], c.get("etiqueta") or "")
+        descanso_min = _descanso_obligatorio_min(fin - ini, nivel)
+        fin_descanso = fin + descanso_min
+        items.append((fin, "☕", "Descanso", f"{fin // 60:02d}:{fin % 60:02d}-{fin_descanso // 60:02d}:{fin_descanso % 60:02d}"))
+
+        guardada = sugerencias_guardadas.get(c["id"])
+        if guardada:
+            h, m = guardada["hora"].split(":")
+            ini_recom = int(h) * 60 + int(m)
+            tema = guardada["tema"]
+        else:
+            ini_recom = fin_descanso
+            tema = _tema_de_la_semana(_plan_para_clase(planes, c.get("etiqueta") or ""), hoy) or (c.get("etiqueta") or "")
+        items.append((ini_recom, "💡", f"Recomendado: {tema}", f"{ini_recom // 60:02d}:{ini_recom % 60:02d}"))
+
+    for r in bloques_hoy:
+        h, m = r["inicio"].split(":")
+        ini = int(h) * 60 + int(m)
+        check = " ✅" if r["completado"] else ""
+        items.append((ini, "🟣", f"{r['curso']}{check}", f"{r['inicio']}-{r['fin']}"))
+
+    items.sort(key=lambda x: x[0])
+    if not items and not eventos_hoy:
+        st.caption("Nada cargado para hoy todavia.")
+    for _, emoji, texto, horario in items:
+        st.markdown(
+            f"<div style='padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.08);'>"
+            f"<span style='font-size:0.7em; color:rgba(255,255,255,0.5)'>{horario}</span><br>"
+            f"<span style='font-size:0.8em'>{emoji} {texto}</span>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+
+
 def mostrar_calendario(usuario):
     st.markdown("<h1 style='text-align:center;'>📅 Mi Calendario</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.6)'>Tus examenes, entregas y tareas, solo para ti</p>", unsafe_allow_html=True)
@@ -803,7 +871,11 @@ def mostrar_calendario(usuario):
         if vista == "Mes":
             _seccion_calendario_mensual(usuario)
         else:
-            _seccion_vista_horario_semanal(usuario)
+            col_grilla, col_hoy = st.columns([4, 1])
+            with col_grilla:
+                _seccion_vista_horario_semanal(usuario)
+            with col_hoy:
+                _seccion_hoy_lateral(usuario)
     with tab2:
         _seccion_lista(usuario)
     with tab3:

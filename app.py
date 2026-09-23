@@ -158,11 +158,40 @@ else:
                 usuario["pref_zoom_pct"] = zoom_elegido
                 st.rerun()
         st.divider()
-        curso_elegido = None
-        if seccion == "Chat":
+        if st.button("Cerrar sesion", use_container_width=True):
+            st.session_state.usuario = None
+            st.session_state.historial = []
+            st.rerun()
+
+    if seccion == "Modo Examen":
+        mostrar_modo_examen(usuario)
+    elif seccion == "Documentos":
+        mostrar_documentos(usuario)
+    elif seccion == "Formulario":
+        mostrar_formulario(usuario)
+    elif seccion == "Calendario":
+        mostrar_calendario(usuario)
+    elif seccion == "Mi Dia":
+        mostrar_tareas(usuario)
+    elif seccion == "Mi Rango":
+        mostrar_mi_rango(usuario)
+    elif seccion == "Revisa mi Solucion":
+        mostrar_revision(usuario)
+    elif seccion == "Ranking":
+        mostrar_ranking(usuario)
+    elif seccion == "Acerca de":
+        mostrar_acerca_de()
+    elif seccion == "Mis Logros":
+        mostrar_logros(usuario, racha)
+    elif seccion == "Mis Estadisticas":
+        mostrar_estadisticas(stats)
+    else:
+        col_chat, col_contexto = st.columns([3, 1])
+        with col_contexto:
             materias_alumno = materias_de_carrera(usuario.get("carrera"))
             modo = st.radio("Que quieres estudiar?", materias_alumno)
 
+            curso_elegido = None
             cursos_disponibles = listar_cursos(modo, universidad=usuario.get("universidad"))
             if not cursos_disponibles and usuario.get("universidad"):
                 # fallback: si todavia no hay documentos etiquetados con tu
@@ -202,39 +231,8 @@ else:
                     st.session_state.archivo = archivo
                 else:
                     st.session_state.archivo = None
-        st.divider()
-        if st.button("Cerrar sesion", use_container_width=True):
-            st.session_state.usuario = None
-            st.session_state.historial = []
-            st.rerun()
 
-    if seccion == "Modo Examen":
-        mostrar_modo_examen(usuario)
-    elif seccion == "Documentos":
-        mostrar_documentos(usuario)
-    elif seccion == "Formulario":
-        mostrar_formulario(usuario)
-    elif seccion == "Calendario":
-        mostrar_calendario(usuario)
-    elif seccion == "Mi Dia":
-        mostrar_tareas(usuario)
-    elif seccion == "Mi Rango":
-        mostrar_mi_rango(usuario)
-    elif seccion == "Revisa mi Solucion":
-        mostrar_revision(usuario)
-    elif seccion == "Ranking":
-        mostrar_ranking(usuario)
-    elif seccion == "Acerca de":
-        mostrar_acerca_de()
-    elif seccion == "Mis Logros":
-        mostrar_logros(usuario, racha)
-    elif seccion == "Mis Estadisticas":
-        mostrar_estadisticas(stats)
-    else:
-        col_chat, col_contexto = st.columns([3, 1])
-        with col_chat:
-            mostrar_chat(usuario, modo, curso_elegido)
-        with col_contexto:
+            st.divider()
             st.markdown(
                 f"<div style='background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); "
                 f"border-radius:16px; padding:14px; margin-bottom:12px;'>"
@@ -253,3 +251,5 @@ else:
                 f"</div>",
                 unsafe_allow_html=True
             )
+        with col_chat:
+            mostrar_chat(usuario, modo, curso_elegido)

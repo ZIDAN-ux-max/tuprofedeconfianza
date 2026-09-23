@@ -22,7 +22,7 @@ from materias_data import CARRERAS_DISPONIBLES, materias_de_carrera
 st.set_page_config(
     page_title="Tu Profe de Confianza",
     page_icon=":mortar_board:",
-    layout="centered"
+    layout="wide"
 )
 aplicar_estilos()
 

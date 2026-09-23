@@ -141,3 +141,12 @@ CSS = """
 def aplicar_estilos():
     st.markdown(CSS, unsafe_allow_html=True)
 
+
+def aplicar_zoom(porcentaje):
+    """Achica o agranda toda la app segun lo que eligio el usuario (100 =
+    tamaño normal). Usa la propiedad CSS 'zoom' porque, a diferencia de
+    'transform: scale', no deja espacios en blanco raros - funciona en
+    Chrome/Edge/Safari, que es lo que corre la gran mayoria de la gente;
+    en algun navegador viejo simplemente no hace nada (no rompe nada)."""
+    st.markdown(f"<style>.stApp {{ zoom: {porcentaje}%; }}</style>", unsafe_allow_html=True)
+

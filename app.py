@@ -6,8 +6,8 @@ Toda la logica pesada vive en los otros modulos (database, tutor_ai, chat,
 examen, paginas)."""
 import streamlit as st
 
-from estilos import aplicar_estilos
-from database import login, registrar, registrar_asistencia, obtener_estadisticas, supabase, listar_cursos, obtener_mi_rango, verificar_logros_generales
+from estilos import aplicar_estilos, aplicar_zoom
+from database import login, registrar, registrar_asistencia, obtener_estadisticas, supabase, listar_cursos, obtener_mi_rango, verificar_logros_generales, guardar_preferencia_zoom
 from utils import obtener_nivel
 from chat import mostrar_chat
 from examen import mostrar_modo_examen
@@ -112,6 +112,7 @@ if st.session_state.usuario is None:
 
 else:
     usuario = st.session_state.usuario
+    aplicar_zoom(usuario.get("pref_zoom_pct") or 100)
     racha = registrar_asistencia(usuario["id"])
     stats = obtener_estadisticas(usuario["id"])
     nivel, nivel_color = obtener_nivel(stats["total"])
@@ -148,6 +149,14 @@ else:
 
         st.divider()
         seccion = st.radio("Menu", ["Chat", "Modo Examen", "Revisa mi Solucion", "Documentos", "Formulario", "Calendario", "Mi Dia", "Mi Rango", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"], key="menu_seccion")
+        st.divider()
+        with st.expander("🔍 Tamaño de pantalla"):
+            zoom_actual = usuario.get("pref_zoom_pct") or 100
+            zoom_elegido = st.select_slider("Ajustar tamaño", options=[80, 90, 100, 110, 120, 130], value=zoom_actual, key="zoom_slider")
+            if zoom_elegido != zoom_actual:
+                guardar_preferencia_zoom(usuario["id"], zoom_elegido)
+                usuario["pref_zoom_pct"] = zoom_elegido
+                st.rerun()
         st.divider()
         curso_elegido = None
         if seccion == "Chat":

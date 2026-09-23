@@ -1270,3 +1270,13 @@ def obtener_sugerencias_editadas(usuario_id):
         return {fila["clase_id"]: {"tema": fila["tema"], "hora": fila["hora"]} for fila in result.data}
     except Exception:
         return {}
+
+
+def guardar_preferencia_zoom(usuario_id, zoom_pct):
+    """Guarda el tamaño de pantalla (zoom) que el alumno eligio, para que
+    la app se vea igual la proxima vez que entre."""
+    try:
+        supabase.table("usuarios").update({"pref_zoom_pct": zoom_pct}).eq("id", usuario_id).execute()
+        return True
+    except Exception:
+        return False

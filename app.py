@@ -231,4 +231,25 @@ else:
     elif seccion == "Mis Estadisticas":
         mostrar_estadisticas(stats)
     else:
-        mostrar_chat(usuario, modo, curso_elegido)
+        col_chat, col_contexto = st.columns([3, 1])
+        with col_chat:
+            mostrar_chat(usuario, modo, curso_elegido)
+        with col_contexto:
+            st.markdown(
+                f"<div style='background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); "
+                f"border-radius:16px; padding:14px; margin-bottom:12px;'>"
+                f"<strong style='color:#00C9FF'>📘 Estudiando ahora</strong><br>"
+                f"<span style='color:white; font-size:1.05em; font-weight:bold'>{curso_elegido or modo}</span><br>"
+                f"<span style='color:rgba(255,255,255,0.6); font-size:0.85em'>{modo}</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"<div style='background:rgba(146,110,254,0.1); border:1px solid rgba(146,110,254,0.4); "
+                f"border-radius:16px; padding:14px; text-align:center;'>"
+                f"<span style='font-size:1.4em'>🔥</span><br>"
+                f"<strong style='color:white'>{racha} dias de racha</strong><br>"
+                f"<span style='color:rgba(255,255,255,0.6); font-size:0.85em'>Nivel: <span style='color:{nivel_color}'>{nivel}</span></span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )

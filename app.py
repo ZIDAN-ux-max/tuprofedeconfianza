@@ -188,6 +188,7 @@ else:
     else:
         col_chat, col_contexto = st.columns([3, 1])
         with col_contexto:
+          with st.container(key="chat_contexto_sticky"):
             materias_alumno = materias_de_carrera(usuario.get("carrera"))
             modo = st.radio("Que quieres estudiar?", materias_alumno)
 

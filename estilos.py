@@ -134,6 +134,13 @@ CSS = """
         0%, 100% { transform: translateY(0px) scale(1); opacity: 0.3; }
         50% { transform: translateY(-20px) scale(1.5); opacity: 0.8; }
     }
+    /* Panel de "Que quieres estudiar" del Chat: queda fijo en su lugar
+       aunque la conversacion crezca y se scrollee hacia abajo. */
+    .st-key-chat_contexto_sticky {
+        position: sticky;
+        top: 1rem;
+        align-self: flex-start;
+    }
 </style>
 """
 

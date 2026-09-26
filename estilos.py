@@ -148,6 +148,11 @@ CSS = """
         overflow-y: auto;
         z-index: 100;
     }
+    /* Deja libre, a la derecha de los mensajes del chat, el mismo ancho
+       que ocupa el panel fijo de arriba, para que no se tapen. */
+    .st-key-chat_main_area {
+        padding-right: 360px;
+    }
 </style>
 """
 

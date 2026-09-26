@@ -4,12 +4,13 @@ tutor_ai para construir un prompt personalizado (edad/grado/ciclo + progreso
 + curso de la biblioteca elegido) y actualiza el perfil del alumno despues
 de cada respuesta.
 
-Curso/Formulario/Archivo viven en la barra lateral de app.py (asi se
-quedan siempre visibles, sin depender de trucos de CSS)."""
+Curso/Formulario/Archivo viven en el panel derecho fijo de app.py."""
+import base64
+
 import streamlit as st
 
 from database import guardar_conversacion, cargar_conversaciones, verificar_logros_generales, obtener_temas_debiles
-from tutor_ai import construir_system_prompt, obtener_sugerencias, responder_tutor, actualizar_perfil_alumno
+from tutor_ai import construir_system_prompt, obtener_sugerencias, responder_tutor, actualizar_perfil_alumno, transcribir_procedimiento_imagen
 from utils import extraer_texto_pdf, normalizar_latex
 from materias_data import EMOJI_MATERIA, materias_de_carrera
 
@@ -59,33 +60,56 @@ def mostrar_chat(usuario, modo, curso_elegido=None):
         nuevos_logros = verificar_logros_generales(usuario["id"], usuario["nombre"])
         return texto, nuevos_logros
 
-    if not st.session_state.historial:
-        with st.chat_message("assistant"):
-            if modo == "Matematicas":
-                st.write("Hola! Soy tu profe de confianza. Que tema de matematicas te esta costando?")
-            else:
-                st.write("Hola! Soy tu profe de confianza. En que te puedo ayudar hoy?")
+    with st.container(key="chat_main_area"):
+        if not st.session_state.historial:
+            with st.chat_message("assistant"):
+                if modo == "Matematicas":
+                    st.write("Hola! Soy tu profe de confianza. Que tema de matematicas te esta costando?")
+                else:
+                    st.write("Hola! Soy tu profe de confianza. En que te puedo ayudar hoy?")
 
-        st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.5); font-size:0.9em; margin-top:10px'>Preguntas frecuentes:</p>", unsafe_allow_html=True)
-        colA, colB = st.columns(2)
-        for i, sugerencia in enumerate(sugerencias):
-            with colA if i % 2 == 0 else colB:
-                if st.button(sugerencia, use_container_width=True, key=f"sug_{i}"):
-                    st.session_state.historial.append({"role": "user", "content": sugerencia})
-                    _procesar_turno(sugerencia)
-                    st.rerun()
+            st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.5); font-size:0.9em; margin-top:10px'>Preguntas frecuentes:</p>", unsafe_allow_html=True)
+            colA, colB = st.columns(2)
+            for i, sugerencia in enumerate(sugerencias):
+                with colA if i % 2 == 0 else colB:
+                    if st.button(sugerencia, use_container_width=True, key=f"sug_{i}"):
+                        st.session_state.historial.append({"role": "user", "content": sugerencia})
+                        _procesar_turno(sugerencia)
+                        st.rerun()
 
-    for mensaje in st.session_state.historial:
-        rol = mensaje["role"]
-        with st.chat_message(rol):
-            st.markdown(normalizar_latex(mensaje["content"]), unsafe_allow_html=True)
+        for mensaje in st.session_state.historial:
+            rol = mensaje["role"]
+            with st.chat_message(rol):
+                st.markdown(normalizar_latex(mensaje["content"]), unsafe_allow_html=True)
 
-    if prompt := st.chat_input("Escribe tu pregunta aqui..."):
+    entrada = st.chat_input("Escribe tu pregunta aqui...", accept_file=True, file_type=["png", "jpg", "jpeg"])
+    if entrada:
+        texto_escrito = entrada.text or ""
+        imagenes_subidas = entrada.files or []
+
+        contenido_para_ia = texto_escrito
+        if imagenes_subidas:
+            # Se reusa el mismo modelo de vision que ya usa "Revisa mi
+            # Solucion" para leer procedimientos escritos a mano - funciona
+            # mejor con fotos de ejercicios/apuntes que con fotos genericas,
+            # pero es lo unico con soporte de imagenes que ya esta probado
+            # en la app, y realmente le hace "ver" la imagen a la IA (no es
+            # solo mostrarla en el chat sin que el tutor la lea).
+            transcripciones = [
+                transcribir_procedimiento_imagen([(base64.b64encode(img.getvalue()).decode("utf-8"), img.type or "image/png")])
+                for img in imagenes_subidas
+            ]
+            texto_imagenes = "\n".join(transcripciones)
+            contenido_para_ia = (texto_escrito + "\n\n" if texto_escrito else "") + f"[Contenido de la imagen adjunta]: {texto_imagenes}"
+
         with st.chat_message("user"):
-            st.markdown(prompt, unsafe_allow_html=True)
+            for img in imagenes_subidas:
+                st.image(img, width=250)
+            if texto_escrito:
+                st.markdown(texto_escrito, unsafe_allow_html=True)
 
-        st.session_state.historial.append({"role": "user", "content": prompt})
-        texto, nuevos_logros = _procesar_turno(prompt)
+        st.session_state.historial.append({"role": "user", "content": contenido_para_ia})
+        texto, nuevos_logros = _procesar_turno(contenido_para_ia)
 
         for logro in nuevos_logros:
             st.balloons()

@@ -186,9 +186,7 @@ else:
     elif seccion == "Mis Estadisticas":
         mostrar_estadisticas(stats)
     else:
-        col_chat, col_contexto = st.columns([3, 1])
-        with col_contexto:
-          with st.container(key="chat_contexto_sticky"):
+        with st.container(key="chat_contexto_sticky"):
             materias_alumno = materias_de_carrera(usuario.get("carrera"))
             modo = st.radio("Que quieres estudiar?", materias_alumno)
 
@@ -252,5 +250,4 @@ else:
                 f"</div>",
                 unsafe_allow_html=True
             )
-        with col_chat:
-            mostrar_chat(usuario, modo, curso_elegido)
+        mostrar_chat(usuario, modo, curso_elegido)

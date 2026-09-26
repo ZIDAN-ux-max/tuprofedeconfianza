@@ -153,6 +153,15 @@ CSS = """
     .st-key-chat_main_area {
         padding-right: 360px;
     }
+    /* Un poco de color a la caja de escribir del chat, en vez de la
+       gris/plana por defecto. */
+    [data-testid="stChatInput"] {
+        border-radius: 24px;
+        border: 2px solid transparent;
+        background:
+            linear-gradient(#1a1a3e, #1a1a3e) padding-box,
+            linear-gradient(90deg, #00C9FF, #926EFE) border-box;
+    }
 </style>
 """
 

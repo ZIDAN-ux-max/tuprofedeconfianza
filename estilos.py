@@ -153,15 +153,6 @@ CSS = """
     .st-key-chat_main_area {
         padding-right: 360px;
     }
-    /* Un poco de color a la caja de escribir del chat, en vez de la
-       gris/plana por defecto. */
-    [data-testid="stChatInput"] {
-        border-radius: 24px;
-        border: 2px solid transparent;
-        background:
-            linear-gradient(#1a1a3e, #1a1a3e) padding-box,
-            linear-gradient(90deg, #00C9FF, #926EFE) border-box;
-    }
 </style>
 """
 
@@ -175,6 +166,13 @@ def aplicar_zoom(porcentaje):
     tamaño normal). Usa la propiedad CSS 'zoom' porque, a diferencia de
     'transform: scale', no deja espacios en blanco raros - funciona en
     Chrome/Edge/Safari, que es lo que corre la gran mayoria de la gente;
-    en algun navegador viejo simplemente no hace nada (no rompe nada)."""
+    en algun navegador viejo simplemente no hace nada (no rompe nada).
+
+    En 100% no se inyecta nada: no hace falta (no cambia nada visualmente)
+    y 'zoom' tiene comportamiento inconsistente entre navegadores con
+    elementos 'position: fixed' adentro (como el chat_input de Streamlit),
+    asi que mejor no tenerlo puesto de mas para el caso comun (default)."""
+    if porcentaje == 100:
+        return
     st.markdown(f"<style>.stApp {{ zoom: {porcentaje}%; }}</style>", unsafe_allow_html=True)
 

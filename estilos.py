@@ -165,6 +165,9 @@ CSS = """
             linear-gradient(90deg, #00C9FF, #926EFE) border-box;
         position: fixed !important;
         bottom: 0.75rem;
+        left: 23rem;
+        right: 380px;
+        width: auto;
         z-index: 999;
     }
 </style>

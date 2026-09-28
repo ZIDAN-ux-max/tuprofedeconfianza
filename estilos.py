@@ -153,6 +153,20 @@ CSS = """
     .st-key-chat_main_area {
         padding-right: 360px;
     }
+    /* Caja de escribir del chat: un poco de color (en vez de la gris
+       plana por defecto) y forzada a quedar pegada abajo de la pantalla
+       de verdad, en vez de depender de que Streamlit decida "pinearla"
+       solo (esa logica interna no se estaba activando). */
+    [data-testid="stChatInput"] {
+        border-radius: 24px;
+        border: 2px solid transparent;
+        background:
+            linear-gradient(#1a1a3e, #1a1a3e) padding-box,
+            linear-gradient(90deg, #00C9FF, #926EFE) border-box;
+        position: fixed !important;
+        bottom: 0.75rem;
+        z-index: 999;
+    }
 </style>
 """
 

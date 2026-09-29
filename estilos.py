@@ -170,6 +170,15 @@ CSS = """
         width: auto;
         z-index: 999;
     }
+    /* Streamlit reserva espacio para el chat_input en su lugar "natural"
+       aunque se lo haya movido a "fixed" arriba - esto colapsa ese hueco
+       vacio que quedaba entre los mensajes y la caja de escribir. */
+    [data-testid="stBottom"], [data-testid="stBottomBlockContainer"] {
+        height: 0 !important;
+        min-height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
 </style>
 """
 

@@ -179,6 +179,12 @@ CSS = """
         padding: 0 !important;
         margin: 0 !important;
     }
+    /* Streamlit le agrega un padding extra abajo al contenido principal
+       para que no quede tapado por el chat_input - lo achico, ahora que
+       el chat_input ya no ocupa ese espacio (esta en "fixed"). */
+    [data-testid="stMainBlockContainer"] {
+        padding-bottom: 1rem !important;
+    }
 </style>
 """
 

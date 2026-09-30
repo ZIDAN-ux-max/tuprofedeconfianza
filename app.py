@@ -5,6 +5,7 @@ lateral, y llama a la pagina correspondiente segun lo que el alumno elija.
 Toda la logica pesada vive en los otros modulos (database, tutor_ai, chat,
 examen, paginas)."""
 import streamlit as st
+import streamlit.components.v1 as components
 
 from estilos import aplicar_estilos, aplicar_zoom
 from database import login, registrar, registrar_asistencia, obtener_estadisticas, supabase, listar_cursos, obtener_mi_rango, verificar_logros_generales, guardar_preferencia_zoom
@@ -25,6 +26,21 @@ st.set_page_config(
     layout="wide"
 )
 aplicar_estilos()
+components.html(
+    """
+    <script>
+    setInterval(function () {
+        const app = window.parent.document.querySelector('.stApp');
+        if (app) {
+            const t = Date.now() / 1000;
+            const pos = (Math.sin(t / 10) + 1) * 50;
+            app.style.backgroundPosition = pos + '% 50%';
+        }
+    }, 200);
+    </script>
+    """,
+    height=0
+)
 
 
 # ===================== LOGIN / REGISTRO =====================

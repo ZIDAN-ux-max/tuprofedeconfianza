@@ -7,9 +7,9 @@ CSS = """
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap');
     * { font-family: 'Poppins', sans-serif; }
     .stApp {
-        background: linear-gradient(135deg, #0F0C29, #302B63, #24243e, #302B63, #0F0C29);
-        background-size: 400% 400%;
-        animation: fondoMovimiento 20s ease infinite;
+        background: linear-gradient(135deg, #0F0C29, #302B63, #24243e, #302B63, #0F0C29) !important;
+        background-size: 400% 400% !important;
+        animation: fondoMovimiento 20s ease infinite !important;
         min-height: 100vh;
     }
     @keyframes fondoMovimiento {

@@ -30,16 +30,23 @@ components.html(
     """
     <script>
     setInterval(function () {
-        const app = window.parent.document.querySelector('.stApp');
-        if (app) {
-            const t = Date.now() / 1000;
-            const pos = (Math.sin(t / 10) + 1) * 50;
-            app.style.backgroundPosition = pos + '% 50%';
+        try {
+            const app = window.parent.document.querySelector('.stApp');
+            if (app) {
+                const t = Date.now() / 1000;
+                const pos = (Math.sin(t / 10) + 1) * 50;
+                app.style.backgroundPosition = pos + '% 50%';
+            }
+        } catch (e) {
+            // Streamlit Cloud puede bloquear el acceso a la pagina
+            // principal desde este cuadrito por seguridad - si pasa eso,
+            // no rompe nada, solo no logra mover el fondo por este medio
+            // (queda la animacion CSS de respaldo).
         }
     }, 200);
     </script>
     """,
-    height=0
+    height=1
 )
 
 

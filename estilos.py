@@ -3,14 +3,55 @@
 import streamlit as st
 
 CSS = """
+<div class="fondo-blob fondo-blob-1"></div>
+<div class="fondo-blob fondo-blob-2"></div>
+<div class="fondo-blob fondo-blob-3"></div>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap');
     * { font-family: 'Poppins', sans-serif; }
     .stApp {
         background: linear-gradient(135deg, #0F0C29, #1b3a5c, #302B63, #0d3b4a, #0F0C29) !important;
-        background-size: 700% 700% !important;
-        animation: fondoMovimiento 16s ease-in-out infinite !important;
+        background-size: 250% 250% !important;
+        animation: fondoMovimiento 14s ease-in-out infinite !important;
         min-height: 100vh;
+    }
+    .fondo-blob {
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(90px);
+        opacity: 0.35;
+        z-index: 0;
+        pointer-events: none;
+    }
+    .fondo-blob-1 {
+        width: 400px; height: 400px;
+        background: #00C9FF;
+        top: -100px; left: -100px;
+        animation: flotar1 18s ease-in-out infinite;
+    }
+    .fondo-blob-2 {
+        width: 500px; height: 500px;
+        background: #926EFE;
+        bottom: -150px; right: -100px;
+        animation: flotar2 22s ease-in-out infinite;
+    }
+    .fondo-blob-3 {
+        width: 350px; height: 350px;
+        background: #92FE9D;
+        top: 40%; left: 60%;
+        animation: flotar3 16s ease-in-out infinite;
+    }
+    @keyframes flotar1 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(150px, 100px); }
+    }
+    @keyframes flotar2 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(-120px, -80px); }
+    }
+    @keyframes flotar3 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-100px, 60px) scale(1.2); }
     }
     @keyframes fondoMovimiento {
         0%   { background-position: 0% 0%; }

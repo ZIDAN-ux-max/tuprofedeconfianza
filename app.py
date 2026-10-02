@@ -32,11 +32,20 @@ components.html(
     setInterval(function () {
         try {
             const app = window.parent.document.querySelector('.stApp');
+            const t = Date.now() / 1000;
             if (app) {
-                const t = Date.now() / 1000;
                 const x = (Math.sin(t / 8) + 1) * 50;
                 const y = (Math.cos(t / 11) + 1) * 50;
                 app.style.backgroundPosition = x + '% ' + y + '%';
+            }
+            const blobs = window.parent.document.querySelectorAll('.fondo-blob');
+            if (blobs.length) {
+                blobs.forEach(function (blob, i) {
+                    const velocidad = 0.15 + i * 0.05;
+                    const dx = Math.sin(t * velocidad + i * 2) * 150;
+                    const dy = Math.cos(t * velocidad * 0.8 + i * 2) * 100;
+                    blob.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+                });
             }
         } catch (e) {
             // Streamlit Cloud puede bloquear el acceso a la pagina

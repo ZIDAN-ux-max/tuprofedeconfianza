@@ -34,8 +34,9 @@ components.html(
             const app = window.parent.document.querySelector('.stApp');
             if (app) {
                 const t = Date.now() / 1000;
-                const pos = (Math.sin(t / 10) + 1) * 50;
-                app.style.backgroundPosition = pos + '% 50%';
+                const x = (Math.sin(t / 8) + 1) * 50;
+                const y = (Math.cos(t / 11) + 1) * 50;
+                app.style.backgroundPosition = x + '% ' + y + '%';
             }
         } catch (e) {
             // Streamlit Cloud puede bloquear el acceso a la pagina

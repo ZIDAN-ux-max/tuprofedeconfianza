@@ -8,14 +8,16 @@ CSS = """
     * { font-family: 'Poppins', sans-serif; }
     .stApp {
         background: linear-gradient(135deg, #0F0C29, #1b3a5c, #302B63, #0d3b4a, #0F0C29) !important;
-        background-size: 400% 400% !important;
-        animation: fondoMovimiento 12s ease infinite !important;
+        background-size: 700% 700% !important;
+        animation: fondoMovimiento 16s ease-in-out infinite !important;
         min-height: 100vh;
     }
     @keyframes fondoMovimiento {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+        0%   { background-position: 0% 0%; }
+        25%  { background-position: 100% 25%; }
+        50%  { background-position: 50% 100%; }
+        75%  { background-position: 0% 75%; }
+        100% { background-position: 0% 0%; }
     }
     .titulo-principal {
         text-align: center;

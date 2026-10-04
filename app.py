@@ -44,7 +44,12 @@ components.html(
                     const velocidad = 0.15 + i * 0.05;
                     const dx = Math.sin(t * velocidad + i * 2) * 150;
                     const dy = Math.cos(t * velocidad * 0.8 + i * 2) * 100;
-                    blob.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+                    const dz = Math.sin(t * velocidad * 0.6 + i * 3) * 200;
+                    const rx = Math.sin(t * velocidad * 0.5 + i) * 20;
+                    const ry = Math.cos(t * velocidad * 0.4 + i) * 20;
+                    blob.style.transform =
+                        'translate3d(' + dx + 'px, ' + dy + 'px, ' + dz + 'px) ' +
+                        'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
                 });
             }
         } catch (e) {

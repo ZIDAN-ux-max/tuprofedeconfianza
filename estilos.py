@@ -10,6 +10,7 @@ CSS = """
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap');
     * { font-family: 'Poppins', sans-serif; }
     .stApp {
+        perspective: 1200px;
         background: linear-gradient(135deg, #0F0C29, #1b3a5c, #302B63, #0d3b4a, #0F0C29) !important;
         background-size: 250% 250% !important;
         animation: fondoMovimiento 14s ease-in-out infinite !important;
@@ -22,6 +23,8 @@ CSS = """
         opacity: 0.35;
         z-index: 0;
         pointer-events: none;
+        transform-style: preserve-3d;
+        will-change: transform;
     }
     .fondo-blob-1 {
         width: 400px; height: 400px;

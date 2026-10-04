@@ -1,67 +1,31 @@
 # -*- coding: utf-8 -*-
 """Estilos visuales (CSS) de la app, separados para no ensuciar app.py."""
+import base64
+
 import streamlit as st
 
 CSS = """
-<div class="fondo-blob fondo-blob-1"></div>
-<div class="fondo-blob fondo-blob-2"></div>
-<div class="fondo-blob fondo-blob-3"></div>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap');
     * { font-family: 'Poppins', sans-serif; }
     .stApp {
-        perspective: 1200px;
-        background: linear-gradient(135deg, #0F0C29, #1b3a5c, #302B63, #0d3b4a, #0F0C29) !important;
-        background-size: 250% 250% !important;
-        animation: fondoMovimiento 14s ease-in-out infinite !important;
+        background: #0F0C29;
         min-height: 100vh;
     }
-    .fondo-blob {
+    .fondo-video {
         position: fixed;
-        border-radius: 50%;
-        filter: blur(90px);
-        opacity: 0.35;
-        z-index: 0;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        object-fit: cover;
+        z-index: -2;
+    }
+    .fondo-video-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(15, 12, 41, 0.55);
+        z-index: -1;
         pointer-events: none;
-        transform-style: preserve-3d;
-        will-change: transform;
-    }
-    .fondo-blob-1 {
-        width: 400px; height: 400px;
-        background: #00C9FF;
-        top: -100px; left: -100px;
-        animation: flotar1 18s ease-in-out infinite;
-    }
-    .fondo-blob-2 {
-        width: 500px; height: 500px;
-        background: #926EFE;
-        bottom: -150px; right: -100px;
-        animation: flotar2 22s ease-in-out infinite;
-    }
-    .fondo-blob-3 {
-        width: 350px; height: 350px;
-        background: #92FE9D;
-        top: 40%; left: 60%;
-        animation: flotar3 16s ease-in-out infinite;
-    }
-    @keyframes flotar1 {
-        0%, 100% { transform: translate(0, 0); }
-        50% { transform: translate(150px, 100px); }
-    }
-    @keyframes flotar2 {
-        0%, 100% { transform: translate(0, 0); }
-        50% { transform: translate(-120px, -80px); }
-    }
-    @keyframes flotar3 {
-        0%, 100% { transform: translate(0, 0) scale(1); }
-        50% { transform: translate(-100px, 60px) scale(1.2); }
-    }
-    @keyframes fondoMovimiento {
-        0%   { background-position: 0% 0%; }
-        25%  { background-position: 100% 25%; }
-        50%  { background-position: 50% 100%; }
-        75%  { background-position: 0% 75%; }
-        100% { background-position: 0% 0%; }
     }
     .titulo-principal {
         text-align: center;
@@ -261,3 +225,23 @@ def aplicar_zoom(porcentaje):
         return
     st.markdown(f"<style>.stApp {{ zoom: {porcentaje}%; }}</style>", unsafe_allow_html=True)
 
+
+
+def fondo_video_html(nombre_archivo):
+    """Arma el <video> de fondo a pantalla completa (con una capa oscura
+    encima para que el texto se siga leyendo bien), leyendo el archivo del
+    repo y embebiendolo directo en el HTML en vez de depender de que
+    Streamlit sirva archivos estaticos (que no siempre esta habilitado).
+    Si el archivo no existe todavia (por ejemplo, recien se esta por subir
+    a GitHub), no rompe nada - simplemente no muestra ningun video."""
+    try:
+        with open(nombre_archivo, "rb") as f:
+            video_b64 = base64.b64encode(f.read()).decode("utf-8")
+    except FileNotFoundError:
+        return ""
+    return (
+        f'<video class="fondo-video" autoplay loop muted playsinline>'
+        f'<source src="data:video/mp4;base64,{video_b64}" type="video/mp4">'
+        f'</video>'
+        f'<div class="fondo-video-overlay"></div>'
+    )

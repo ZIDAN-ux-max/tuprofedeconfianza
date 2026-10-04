@@ -5,9 +5,8 @@ lateral, y llama a la pagina correspondiente segun lo que el alumno elija.
 Toda la logica pesada vive en los otros modulos (database, tutor_ai, chat,
 examen, paginas)."""
 import streamlit as st
-import streamlit.components.v1 as components
 
-from estilos import aplicar_estilos, aplicar_zoom
+from estilos import aplicar_estilos, aplicar_zoom, fondo_video_html
 from database import login, registrar, registrar_asistencia, obtener_estadisticas, supabase, listar_cursos, obtener_mi_rango, verificar_logros_generales, guardar_preferencia_zoom
 from utils import obtener_nivel
 from chat import mostrar_chat
@@ -26,49 +25,17 @@ st.set_page_config(
     layout="wide"
 )
 aplicar_estilos()
-components.html(
-    """
-    <script>
-    setInterval(function () {
-        try {
-            const app = window.parent.document.querySelector('.stApp');
-            const t = Date.now() / 1000;
-            if (app) {
-                const x = (Math.sin(t / 8) + 1) * 50;
-                const y = (Math.cos(t / 11) + 1) * 50;
-                app.style.backgroundPosition = x + '% ' + y + '%';
-            }
-            const blobs = window.parent.document.querySelectorAll('.fondo-blob');
-            if (blobs.length) {
-                blobs.forEach(function (blob, i) {
-                    const velocidad = 0.15 + i * 0.05;
-                    const dx = Math.sin(t * velocidad + i * 2) * 150;
-                    const dy = Math.cos(t * velocidad * 0.8 + i * 2) * 100;
-                    const dz = Math.sin(t * velocidad * 0.6 + i * 3) * 200;
-                    const rx = Math.sin(t * velocidad * 0.5 + i) * 20;
-                    const ry = Math.cos(t * velocidad * 0.4 + i) * 20;
-                    blob.style.transform =
-                        'translate3d(' + dx + 'px, ' + dy + 'px, ' + dz + 'px) ' +
-                        'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
-                });
-            }
-        } catch (e) {
-            // Streamlit Cloud puede bloquear el acceso a la pagina
-            // principal desde este cuadrito por seguridad - si pasa eso,
-            // no rompe nada, solo no logra mover el fondo por este medio
-            // (queda la animacion CSS de respaldo).
-        }
-    }, 200);
-    </script>
-    """,
-    height=1
-)
 
 
 # ===================== LOGIN / REGISTRO =====================
 
 if "usuario" not in st.session_state:
     st.session_state.usuario = None
+
+st.markdown(
+    fondo_video_html("fondo_login.mp4" if st.session_state.usuario is None else "fondo_app.mp4"),
+    unsafe_allow_html=True
+)
 
 if st.session_state.usuario is None:
     col_img, col_form = st.columns([1, 1])

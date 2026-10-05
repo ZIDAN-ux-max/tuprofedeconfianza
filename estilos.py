@@ -26,7 +26,7 @@ CSS = """
         position: fixed;
         top: 0; left: 0;
         width: 100%; height: 100%;
-        background: rgba(15, 12, 41, 0.55);
+        background: rgba(15, 12, 41, 0.7);
         z-index: -1;
         pointer-events: none;
     }
@@ -51,8 +51,8 @@ CSS = """
         margin-top: 5px;
     }
     .stat-card {
-        background: rgba(255,255,255,0.05);
-        backdrop-filter: blur(10px);
+        background: rgba(15,12,41,0.4);
+        backdrop-filter: blur(12px);
         border: 1px solid rgba(255,255,255,0.1);
         border-radius: 16px;
         padding: 20px;
@@ -135,10 +135,18 @@ CSS = """
         color: rgba(255,255,255,0.8) !important;
     }
     .stChatMessage {
-        background: rgba(255,255,255,0.05) !important;
+        background: rgba(15,12,41,0.45) !important;
         border: 1px solid rgba(255,255,255,0.1) !important;
         border-radius: 16px !important;
-        backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(12px) !important;
+    }
+    /* Tarjetas/contenedores con borde que arma Streamlit (st.container,
+       st.expander) en Calendario, Ranking, etc. - mismo criterio: se
+       destacan del video de fondo sin verse como un cuadro aparte. */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background: rgba(15,12,41,0.4);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
     }
     [data-testid="stSidebar"] {
         background: rgba(15,12,41,0.95) !important;

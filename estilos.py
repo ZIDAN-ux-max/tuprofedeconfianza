@@ -51,7 +51,7 @@ CSS = """
         margin-top: 5px;
     }
     .stat-card {
-        background: rgba(15,12,41,0.4);
+        background: rgba(15,12,41,0.82);
         backdrop-filter: blur(12px);
         border: 1px solid rgba(255,255,255,0.1);
         border-radius: 16px;
@@ -135,7 +135,7 @@ CSS = """
         color: rgba(255,255,255,0.8) !important;
     }
     .stChatMessage {
-        background: rgba(15,12,41,0.45) !important;
+        background: rgba(15,12,41,0.82) !important;
         border: 1px solid rgba(255,255,255,0.1) !important;
         border-radius: 16px !important;
         backdrop-filter: blur(12px) !important;
@@ -144,9 +144,25 @@ CSS = """
        st.expander) en Calendario, Ranking, etc. - mismo criterio: se
        destacan del video de fondo sin verse como un cuadro aparte. */
     [data-testid="stVerticalBlockBorderWrapper"] {
-        background: rgba(15,12,41,0.4);
-        backdrop-filter: blur(12px);
+        background: rgba(15,12,41,0.82);
+        backdrop-filter: blur(14px);
         border-radius: 16px;
+    }
+    /* Checkboxes (ej: la grilla de "Mi Dia") como insignias cuadradas de
+       color, en vez del tilde plano por defecto - verde/cian si esta
+       marcado, gris oscuro si no. */
+    [data-testid="stCheckbox"] {
+        background: rgba(255,255,255,0.08);
+        border: 2px solid rgba(255,255,255,0.18);
+        border-radius: 8px;
+        padding: 6px;
+        display: flex;
+        justify-content: center;
+        transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    [data-testid="stCheckbox"]:has(input:checked) {
+        background: linear-gradient(135deg, #00C9FF, #92FE9D);
+        border-color: #00C9FF;
     }
     [data-testid="stSidebar"] {
         background: rgba(15,12,41,0.95) !important;

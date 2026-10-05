@@ -143,7 +143,7 @@ CSS = """
     /* Tarjetas/contenedores con borde que arma Streamlit (st.container,
        st.expander) en Calendario, Ranking, etc. - mismo criterio: se
        destacan del video de fondo sin verse como un cuadro aparte. */
-    [data-testid="stVerticalBlockBorderWrapper"] {
+    [data-testid="stContainer"] {
         background: rgba(15,12,41,0.82);
         backdrop-filter: blur(14px);
         border-radius: 16px;

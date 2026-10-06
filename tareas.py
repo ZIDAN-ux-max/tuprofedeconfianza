@@ -2,7 +2,7 @@
 """Mi Dia: lista simple de tareas de texto libre que cada alumno arma para
 su propio dia (ej: gym, leer, tender la cama). Personal, no se comparte
 entre alumnos."""
-from datetime import date, timedelta
+from datetime import timedelta
 
 import streamlit as st
 
@@ -79,7 +79,7 @@ def _seccion_semana(usuario):
     tareas_por_dia = {str(d): [t for t in tareas if t["fecha"] == str(d)] for d in dias_semana}
     proporciones = [2] + [1] * 7
 
-    with st.container(border=True):
+    with st.container(border=True, key="mi_dia_tarjeta"):
         st.markdown("<h3 style='margin-top:0;'>📅 Esta semana</h3>", unsafe_allow_html=True)
 
         col1, col2, col3 = st.columns([3, 2, 1])

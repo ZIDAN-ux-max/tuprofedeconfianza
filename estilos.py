@@ -148,6 +148,11 @@ CSS = """
         backdrop-filter: blur(14px);
         border-radius: 16px;
     }
+    .st-key-mi_dia_tarjeta {
+        background: rgba(15,12,41,0.82) !important;
+        backdrop-filter: blur(14px);
+        border-radius: 16px;
+    }
     /* Checkboxes (ej: la grilla de "Mi Dia") como insignias cuadradas de
        color, en vez del tilde plano por defecto - verde/cian si esta
        marcado, gris oscuro si no. */

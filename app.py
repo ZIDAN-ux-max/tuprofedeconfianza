@@ -33,7 +33,7 @@ if "usuario" not in st.session_state:
     st.session_state.usuario = None
 
 st.markdown(
-    fondo_video_html("fondo_login.mp4" if st.session_state.usuario is None else "fondo_app.mp4"),
+    fondo_video_html("fondo_app.mp4" if st.session_state.usuario is None else "fondo_login.mp4"),
     unsafe_allow_html=True
 )
 

@@ -18,6 +18,7 @@ from tareas import mostrar_tareas
 from revision import mostrar_revision
 from paginas import mostrar_ranking, mostrar_acerca_de, mostrar_logros, mostrar_estadisticas, mostrar_mi_rango
 from materias_data import CARRERAS_DISPONIBLES, materias_de_carrera
+from juego import mostrar_juego
 
 st.set_page_config(
     page_title="Tu Profe de Confianza",
@@ -154,7 +155,7 @@ else:
             pass
 
         st.divider()
-        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Revisa mi Solucion", "Documentos", "Formulario", "Calendario", "Mi Dia", "Mi Rango", "Mis Estadisticas", "Mis Logros", "Ranking", "Acerca de"], key="menu_seccion")
+        seccion = st.radio("Menu", ["Chat", "Modo Examen", "Revisa mi Solucion", "Documentos", "Formulario", "Calendario", "Mi Dia", "Mi Rango", "Mis Estadisticas", "Mis Logros", "Ranking", "Juego", "Acerca de"], key="menu_seccion")
         st.divider()
         with st.expander("🔍 Tamaño de pantalla"):
             zoom_actual = usuario.get("pref_zoom_pct") or 100
@@ -185,6 +186,8 @@ else:
         mostrar_revision(usuario)
     elif seccion == "Ranking":
         mostrar_ranking(usuario)
+    elif seccion == "Juego":
+        mostrar_juego()
     elif seccion == "Acerca de":
         mostrar_acerca_de()
     elif seccion == "Mis Logros":
